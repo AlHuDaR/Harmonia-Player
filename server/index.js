@@ -1,94 +1,70 @@
-const express = require('express');
-const cors = require('cors');
-const ytdl = require('ytdl-core');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegStatic = require('ffmpeg-static');
-const path = require('path');
-const fs = require('fs');
+const express = require("express");
+const cors = require("cors");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
+const execute = promisify(execFile);
 
-const app = express();
-const port = process.env.PORT || 3000;
-
-// Set ffmpeg path
-ffmpeg.setFfmpegPath(ffmpegStatic);
-
-// Create temp directory if it doesn't exist
-const tempDir = path.join(__dirname, 'temp');
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir);
+// Only fixed YouTube URLs are passed to the resolver; arbitrary client URLs are never fetched.
+function createApp(
+  resolve = async (id) => {
+    const { stdout } = await execute(
+      process.env.YT_DLP_PATH || "yt-dlp",
+      [
+        "--no-playlist",
+        "--js-runtimes",
+        "node",
+        "--no-warnings",
+        "--skip-download",
+        "--dump-single-json",
+        "--socket-timeout",
+        "15",
+        "-f",
+        "best[ext=mp4]/best",
+        `https://www.youtube.com/watch?v=${id}`,
+      ],
+      { timeout: 30000, maxBuffer: 4 * 1024 * 1024 },
+    );
+    const data = JSON.parse(stdout);
+    if (!data.url || new URL(data.url).protocol !== "https:")
+      throw new Error("No compatible HTTPS stream available");
+    return { url: data.url, title: data.title };
+  },
+) {
+  const app = express();
+  app.disable("x-powered-by");
+  app.use(cors({ origin: process.env.ALLOWED_ORIGIN || false }));
+  let active = 0;
+  app.get("/", (_req, res) => res.send("Harmonia Player Download Server"));
+  app.get("/resolve/:videoId", async (req, res) => {
+    if (!/^[A-Za-z0-9_-]{11}$/.test(req.params.videoId))
+      return res.status(400).json({ error: "Invalid YouTube video ID" });
+    if (active >= 2)
+      return res.status(429).json({ error: "Resolver busy. Retry shortly." });
+    active++;
+    try {
+      res
+        .set("Cache-Control", "no-store")
+        .json(await resolve(req.params.videoId));
+    } catch {
+      res.status(502).json({
+        error:
+          "YouTube resolution failed. Update yt-dlp or use a direct media URL. Some videos require authentication or are restricted.",
+      });
+    } finally {
+      active--;
+    }
+  });
+  // Preserve a clear response for old clients instead of silently serving the wrong file format.
+  app.get("/download/:videoId", (_req, res) =>
+    res.status(410).json({
+      error:
+        "Use /resolve/:videoId, then download the returned media file in the app.",
+    }),
+  );
+  return app;
 }
-
-app.use(cors());
-
-// Add a health check endpoint
-app.get('/', (req, res) => {
-  res.send('Harmonia Player Download Server');
-});
-
-app.get('/download/:videoId', async (req, res) => {
-  try {
-    const { videoId } = req.params;
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    
-    // Get video info
-    const info = await ytdl.getInfo(videoUrl);
-    const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
-    
-    // Set up file paths
-    const tempFilePath = path.join(tempDir, `${videoId}.mp4`);
-    const outputPath = path.join(tempDir, `${videoId}.mp3`);
-
-    // Download and convert video
-    await new Promise((resolve, reject) => {
-      ytdl(videoUrl, {
-        quality: 'highestaudio',
-        filter: 'audioonly',
-      })
-      .pipe(fs.createWriteStream(tempFilePath))
-      .on('finish', () => {
-        // Convert to MP3
-        ffmpeg(tempFilePath)
-          .toFormat('mp3')
-          .on('end', () => {
-            // Clean up temp video file
-            fs.unlinkSync(tempFilePath);
-            resolve();
-          })
-          .on('error', reject)
-          .save(outputPath);
-      })
-      .on('error', reject);
-    });
-
-    // Set headers for download
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Disposition', `attachment; filename="${title}.mp3"`);
-
-    // Stream the file
-    const stream = fs.createReadStream(outputPath);
-    stream.pipe(res);
-
-    // Clean up MP3 file after streaming
-    stream.on('end', () => {
-      fs.unlinkSync(outputPath);
-    });
-
-  } catch (error) {
-    console.error('Download error:', error);
-    res.status(500).json({ error: 'Download failed' });
-  }
-});
-
-// Cleanup temp files on server start
-fs.readdir(tempDir, (err, files) => {
-  if (err) return;
-  for (const file of files) {
-    fs.unlink(path.join(tempDir, file), err => {
-      if (err) console.error(`Error deleting ${file}:`, err);
-    });
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+if (require.main === module)
+  createApp().listen(process.env.PORT || 3000, () =>
+    console.log(`Server running on port ${process.env.PORT || 3000}`),
+  );
+module.exports = { createApp };
