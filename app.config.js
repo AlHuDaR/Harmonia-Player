@@ -36,6 +36,7 @@ export default {
     },
     plugins: [
       "expo-router",
+      "./plugins/withNativeAbiFilters",
       "expo-asset",
       "expo-font",
       [
