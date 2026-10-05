@@ -39,6 +39,15 @@ export default {
       "expo-asset",
       "expo-font",
       [
+        "expo-splash-screen",
+        {
+          image: "./assets/images/icon.png",
+          imageWidth: 180,
+          resizeMode: "contain",
+          backgroundColor: "#0c0e16",
+        },
+      ],
+      [
         "expo-build-properties",
         {
           android: {

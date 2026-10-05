@@ -98,4 +98,17 @@ describe("offline downloads", () => {
     ).toBeUndefined();
     expect(fs.moveAsync).not.toHaveBeenCalled();
   });
+  it("rejects adaptive manifests served from extensionless URLs", async () => {
+    fs.createDownloadResumable.mockReturnValue({
+      downloadAsync: async () => ({
+        status: 200,
+        uri: "file:///manifest",
+        headers: { "Content-Type": "application/vnd.apple.mpegurl" },
+      }),
+    });
+    await expect(
+      downloadTrack(directTrack("https://example.com/stream")),
+    ).rejects.toThrow("adaptive");
+    expect(fs.moveAsync).not.toHaveBeenCalled();
+  });
 });

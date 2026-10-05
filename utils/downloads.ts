@@ -41,16 +41,14 @@ export async function downloadTrack(track: Track): Promise<void> {
     const job = FileSystem.createDownloadResumable(uri, path, {}, (p) => {
       if (Date.now() - lastUpdate < 300) return;
       lastUpdate = Date.now();
-      usePlayerStore
-        .getState()
-        .setDownload({
-          track,
-          status: "downloading",
-          progress:
-            p.totalBytesExpectedToWrite > 0
-              ? p.totalBytesWritten / p.totalBytesExpectedToWrite
-              : 0,
-        });
+      usePlayerStore.getState().setDownload({
+        track,
+        status: "downloading",
+        progress:
+          p.totalBytesExpectedToWrite > 0
+            ? p.totalBytesWritten / p.totalBytesExpectedToWrite
+            : 0,
+      });
     });
     const result = await job.downloadAsync();
     if (!result || result.status < 200 || result.status >= 300)
@@ -62,6 +60,10 @@ export async function downloadTrack(track: Track): Promise<void> {
       Object.entries(result.headers).find(
         ([key]) => key.toLowerCase() === "content-type",
       )?.[1] || "";
+    if (/mpegurl|dash\+xml/i.test(type))
+      throw new Error(
+        "Offline download requires a single media file; adaptive streams are playback-only.",
+      );
     if (/text\/|application\/(json|xml)/i.test(type))
       throw new Error("The URL returned a page instead of media.");
     const localUri = path.replace(/\.part$/, "");
@@ -107,15 +109,13 @@ export async function importMedia(): Promise<void> {
     const id = `local:${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const path = `${dir}${id.replace(":", "-")}-${asset.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     await FileSystem.copyAsync({ from: asset.uri, to: path });
-    usePlayerStore
-      .getState()
-      .addTrack({
-        id,
-        title: asset.name,
-        artist: "Local media",
-        localUri: path,
-        kind: asset.mimeType?.startsWith("audio/") ? "audio" : "video",
-      });
+    usePlayerStore.getState().addTrack({
+      id,
+      title: asset.name,
+      artist: "Local media",
+      localUri: path,
+      kind: asset.mimeType?.startsWith("audio/") ? "audio" : "video",
+    });
     if (
       FileSystem.cacheDirectory &&
       asset.uri.startsWith(FileSystem.cacheDirectory)
