@@ -257,8 +257,7 @@ function MediaEngine({
     transport.queue.length > 0 ||
     transport.playbackIndex + 1 < transport.playbackList.length ||
     (transport.repeat === "all" && transport.playbackList.length > 0) ||
-    (!!details.related?.length &&
-      !transport.playbackList.length);
+    (!!details.related?.length && !transport.playbackList.length);
   const next = () => transport.advance(related.current, true);
   return (
     <View

@@ -29,10 +29,17 @@ export default {
                 ),
               ),
             ),
-
           ],
         },
-        { action:"VIEW", autoVerify:false, category:["BROWSABLE","DEFAULT"], data:[{scheme:"https",host:"youtu.be"},{scheme:"http",host:"youtu.be"}] },
+        {
+          action: "VIEW",
+          autoVerify: false,
+          category: ["BROWSABLE", "DEFAULT"],
+          data: [
+            { scheme: "https", host: "youtu.be" },
+            { scheme: "http", host: "youtu.be" },
+          ],
+        },
         {
           action: "SEND",
           category: ["DEFAULT"],

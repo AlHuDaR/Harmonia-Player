@@ -118,3 +118,66 @@ test("language switches instantly and persists with a clean Home", async ({
   await page.getByRole("button", { name: "English", exact: true }).click();
   await expect(page.getByRole("tab", { name: /Home/ })).toBeVisible();
 });
+
+test("Downloads Previous and Next follow the saved list", async ({ page }) => {
+  const bytes = readFileSync(resolve("tests/fixtures/tone.mp3"));
+  await page.route("https://offline.test/**", (r) =>
+    r.fulfill({
+      status: 200,
+      body: bytes,
+      contentType: "audio/mpeg",
+      headers: { "access-control-allow-origin": "*" },
+    }),
+  );
+  await page.addInitScript(() => {
+    const tracks = [1, 2, 3].map((n) => ({
+      id: `offline:${n}`,
+      title: `Saved ${n}`,
+      artist: "Offline library",
+      kind: "audio",
+      localUri: `https://offline.test/${n}.mp3`,
+    }));
+    localStorage.setItem(
+      "harmonia-library-v1",
+      JSON.stringify({
+        state: {
+          tracks,
+          downloads: tracks.map((track) => ({
+            track,
+            status: "complete",
+            progress: 1,
+          })),
+          favorites: [],
+          playlists: [],
+          history: [],
+          queue: [],
+          language: "en",
+          settings: { background: true, autoPip: false },
+        },
+        version: 0,
+      }),
+    );
+  });
+  await page.goto("/downloads");
+  await page.getByRole("button", { name: "Play all", exact: true }).click();
+  const video = page.locator("video");
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentSrc))
+    .toContain("/1.mp3");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentSrc))
+    .toContain("/2.mp3");
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentSrc))
+    .toContain("/1.mp3");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentSrc))
+    .toContain("/3.mp3");
+  await expect(
+    page.getByRole("button", { name: "Next", exact: true }),
+  ).toBeDisabled();
+});
