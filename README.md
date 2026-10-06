@@ -112,3 +112,9 @@ Cloud/browser tests do not prove Samsung hardware behavior. On the S24 Ultra, ve
 9. Retry unavailable, live, age-restricted and network-blocked videos. Verify clear errors and no silent or fake completed downloads.
 
 See the PR validation record for build/test outcomes and remaining external-service or physical-device checks.
+
+## 1.3 watch experience
+
+Search results are compact tappable rows with duration, views and upload age when available. Tapping opens playback immediately. Back collapses the persistent player without restarting it. The watch view provides Add To (playlist or queue), Background, Android PiP, Download, quality/audio selection, sharing, description and related videos. Explicit queue entries play before optional unseen related recommendations. Quality changes restore position. Donation support is informational until the developer supplies a payment link; no payment details are collected.
+
+Release validation must cover Android Back, background/lock-screen playback, PiP, rotation, Bluetooth interruption, quality changes and offline files on a physical device. Browser tests cover local media only. Existing download restart/private-storage limitations remain; resumable persistent downloads, comments, full localization, production signing and store publication are separate release work.

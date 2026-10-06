@@ -5,6 +5,16 @@ import type { Track, Playlist, Download } from "@/types/media";
 
 interface PlayerStore {
   currentTrack: Track | null;
+  expanded: boolean;
+  queue: Track[];
+  autoQueue: boolean;
+  position: number;
+  setExpanded: (expanded: boolean) => void;
+  enqueue: (track: Track) => void;
+  removeQueued: (index: number) => void;
+  moveQueued: (index: number, delta: number) => void;
+  advance: (related?: Track[]) => void;
+  switchFormat: (track: Track, position: number) => void;
   tracks: Track[];
   history: string[];
   favorites: string[];
@@ -34,6 +44,40 @@ export const usePlayerStore = create<PlayerStore>()(
   persist(
     (set) => ({
       currentTrack: null,
+      expanded: false,
+      queue: [],
+      autoQueue: false,
+      position: 0,
+      setExpanded: (expanded) => set({ expanded }),
+      enqueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
+      removeQueued: (index) =>
+        set((s) => ({ queue: s.queue.filter((_, i) => i !== index) })),
+      moveQueued: (index, delta) =>
+        set((s) => {
+          const queue = [...s.queue],
+            target = index + delta;
+          if (target < 0 || target >= queue.length) return {};
+          [queue[index], queue[target]] = [queue[target], queue[index]];
+          return { queue };
+        }),
+      advance: (related = []) => {
+        const s = usePlayerStore.getState();
+        const next =
+          s.queue[0] ||
+          (s.autoQueue
+            ? related.find(
+                (t) =>
+                  !s.history.includes(t.id) &&
+                  (!t.youtubeId || t.youtubeId !== s.currentTrack?.youtubeId),
+              )
+            : undefined);
+        if (!next) return;
+        const expanded = s.expanded;
+        set({ queue: s.queue.slice(1) });
+        s.setCurrentTrack(next);
+        set({ expanded });
+      },
+      switchFormat: (track, position) => set({ currentTrack: track, position }),
       tracks: [],
       history: [],
       favorites: [],
@@ -52,7 +96,8 @@ export const usePlayerStore = create<PlayerStore>()(
         })),
       setCurrentTrack: (track) =>
         set((s) => {
-          if (!track) return { currentTrack: null };
+          if (!track)
+            return { currentTrack: null, expanded: false, position: 0 };
           const downloaded = s.downloads.find(
             (d) => d.track.id === track.id && d.status === "complete",
           )?.track;
@@ -62,6 +107,8 @@ export const usePlayerStore = create<PlayerStore>()(
           };
           return {
             currentTrack: playable,
+            expanded: true,
+            position: 0,
             tracks: [...s.tracks.filter((t) => t.id !== track.id), playable],
             history: [
               track.id,
@@ -131,7 +178,7 @@ export const usePlayerStore = create<PlayerStore>()(
       name: "harmonia-library-v1",
       storage: createJSONStorage(() => AsyncStorage),
       // Never auto-play or restore expiring media URLs after restart.
-      partialize: ({ currentTrack, ...state }) => state,
+      partialize: ({ currentTrack, expanded, position, ...state }) => state,
       onRehydrateStorage: () => (state, error) => {
         useLibraryStatus.setState({ hydrated: !error, error: !!error });
         if (state) {

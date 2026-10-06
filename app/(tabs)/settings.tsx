@@ -55,7 +55,14 @@ export default function SettingsScreen() {
           setFeedback("History cleared.");
         }}
       />
-      <Text style={styles.text}>Harmonia Player 1.2.0 · Coded By AlHudar</Text>
+      <Text style={styles.text}>Harmonia Player 1.3.0 · Coded By AlHuDaR</Text>
+      <Text style={styles.heading}>Support the developer</Text>
+      <Text style={styles.text}>
+        Enjoying Harmonia? Your support helps development and improvements.
+      </Text>
+      <Text style={styles.text}>
+        Donations will be available here once a payment method is added.
+      </Text>
       <Button
         title="Source code and licences"
         onPress={() => {
