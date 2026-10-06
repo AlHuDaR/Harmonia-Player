@@ -1,82 +1,66 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import Colors from '@/constants/Colors';
-
+import { useState } from "react";
+import { Text, View } from "react-native";
+import { Page, TrackCard, Input, Button, styles } from "@/components/MediaUI";
+import { usePlayerStore } from "@/store/playerStore";
 export default function LibraryScreen() {
+  const { tracks, favorites, playlists } = usePlayerStore();
+  const [name, setName] = useState("");
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <Text style={styles.title}>Library</Text>
-          <MaterialIcons name="search" size={24} color={Colors.white} />
+    <Page title="Library">
+      <Text style={styles.heading}>Favorites</Text>
+      {!favorites.length && (
+        <Text style={styles.text}>Tap Favorite on a track to save it.</Text>
+      )}
+      {tracks
+        .filter((t) => favorites.includes(t.id))
+        .map((t) => (
+          <TrackCard key={t.id} track={t} />
+        ))}
+      <Text style={styles.heading}>Playlists</Text>
+      <Input
+        accessibilityLabel="Playlist name"
+        placeholder="New playlist name"
+        value={name}
+        onChangeText={setName}
+        maxLength={80}
+      />
+      <Button
+        title="Create playlist"
+        disabled={!name.trim()}
+        onPress={() => {
+          usePlayerStore.getState().createPlaylist(name);
+          setName("");
+        }}
+      />
+      {playlists.map((p) => (
+        <View key={p.id} style={{ gap: 12 }}>
+          <Text style={styles.heading}>{p.name}</Text>
+          {!p.trackIds.length && (
+            <Text style={styles.text}>
+              Use the Playlist button on a track to add it here.
+            </Text>
+          )}
+          {p.trackIds
+            .map((id) => tracks.find((t) => t.id === id))
+            .filter((t) => !!t)
+            .map((t) => (
+              <TrackCard key={t.id} track={t} playlistId={p.id} />
+            ))}
+          <Button
+            title={`Delete playlist ${p.name}`}
+            onPress={() => usePlayerStore.getState().deletePlaylist(p.id)}
+          />
         </View>
-
-        <View style={styles.filters}>
-          <Text style={styles.filterActive}>Playlists</Text>
-          <Text style={styles.filter}>Albums</Text>
-          <Text style={styles.filter}>Songs</Text>
-          <Text style={styles.filter}>Artists</Text>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.playlistItem}>
-            <MaterialIcons name="favorite" size={24} color={Colors.red[500]} />
-            <Text style={styles.playlistTitle}>Liked Songs</Text>
-          </View>
-          
-          <View style={styles.playlistItem}>
-            <MaterialIcons name="history" size={24} color={Colors.gray[400]} />
-            <Text style={styles.playlistTitle}>Recently played</Text>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      ))}
+      <Text style={styles.heading}>Local media & saved tracks</Text>
+      {!tracks.length && (
+        <Text style={styles.text}>
+          Import a file from Home to add local media.
+        </Text>
+      )}
+      {tracks.map((t) => (
+        <TrackCard key={t.id} track={t} />
+      ))}
+    </Page>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#030303',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  title: {
-    color: Colors.white,
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  filters: {
-    flexDirection: 'row',
-    padding: 16,
-  },
-  filter: {
-    color: Colors.gray[400],
-    marginRight: 16,
-    fontSize: 16,
-  },
-  filterActive: {
-    color: Colors.white,
-    marginRight: 16,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  section: {
-    padding: 16,
-  },
-  playlistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  playlistTitle: {
-    color: Colors.white,
-    fontSize: 16,
-    marginLeft: 16,
-  },
-});

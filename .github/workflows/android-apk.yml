@@ -1,0 +1,57 @@
+name: Android APK
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install Android build dependencies
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:web
+      - run: npm run build:web -- --max-workers 2
+        env:
+          EXPO_NO_TELEMETRY: "1"
+      - run: npm run build:apk
+      - name: Verify APK signature and ARM64 contents
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose artifacts/Harmonia-Player-arm64.apk
+          python3 - <<'PYCODE'
+          import zipfile
+          with zipfile.ZipFile('artifacts/Harmonia-Player-arm64.apk') as apk:
+              abis = {name.split('/')[1] for name in apk.namelist() if name.startswith('lib/')}
+              assert abis == {'arm64-v8a'}, abis
+              assert 'lib/arm64-v8a/libhermes.so' in apk.namelist()
+              assert apk.getinfo('assets/index.android.bundle').file_size > 0
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Harmonia-Player-arm64
+          path: artifacts/Harmonia-Player-arm64.apk
+          if-no-files-found: error
+          retention-days: 14

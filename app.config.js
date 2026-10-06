@@ -2,26 +2,67 @@ export default {
   expo: {
     name: "Harmonia Player",
     slug: "harmonia-player",
-    version: "1.0.0",
-    orientation: "portrait",
+    version: "1.1.0",
+    orientation: "default",
     icon: "./assets/images/icon.png",
-    scheme: "myapp",
-    userInterfaceStyle: "automatic",
-    newArchEnabled: true,
-    ios: {
-      supportsTablet: true
+    scheme: "harmonia",
+    userInterfaceStyle: "dark",
+    newArchEnabled: false,
+    android: {
+      package: "com.alhudar.harmonia",
+      versionCode: 2,
+      permissions: [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WAKE_LOCK",
+      ],
+      allowBackup: false,
+      blockedPermissions: [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+      ],
     },
+    ios: { supportsTablet: true },
     web: {
       bundler: "metro",
       output: "single",
-      favicon: "./assets/images/favicon.png"
+      favicon: "./assets/images/favicon.png",
     },
-    plugins: ["expo-router"],
-    experiments: {
-      typedRoutes: true
-    },
-    extra: {
-      youtubeApiKey: "AIzaSyCOyHZDLTgo6eod53lSS4egQNhix4SZIXI"
-    }
-  }
+    plugins: [
+      "expo-router",
+      "./plugins/withNativeAbiFilters",
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/images/icon.png",
+          imageWidth: 180,
+          resizeMode: "contain",
+          backgroundColor: "#0c0e16",
+        },
+      ],
+      [
+        "expo-build-properties",
+        {
+          android: {
+            compileSdkVersion: 35,
+            targetSdkVersion: 35,
+            buildToolsVersion: "35.0.0",
+          },
+        },
+      ],
+      [
+        "expo-video",
+        { supportsBackgroundPlayback: true, supportsPictureInPicture: true },
+      ],
+    ],
+    experiments: { typedRoutes: true },
+  },
 };
