@@ -38,6 +38,14 @@ for (const [file, type] of [
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
       .toBeGreaterThan(1);
+    await page.getByLabel("Back to browsing", { exact: true }).click();
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
+      .toBe(false);
+    await page.getByLabel("Expand player", { exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Add To", exact: true }),
+    ).toBeVisible();
     await page.getByLabel("Pause", { exact: true }).click();
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
@@ -73,7 +81,11 @@ test("shows actionable search setup and direct URL errors", async ({
   await page.getByRole("tab", { name: /Search/ }).click();
   await page.getByLabel("Search query").fill("test");
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(page.getByText(/YouTube search and streams are available in the Android APK/)).toBeVisible();
+  await expect(
+    page.getByText(
+      /YouTube search and streams are available in the Android APK/,
+    ),
+  ).toBeVisible();
   await page.getByRole("tab", { name: /Downloads/ }).click();
   await expect(page.getByText(/Files are saved privately/)).toBeVisible();
   await page.getByRole("tab", { name: /Settings/ }).click();

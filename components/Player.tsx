@@ -1,3 +1,5 @@
+import WatchDetails from "./WatchDetails";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useRef, useState } from "react";
 import {
   View,
@@ -6,10 +8,13 @@ import {
   Platform,
   PermissionsAndroid,
   StyleSheet,
+  ScrollView,
+  BackHandler,
+  useWindowDimensions,
 } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { usePlayerStore } from "@/store/playerStore";
-import { resolveSource, type MediaSource } from "@/utils/youtube";
+import { resolveSource, videoDetails, type MediaSource } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";
 
 const clock = (seconds: number) =>
@@ -83,7 +88,32 @@ function MediaEngine({
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [expanded, setExpanded] = useState(track.kind === "video");
+  const expanded = usePlayerStore((s) => s.expanded);
+  const setExpanded = usePlayerStore((s) => s.setExpanded);
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const [details, setDetails] = useState(track);
+  const related = useRef<Track[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    videoDetails(track, controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) {
+          setDetails({ ...track, ...value, id: track.id });
+          related.current = value.related || [];
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [track]);
+  useEffect(() => {
+    if (!expanded) return;
+    const listener = BackHandler.addEventListener("hardwareBackPress", () => {
+      setExpanded(false);
+      return true;
+    });
+    return () => listener.remove();
+  }, [expanded]);
   const view = useRef<VideoView>(null);
   const player = useVideoPlayer(
     {
@@ -119,7 +149,17 @@ function MediaEngine({
     setLoading(player.status !== "readyToPlay");
     setPlaying(player.playing);
     setDuration(player.duration);
+    let restored = false;
+    const restore = () => {
+      if (restored || player.status !== "readyToPlay") return;
+      restored = true;
+      const position = usePlayerStore.getState().position;
+      if (position > 0)
+        player.currentTime = Math.min(position, player.duration || position);
+    };
+    restore();
     const status = player.addListener("statusChange", (e) => {
+      restore();
       setLoading(e.status === "loading");
       if (e.status === "error")
         setError(
@@ -134,7 +174,10 @@ function MediaEngine({
       setPosition(e.currentTime);
       setDuration(player.duration);
     });
-    const end = player.addListener("playToEnd", () => setPlaying(false));
+    const end = player.addListener("playToEnd", () => {
+      setPlaying(false);
+      usePlayerStore.getState().advance(related.current);
+    });
     return () => {
       status.remove();
       playback.remove();
@@ -163,11 +206,42 @@ function MediaEngine({
     );
   }
   return (
-    <View style={styles.container}>
+    <View
+      style={
+        expanded
+          ? [
+              styles.container,
+              {
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 20,
+                paddingTop: insets.top,
+              },
+            ]
+          : styles.container
+      }
+    >
+      {expanded && (
+        <View style={styles.row}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to browsing"
+            onPress={() => setExpanded(false)}
+          >
+            <Text style={styles.button}>‹ Back</Text>
+          </Pressable>
+          <Text style={styles.title}>Now playing</Text>
+        </View>
+      )}
       <VideoView
         ref={view}
         player={player}
-        style={{ height: expanded ? 180 : 1 }}
+        style={{
+          height: expanded ? Math.min((width * 9) / 16, height * 0.4) : 1,
+        }}
         nativeControls={expanded}
         allowsFullscreen
         allowsPictureInPicture
@@ -249,6 +323,26 @@ function MediaEngine({
             </Pressable>
           )}
         </View>
+      )}
+      {expanded && (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+        >
+          <WatchDetails
+            track={details}
+            position={() => player.currentTime}
+            background={() => {
+              usePlayerStore.getState().updateSettings({ background: true });
+              setExpanded(false);
+            }}
+            popup={() => {
+              view.current
+                ?.startPictureInPicture()
+                .catch((e) => setActionError(message(e)));
+            }}
+          />
+        </ScrollView>
       )}
       {!!actionError && (
         <Text accessibilityRole="alert" style={{ color: "#ff9c9c" }}>

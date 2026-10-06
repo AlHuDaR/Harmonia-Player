@@ -1,6 +1,8 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import VideoRow from "@/components/VideoRow";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Text } from "react-native";
-import { Page, Input, Button, TrackCard, styles } from "@/components/MediaUI";
+import { ActivityIndicator, Text, FlatList, View } from "react-native";
+import { Input, Button, styles } from "@/components/MediaUI";
 import { searchYouTube } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";
 export default function SearchScreen() {
@@ -48,35 +50,45 @@ export default function SearchScreen() {
     }
   }
   return (
-    <Page title="Search">
-      <Text style={styles.text}>
-        Search YouTube directly on your Android phone. No API key or server
-        setup.
-      </Text>
-      <Input
-        accessibilityLabel="Search query"
-        placeholder="Search songs, artists, or videos"
-        value={query}
-        onChangeText={setQuery}
-        onSubmitEditing={() => search()}
-      />
-      <Button title="Search" onPress={() => search()} disabled={busy} />
-      {busy && <ActivityIndicator color="#b7c4ff" />}
-      {!!error && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      )}
-      {results.map((track) => (
-        <TrackCard key={track.id} track={track} />
-      ))}
-      {!!nextPage && (
-        <Button
-          title="Load more"
-          onPress={() => search(true)}
-          disabled={busy}
+    <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
+      <View style={{ padding: 16, gap: 12 }}>
+        <Text style={styles.title}>Search</Text>
+
+        <Input
+          accessibilityLabel="Search query"
+          placeholder="Search songs, artists, or videos"
+          value={query}
+          onChangeText={setQuery}
+          onSubmitEditing={() => search()}
         />
-      )}
-    </Page>
+        <Button title="Search" onPress={() => search()} disabled={busy} />
+        {busy && <ActivityIndicator color="#b7c4ff" />}
+        {!!error && (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {error}
+          </Text>
+        )}
+      </View>
+      <FlatList
+        data={results}
+        keyExtractor={(t) => t.id}
+        renderItem={({ item }) => <VideoRow track={item} />}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+        keyboardShouldPersistTaps="handled"
+        onEndReached={() => {
+          if (nextPage && !busy) search(true);
+        }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          nextPage ? (
+            <Button
+              title={busy ? "Loading…" : "Load more"}
+              onPress={() => search(true)}
+              disabled={busy}
+            />
+          ) : null
+        }
+      />
+    </SafeAreaView>
   );
 }

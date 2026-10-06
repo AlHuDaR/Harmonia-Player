@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "Harmonia Player",
     slug: "harmonia-player",
-    version: "1.2.0",
+    version: "1.3.0",
     orientation: "default",
     icon: "./assets/images/icon.png",
     scheme: "harmonia",
@@ -10,7 +10,7 @@ export default {
     newArchEnabled: false,
     android: {
       package: "com.alhudar.harmonia",
-      versionCode: 3,
+      versionCode: 4,
       permissions: [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE",

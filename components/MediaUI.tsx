@@ -126,19 +126,25 @@ export function TrackCard({
   }
   return (
     <View style={styles.card}>
-      {!!track.cover && (
-        <Image
-          source={{ uri: track.cover }}
-          style={{ width: "100%", height: 160, borderRadius: 8 }}
-          resizeMode="cover"
-        />
-      )}
-      <Text style={styles.heading}>{track.title}</Text>
-      <Text style={styles.text}>
-        {track.artist}
-        {track.formatLabel ? ` · ${track.formatLabel}` : ""}
-        {track.localUri ? " · Offline" : ""}
-      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Play ${track.title}`}
+        onPress={() => usePlayerStore.getState().setCurrentTrack(track)}
+      >
+        {!!track.cover && (
+          <Image
+            source={{ uri: track.cover }}
+            style={{ width: "100%", height: 160, borderRadius: 8 }}
+            resizeMode="cover"
+          />
+        )}
+        <Text style={styles.heading}>{track.title}</Text>
+        <Text style={styles.text}>
+          {track.artist}
+          {track.formatLabel ? ` · ${track.formatLabel}` : ""}
+          {track.localUri ? " · Offline" : ""}
+        </Text>
+      </Pressable>
       <View style={{ ...styles.row, flexWrap: "wrap" }}>
         <Button
           title="Play"

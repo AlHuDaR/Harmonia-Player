@@ -103,3 +103,56 @@ describe("persistent library", () => {
     );
   });
 });
+
+describe("playback navigation and queue", () => {
+  beforeEach(() =>
+    usePlayerStore.setState({
+      queue: [],
+      autoQueue: false,
+      expanded: false,
+      position: 0,
+    }),
+  );
+  it("plays queued items before recommendations and preserves collapsed mode", () => {
+    const a = directTrack("https://example.com/a.mp3"),
+      b = directTrack("https://example.com/b.mp3"),
+      c = directTrack("https://example.com/c.mp3");
+    const s = usePlayerStore.getState();
+    s.setCurrentTrack(a);
+    s.enqueue(b);
+    s.setExpanded(false);
+    s.advance([c]);
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
+    expect(usePlayerStore.getState().expanded).toBe(false);
+    expect(usePlayerStore.getState().queue).toEqual([]);
+    s.advance([c]);
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
+    usePlayerStore.setState({ autoQueue: true });
+    s.advance([a, c]);
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(c.id);
+  });
+  it("reorders and removes queue entries without changing playback", () => {
+    const a = directTrack("https://example.com/a.mp3"),
+      b = directTrack("https://example.com/b.mp3");
+    const s = usePlayerStore.getState();
+    s.setCurrentTrack(a);
+    s.enqueue(a);
+    s.enqueue(b);
+    s.moveQueued(1, -1);
+    s.removeQueued(1);
+    expect(usePlayerStore.getState().queue).toEqual([b]);
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(a.id);
+  });
+  it("keeps resume position transient across quality changes", () => {
+    const s = usePlayerStore.getState(),
+      a = directTrack("https://example.com/a.mp4");
+    s.setCurrentTrack(a);
+    s.switchFormat({ ...a, id: "quality" }, 42);
+    expect(usePlayerStore.getState().position).toBe(42);
+    const saved = JSON.parse(storage.get("harmonia-library-v1")!).state;
+    expect(saved.position).toBeUndefined();
+    expect(saved.expanded).toBeUndefined();
+    s.setCurrentTrack(a);
+    expect(usePlayerStore.getState().position).toBe(0);
+  });
+});

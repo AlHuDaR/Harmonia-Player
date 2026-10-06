@@ -3,6 +3,14 @@ export interface Track {
   title: string;
   artist: string;
   cover?: string;
+  duration?: number;
+  views?: number;
+  uploaded?: string;
+  channelAvatar?: string;
+  subscribers?: number;
+  likes?: number;
+  description?: string;
+  related?: Track[];
   uri?: string;
   youtubeId?: string;
   kind: "audio" | "video";

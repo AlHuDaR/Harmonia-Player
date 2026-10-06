@@ -72,6 +72,9 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
         map.putString("title", item.getName());
         map.putString("artist", item.getUploaderName());
         map.putString("kind", "video");
+        map.putDouble("duration", item.getDuration());
+        map.putDouble("views", item.getViewCount());
+        map.putString("uploaded", item.getTextualUploadDate());
         if (!item.getThumbnails().isEmpty()) map.putString("cover", item.getThumbnails().get(item.getThumbnails().size() - 1).getUrl());
         return map;
     }
@@ -117,6 +120,18 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
             map.putString("title", info.getName());
             map.putString("artist", info.getUploaderName());
             map.putString("kind", "video");
+            map.putDouble("duration", info.getDuration());
+            map.putDouble("views", info.getViewCount());
+            map.putDouble("likes", info.getLikeCount());
+            map.putDouble("subscribers", info.getUploaderSubscriberCount());
+            map.putString("uploaded", info.getTextualUploadDate());
+            if (info.getDescription() != null) map.putString("description", info.getDescription().getContent());
+            if (!info.getUploaderAvatars().isEmpty()) map.putString("channelAvatar", info.getUploaderAvatars().get(0).getUrl());
+            WritableArray related = Arguments.createArray();
+            if (info.getRelatedItems() != null) for (InfoItem item : info.getRelatedItems()) {
+                if (item instanceof StreamInfoItem) try { related.pushMap(track((StreamInfoItem) item)); } catch (Exception ignored) {}
+            }
+            map.putArray("related", related);
             if (!info.getThumbnails().isEmpty()) map.putString("cover", info.getThumbnails().get(info.getThumbnails().size() - 1).getUrl());
             return map;
         });

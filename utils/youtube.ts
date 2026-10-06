@@ -159,3 +159,12 @@ export function formatTrack(track: Track, format: StreamFormat): Track {
     uri: undefined,
   };
 }
+
+export async function videoDetails(
+  track: Track,
+  signal?: AbortSignal,
+): Promise<Track> {
+  return track.youtubeId
+    ? abortable(() => extractor().details(track.youtubeId!), signal)
+    : track;
+}
