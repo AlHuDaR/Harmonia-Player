@@ -3,19 +3,24 @@ import { Text } from "react-native";
 import { Page, Button, Input, TrackCard, styles } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 import { directTrack, message } from "@/types/media";
+import { youtubeTrack } from "@/utils/youtube";
 import { importMedia } from "@/utils/downloads";
 export default function HomeScreen() {
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const tracks = usePlayerStore((s) => s.tracks);
   const history = usePlayerStore((s) => s.history);
-  function open() {
+  const [opening, setOpening] = useState(false);
+  async function open() {
+    setOpening(true);
     try {
-      usePlayerStore.getState().setCurrentTrack(directTrack(url));
+      usePlayerStore.getState().setCurrentTrack((await youtubeTrack(url)) || directTrack(url));
       setError("");
       setUrl("");
     } catch (e) {
       setError(message(e));
+    } finally {
+      setOpening(false);
     }
   }
   return (
@@ -23,16 +28,16 @@ export default function HomeScreen() {
       <Text style={styles.text}>
         Your music and videos, online and offline.
       </Text>
-      <Text style={styles.heading}>Open a media URL</Text>
+      <Text style={styles.heading}>Open a YouTube or media URL</Text>
       <Input
         accessibilityLabel="Media URL"
-        placeholder="https://example.com/music.mp3"
+        placeholder="YouTube link or direct media URL"
         value={url}
         onChangeText={setUrl}
         onSubmitEditing={open}
         keyboardType="url"
       />
-      <Button title="Open URL" onPress={open} />
+      <Button title={opening ? "Opening…" : "Open URL"} onPress={open} disabled={opening} />
       <Button
         title="Import local audio or video"
         onPress={() => {

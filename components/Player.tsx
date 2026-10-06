@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { usePlayerStore } from "@/store/playerStore";
-import { resolveTrack } from "@/utils/youtube";
+import { resolveSource, type MediaSource } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";
 
 const clock = (seconds: number) =>
@@ -21,14 +21,14 @@ export default function Player() {
   return track ? <ActivePlayer key={track.id} track={track} /> : null;
 }
 function ActivePlayer({ track }: { track: Track }) {
-  const [uri, setUri] = useState<string | null>(null);
+  const [uri, setUri] = useState<MediaSource | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setUri(null);
     setError("");
-    resolveTrack(track, controller.signal)
+    resolveSource(track, controller.signal)
       .then((value) => {
         if (!controller.signal.aborted) setUri(value);
       })
@@ -59,7 +59,7 @@ function ActivePlayer({ track }: { track: Track }) {
     );
   return (
     <MediaEngine
-      key={`${uri}:${retry}`}
+      key={`${uri.uri}:${retry}`}
       track={track}
       uri={uri}
       onRetry={() => setRetry((x) => x + 1)}
@@ -72,7 +72,7 @@ function MediaEngine({
   onRetry,
 }: {
   track: Track;
-  uri: string;
+  uri: MediaSource;
   onRetry: () => void;
 }) {
   const settings = usePlayerStore((s) => s.settings);
@@ -87,7 +87,8 @@ function MediaEngine({
   const view = useRef<VideoView>(null);
   const player = useVideoPlayer(
     {
-      uri,
+      uri: uri.uri,
+      headers: uri.headers,
       metadata: {
         title: track.title,
         artist: track.artist,
@@ -182,7 +183,7 @@ function MediaEngine({
           <Text style={styles.title} numberOfLines={1}>
             {track.title}
           </Text>
-          <Text style={styles.muted}>{track.artist}</Text>
+          <Text style={styles.muted}>{track.artist}{track.formatLabel ? ` · ${track.formatLabel}` : ""}</Text>
         </Pressable>
         <Pressable
           accessibilityLabel={favorite ? "Remove favorite" : "Favorite"}

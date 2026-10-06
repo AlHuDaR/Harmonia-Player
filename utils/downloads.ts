@@ -2,7 +2,7 @@ import * as FileSystem from "expo-file-system";
 import * as DocumentPicker from "expo-document-picker";
 import { Platform } from "react-native";
 import { usePlayerStore } from "@/store/playerStore";
-import { resolveTrack } from "./youtube";
+import { resolveSource, muxDownload } from "./youtube";
 import { message, type Track } from "@/types/media";
 const active = new Set<string>();
 export async function downloadTrack(track: Track): Promise<void> {
@@ -16,6 +16,7 @@ export async function downloadTrack(track: Track): Promise<void> {
   // Reserve before resolving so rapid taps cannot start duplicate jobs.
   const dir = `${FileSystem.documentDirectory}downloads/`;
   let path = "";
+  const partials: string[] = [];
   try {
     const existing = store.downloads.find(
       (d) => d.track.id === track.id && d.status === "complete",
@@ -27,55 +28,57 @@ export async function downloadTrack(track: Track): Promise<void> {
       return;
     store.setDownload({ track, status: "downloading", progress: 0 });
     await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-    const uri = await resolveTrack(track);
-    const extension =
-      new URL(uri).pathname.match(
-        /\.(mp3|m4a|mp4|webm|wav|ogg|flac|aac)$/i,
-      )?.[1] || (track.kind === "audio" ? "m4a" : "mp4");
+    const source = await resolveSource(track, undefined, true);
+    const uri = source.uri;
+    const extension = source.extension?.match(/^[a-z0-9]+$/i)?.[0] ||
+      new URL(uri).pathname.match(/\.(mp3|m4a|mp4|webm|wav|ogg|flac|aac)$/i)?.[1] ||
+      (track.kind === "audio" ? "m4a" : "mp4");
     if (/\.m3u8(?:\?|$)|\.mpd(?:\?|$)/i.test(uri))
-      throw new Error(
-        "Offline download requires a single media file; adaptive streams are playback-only.",
-      );
-    path = `${dir}${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}.part`;
-    let lastUpdate = 0;
-    const job = FileSystem.createDownloadResumable(uri, path, {}, (p) => {
-      if (Date.now() - lastUpdate < 300) return;
-      lastUpdate = Date.now();
-      usePlayerStore.getState().setDownload({
-        track,
-        status: "downloading",
-        progress:
-          p.totalBytesExpectedToWrite > 0
-            ? p.totalBytesWritten / p.totalBytesExpectedToWrite
-            : 0,
+      throw new Error("Offline download requires a single media file; adaptive streams are playback-only.");
+    const base = `${dir}${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    path = `${base}.${extension}.part`;
+    partials.push(path);
+    async function transfer(url: string, target: string, offset: number, weight: number) {
+      let lastUpdate = 0;
+      const job = FileSystem.createDownloadResumable(url, target, { headers: source.headers }, (p) => {
+        if (Date.now() - lastUpdate < 300) return;
+        lastUpdate = Date.now();
+        usePlayerStore.getState().setDownload({ track, status: "downloading", progress:
+          offset + weight * (p.totalBytesExpectedToWrite > 0 ? p.totalBytesWritten / p.totalBytesExpectedToWrite : 0),
+        });
       });
-    });
-    const result = await job.downloadAsync();
-    if (!result || result.status < 200 || result.status >= 300)
-      throw new Error("The server did not return a media file.");
-    const info = await FileSystem.getInfoAsync(result.uri);
-    if (!info.exists || !info.size)
-      throw new Error("Downloaded file is empty.");
-    const type =
-      Object.entries(result.headers).find(
-        ([key]) => key.toLowerCase() === "content-type",
-      )?.[1] || "";
-    if (/mpegurl|dash\+xml/i.test(type))
-      throw new Error(
-        "Offline download requires a single media file; adaptive streams are playback-only.",
-      );
-    if (/text\/|application\/(json|xml)/i.test(type))
-      throw new Error("The URL returned a page instead of media.");
+      const result = await job.downloadAsync();
+      if (!result || result.status < 200 || result.status >= 300)
+        throw new Error("The server did not return a media file.");
+      const info = await FileSystem.getInfoAsync(result.uri);
+      if (!info.exists || !info.size) throw new Error("Downloaded file is empty.");
+      const type = Object.entries(result.headers).find(([key]) => key.toLowerCase() === "content-type")?.[1] || "";
+      if (/mpegurl|dash\+xml/i.test(type))
+        throw new Error("Offline download requires a single media file; adaptive streams are playback-only.");
+      if (/text\/|application\/(json|xml)/i.test(type))
+        throw new Error("The URL returned a page instead of media.");
+      return result.uri;
+    }
+    let downloaded: string;
+    if (source.audioUri) {
+      const videoPath = `${base}.video.part`, audioPath = `${base}.audio.part`;
+      partials.push(videoPath, audioPath);
+      const video = await transfer(uri, videoPath, 0, 0.7);
+      const audio = await transfer(source.audioUri, audioPath, 0.7, 0.25);
+      downloaded = await muxDownload(video, audio, path);
+      const muxed = await FileSystem.getInfoAsync(downloaded);
+      if (!muxed.exists || !muxed.size) throw new Error("Could not create the combined video file.");
+      await Promise.all([video, audio].map(uri => FileSystem.deleteAsync(uri, { idempotent: true })));
+    } else downloaded = await transfer(uri, path, 0, 1);
     const localUri = path.replace(/\.part$/, "");
-    await FileSystem.moveAsync({ from: result.uri, to: localUri });
+    await FileSystem.moveAsync({ from: downloaded, to: localUri });
     store.setDownload({
       track: { ...track, localUri },
       status: "complete",
       progress: 1,
     });
   } catch (error) {
-    if (path)
-      await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
+    await Promise.all(partials.map(uri => FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {})));
     store.setDownload({
       track,
       status: "failed",

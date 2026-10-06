@@ -11,8 +11,6 @@ interface PlayerStore {
   playlists: Playlist[];
   downloads: Download[];
   settings: {
-    youtubeApiKey: string;
-    resolverUrl: string;
     background: boolean;
     autoPip: boolean;
   };
@@ -42,8 +40,6 @@ export const usePlayerStore = create<PlayerStore>()(
       playlists: [],
       downloads: [],
       settings: {
-        youtubeApiKey: "",
-        resolverUrl: "",
         background: true,
         autoPip: false,
       },
@@ -138,7 +134,9 @@ export const usePlayerStore = create<PlayerStore>()(
       partialize: ({ currentTrack, ...state }) => state,
       onRehydrateStorage: () => (state, error) => {
         useLibraryStatus.setState({ hydrated: !error, error: !!error });
-        if (state)
+        if (state) {
+          // Drop obsolete resolver/API credentials from existing installations.
+          state.settings = { background: state.settings.background ?? true, autoPip: state.settings.autoPip ?? false };
           state.downloads = state.downloads.map((d) =>
             d.status === "downloading"
               ? {
@@ -148,6 +146,7 @@ export const usePlayerStore = create<PlayerStore>()(
                 }
               : d,
           );
+        }
       },
     },
   ),

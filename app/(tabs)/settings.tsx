@@ -1,40 +1,10 @@
 import { useState } from "react";
 import { Text, Switch, View } from "react-native";
-import { Page, Input, Button, styles } from "@/components/MediaUI";
+import { Page, Button, styles } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 export default function SettingsScreen() {
   const settings = usePlayerStore((s) => s.settings);
-  const [key, setKey] = useState(settings.youtubeApiKey);
-  const [resolver, setResolver] = useState(settings.resolverUrl);
   const [feedback, setFeedback] = useState("");
-  function save() {
-    try {
-      if (resolver.trim()) {
-        const url = new URL(resolver.trim());
-        if (
-          url.protocol !== "https:" ||
-          url.username ||
-          url.password ||
-          url.search ||
-          url.hash
-        )
-          throw new Error(
-            "Enter an HTTPS resolver URL without credentials, query, or fragment.",
-          );
-      }
-      usePlayerStore
-        .getState()
-        .updateSettings({
-          youtubeApiKey: key.trim(),
-          resolverUrl: resolver.trim().replace(/\/$/, ""),
-        });
-      setFeedback("Settings saved on this device.");
-    } catch {
-      setFeedback(
-        "Enter an HTTPS resolver URL without credentials, query, or fragment.",
-      );
-    }
-  }
   return (
     <Page title="Settings">
       <Text style={styles.heading}>Playback</Text>
@@ -62,34 +32,13 @@ export default function SettingsScreen() {
           }
         />
       </View>
-      <Text style={styles.heading}>YouTube integration</Text>
+      <Text style={styles.heading}>YouTube</Text>
       <Text style={styles.text}>
-        Optional. Keys are stored locally in app storage, not encrypted. Use a
-        restricted YouTube Data API key, never a privileged server credential.
-        Playback requires your own resolver service.
+        Search, playback and downloads run directly on this Android device using
+        NewPipe Extractor. No API key, Google login or resolver server is required.
+        Restricted videos and YouTube changes can affect availability.
       </Text>
-      <Input
-        accessibilityLabel="YouTube API key"
-        placeholder="YouTube Data API key"
-        value={key}
-        onChangeText={setKey}
-        secureTextEntry
-        autoCorrect={false}
-      />
-      <Input
-        accessibilityLabel="Resolver URL"
-        placeholder="https://your-resolver.example.com"
-        value={resolver}
-        onChangeText={setResolver}
-        keyboardType="url"
-        autoCorrect={false}
-      />
-      <Button title="Save settings" onPress={save} />
-      {!!feedback && (
-        <Text accessibilityRole="alert" style={styles.text}>
-          {feedback}
-        </Text>
-      )}
+      {!!feedback && <Text accessibilityRole="alert" style={styles.text}>{feedback}</Text>}
       <Text style={styles.heading}>Storage</Text>
       <Text style={styles.text}>
         Favorites, playlists, downloads and the latest 100 played tracks persist
@@ -103,7 +52,11 @@ export default function SettingsScreen() {
         }}
       />
       <Text style={styles.text}>
-        Harmonia Player 1.1.0 · Audio and video playback with Expo Video
+        Harmonia Player 1.2.0 · Coded By AlHudar
+      </Text>
+      <Text style={styles.text}>
+        GPL-3.0-or-later · Uses NewPipe Extractor v0.26.5 by Team NewPipe.
+        Source and licence: github.com/AlHuDaR/Harmonia-Player
       </Text>
     </Page>
   );

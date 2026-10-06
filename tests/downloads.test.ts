@@ -8,6 +8,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
   },
 }));
 vi.mock("expo-document-picker", () => ({ getDocumentAsync: vi.fn() }));
+const source = vi.hoisted(() => ({ resolveSource: vi.fn(), muxDownload: vi.fn() }));
 const fs = vi.hoisted(() => ({
   documentDirectory: "file:///app/",
   makeDirectoryAsync: vi.fn(async () => {}),
@@ -17,14 +18,13 @@ const fs = vi.hoisted(() => ({
   createDownloadResumable: vi.fn(),
 }));
 vi.mock("expo-file-system", () => fs);
-vi.mock("../utils/youtube", () => ({
-  resolveTrack: async (t: { uri: string }) => t.uri,
-}));
+vi.mock("../utils/youtube", () => source);
 import { downloadTrack } from "../utils/downloads";
 import { usePlayerStore } from "../store/playerStore";
 import { directTrack } from "../types/media";
 beforeEach(() => {
   usePlayerStore.setState({ tracks: [], downloads: [] });
+  source.resolveSource.mockImplementation(async (t: { uri: string }) => ({ uri: t.uri }));
   fs.createDownloadResumable.mockReturnValue({
     downloadAsync: async () => ({
       status: 200,
@@ -111,4 +111,25 @@ describe("offline downloads", () => {
     ).rejects.toThrow("adaptive");
     expect(fs.moveAsync).not.toHaveBeenCalled();
   });
+  it("downloads separate streams then muxes them before registering the offline video", async () => {
+    source.resolveSource.mockResolvedValue({ uri: "https://media.test/video", audioUri: "https://media.test/audio", extension: "mp4", headers: { "User-Agent": "test" } });
+    fs.createDownloadResumable.mockImplementation((uri: string, target: string) => ({ downloadAsync: async () => ({ status: 200, uri: target, headers: { "Content-Type": uri.endsWith("audio") ? "audio/mp4" : "video/mp4" } }) }));
+    source.muxDownload.mockImplementation(async (_v: string, _a: string, output: string) => output);
+    const t = { id: "youtube:abcdefghijk:video:137", youtubeId: "abcdefghijk", kind: "video" as const, title: "Test", artist: "Test", formatId: "video:137" };
+    await downloadTrack(t);
+    expect(fs.createDownloadResumable).toHaveBeenCalledTimes(2);
+    expect(fs.createDownloadResumable.mock.calls[0][2]).toMatchObject({ headers: { "User-Agent": "test" } });
+    expect(source.muxDownload).toHaveBeenCalledTimes(1);
+    expect(usePlayerStore.getState().downloads[0]).toMatchObject({ status: "complete", track: { localUri: expect.stringMatching(/\.mp4$/) } });
+  });
+  it("cleans both component files and does not mark failed muxing complete", async () => {
+    source.resolveSource.mockResolvedValue({ uri: "https://media.test/video", audioUri: "https://media.test/audio", extension: "mp4" });
+    fs.createDownloadResumable.mockImplementation((_uri: string, target: string) => ({ downloadAsync: async () => ({ status: 200, uri: target, headers: {} }) }));
+    source.muxDownload.mockRejectedValue(new Error("Mux failed"));
+    await expect(downloadTrack(directTrack("https://example.com/video.mp4"))).rejects.toThrow("Mux failed");
+    expect(fs.deleteAsync).toHaveBeenCalledTimes(3);
+    expect(usePlayerStore.getState().downloads[0].status).toBe("failed");
+    expect(fs.moveAsync).not.toHaveBeenCalled();
+  });
+
 });

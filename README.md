@@ -23,15 +23,15 @@ The **Android APK** GitHub Actions workflow runs type checking, unit/integration
 
 ## Features
 
-- **Home:** open a direct HTTPS audio/video file or supported stream, import local media with Android's document picker, and reopen recent tracks.
-- **Search:** YouTube metadata search using your own YouTube Data API key. Search results need a configured resolver to play or download.
-- **Downloads:** progress, errors, retry, deletion, and app-private files for offline playback. Interrupted jobs restart on retry; partial files from failed requests are cleaned up. Adaptive HLS/DASH streams are playback-only, not offline downloads.
+- **Home:** paste a YouTube watch/short/live link or open a direct HTTPS audio/video file or supported stream, import local media with Android's document picker, and reopen recent tracks.
+- **Search:** on-device YouTube search through NewPipe Extractor, thumbnails and paginated results. No API key, Google login or resolver URL.
+- **Downloads:** progress, errors, retry, deletion, and app-private files for offline playback. Interrupted jobs restart on retry; partial files from failed requests are cleaned up. YouTube audio downloads preserve M4A/WebM formats. Compatible separate MP4 video/AAC audio streams are downloaded and muxed on-device without transcoding. Live HLS streams remain playback-only.
 - **Library:** favorites, named playlists with add/remove controls, imported files, and saved tracks.
-- **Settings:** background playback/media controls, automatic PiP, optional YouTube integration, and history clearing.
+- **Settings:** background playback/media controls, automatic PiP, on-device YouTube information, and history clearing.
 - A shared native player remains mounted across tab navigation, with play/pause, seek, fullscreen video, manual PiP, and track metadata in Android media controls.
 - Favorites, playlists, downloads, settings, and the latest 100 history entries persist locally. Playback does not automatically resume after an app restart.
 
-Direct URLs must return media, not a website or login page. Codec/container support depends on Android's platform decoders and the server. MP3/AAC audio and H.264/AAC MP4 video are good interoperability choices. Seeking requires a seekable source; media servers should support HTTP byte ranges. DRM, authenticated sources, and arbitrary extraction from websites are not supported.
+Direct non-YouTube URLs must return media, not a website or login page. Codec/container support depends on Android's platform decoders and the server. MP3/AAC audio and H.264/AAC MP4 video are good interoperability choices. Seeking requires a seekable source; media servers should support HTTP byte ranges. DRM, authenticated sources, and arbitrary extraction from websites are not supported.
 
 Imported files are copied into app-private persistent storage, so playback does not depend on temporary document-provider grants. No broad storage or microphone permission is requested. The app asks for notification permission when background playback is enabled. Background behavior can be affected by Samsung battery settings; device testing should include the default configuration before changing those settings.
 
@@ -51,22 +51,51 @@ For an existing system Chromium installation: `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin
 
 For native development: `npm run android` with an Android device or emulator attached. Expo Go is not the validation target for background media services and PiP; use the generated native build.
 
-## Optional YouTube resolver
+## On-device YouTube
 
-No API credential is embedded in the app. Add a restricted **YouTube Data API v3** key in Settings to enable search. It is a client key stored in ordinary app storage, not an encrypted secret store; never use a privileged server credential here. Clearing app data removes it.
+The Android APK includes **NewPipe Extractor v0.26.5** (pinned Gradle dependency).
+An original React Native Java bridge performs search, metadata and fresh stream
+extraction on bounded background worker threads, with HTTP timeouts. The app
+connects directly to YouTube; it does not host a resolver or download videos to
+an intermediate server. The old `server/` remains for legacy development only
+and is not used by the Android app.
 
-The old `ytdl-core`/FFmpeg conversion path has been replaced with a small optional resolver backed by `yt-dlp`:
+Tap **Play** for the default video (prefer <=1080p when available), or **Audio /
+quality** to select audio-only playback or a video resolution. **Download** on
+a search result opens the audio/video format chooser. Separate formats use
+distinct library IDs so audio and video downloads can coexist. Selecting a
+format re-extracts fresh URLs; signed streams are not saved in history.
 
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r server/requirements.txt
-npm run server
-```
+For indexed separate MP4/AAC streams, the bridge writes a temporary local DASH
+manifest containing both representations. Expo Video's Media3 engine handles
+synchronization and seeking as one player, retaining background controls and
+PiP. Offline video downloads fetch both original files and combine them with
+Android MediaMuxer, then delete partial files. Audio downloads retain their
+actual container; **MP3 conversion is not included**. Failed or interrupted jobs
+can be retried; downloads currently restart rather than resume after restart.
 
-Deploy that server behind HTTPS and enter its base URL in Settings. `GET /resolve/<11-character-video-id>` returns a combined playable HTTPS stream with fresh signed URLs. `YT_DLP_PATH` may point to the executable; `PORT` defaults to 3000. Set `ALLOWED_ORIGIN` to your web app origin if web clients need CORS. Native clients do not require CORS. The resolver accepts only validated YouTube video IDs, limits concurrent subprocesses to two, and has a 30-second timeout. Put request rate limits at your reverse proxy before exposing a public service.
+Only formats compatible with this implementation are offered. Live HLS can be
+played but not downloaded; OTF, restricted/authenticated, DRM and unsupported
+adaptive delivery formats are not offered for offline download. Availability
+and maximum quality depend on each video. No Google account synchronization,
+YouTube recommendations, channel browsing or subscription feed is included in
+this change. Search supports videos and continuation pages.
 
-The old `/download/:videoId` route returns HTTP 410 with migration guidance. Downloads now preserve the original media container instead of promising MP3 conversion. Search alone does not turn a YouTube page into a media URL. YouTube availability, restrictions, and extractor changes can still prevent resolution; use a direct URL or imported file in that case. Use only media you are permitted to access or download.
+The Android native extractor is unavailable in Expo Go, web and iOS. Those
+platforms retain direct media playback and display an actionable Android APK
+message for YouTube. Build a native APK with `npm run build:apk`; the Expo config
+plugin reproducibly installs the bridge and Gradle dependencies during prebuild.
+Do not edit generated `android/` sources as they are intentionally ignored.
+
+YouTube changes can break extraction even without a server. Update the pinned
+extractor version, rebuild and test on the phone when that happens. JS abort
+stops waiting for cancelled requests; native HTTP calls finish or time out and
+their late results are ignored. Search continuation tokens are held in a bounded
+native cache and can expire after restart or many searches.
+
+Harmonia's source is GPL-3.0-or-later to match the integrated extractor. See
+LICENSE and THIRD_PARTY_NOTICES.md. Publish matching source and build instructions
+with APK distributions. Use media you are permitted to access/download.
 
 ## Device validation
 
@@ -78,5 +107,8 @@ Cloud/browser tests do not prove Samsung hardware behavior. On the S24 Ultra, ve
 4. Enter/exit manual and automatic PiP, then disable background playback and verify playback stops when backgrounded.
 5. Download a direct file, enable airplane mode, restart the app, and play from Downloads. Check failed/empty downloads, retry, and deletion.
 6. Import audio/video via a document provider, restart, and play offline. Verify favorites, playlist membership, and history survive restart.
+7. With no API key or resolver configured, search YouTube, load more results, paste a video/short link, and test audio-only and several video quality choices. Check separate DASH audio/video seeking and sync.
+8. Download M4A/WebM audio and separate 1080p MP4/AAC video, confirm audible video and expected quality, then restart in airplane mode and play both. Check low storage, interrupted transfers and mux failures.
+9. Retry unavailable, live, age-restricted and network-blocked videos. Verify clear errors and no silent or fake completed downloads.
 
 See the PR validation record for build/test outcomes and remaining external-service or physical-device checks.
