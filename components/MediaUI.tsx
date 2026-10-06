@@ -1,45 +1,44 @@
 import { useState } from "react";
 import {
   View,
-  Text,
   Pressable,
   ScrollView,
   TextInput,
   StyleSheet,
   Image,
-  ActivityIndicator,
+  Modal,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "./LocalizedText";
+import { useLocale } from "@/utils/i18n";
 import { usePlayerStore } from "@/store/playerStore";
-import {
-  youtubeFormats,
-  formatTrack,
-  type StreamFormat,
-} from "@/utils/youtube";
-import { downloadTrack } from "@/utils/downloads";
-import { message, type Track } from "@/types/media";
+import type { Track } from "@/types/media";
 export const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0c0e16" },
-  content: { padding: 20, paddingBottom: 32, gap: 16 },
-  title: { color: "#fff", fontSize: 30, fontWeight: "700" },
-  heading: { color: "#fff", fontSize: 20, fontWeight: "600" },
-  text: { color: "#c2c7d9", fontSize: 15 },
+  page: { flex: 1, backgroundColor: "#0b0b0b" },
+  content: { padding: 16, paddingBottom: 32, gap: 16 },
+  title: { color: "#fff", fontSize: 25, fontWeight: "700" },
+  heading: { color: "#fff", fontSize: 18, fontWeight: "600" },
+  text: { color: "#b5b5b5", fontSize: 14 },
   input: {
     color: "#fff",
-    backgroundColor: "#202333",
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: "#202020",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
   },
   button: {
-    backgroundColor: "#333e6c",
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: "transparent",
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     minHeight: 44,
+    justifyContent: "center",
   },
-  buttonText: { color: "#fff", fontWeight: "600" },
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  card: { padding: 14, borderRadius: 12, backgroundColor: "#191d2b", gap: 8 },
+  buttonText: { color: "#f0f0f0", fontSize: 13, fontWeight: "500" },
+  row: { flexDirection: "row", alignItems: "center", gap: 8 },
+  card: { paddingVertical: 8, gap: 8 },
   error: { color: "#ff9c9c" },
 });
 export function Page({
@@ -61,6 +60,23 @@ export function Page({
     </SafeAreaView>
   );
 }
+const icons: Record<
+  string,
+  React.ComponentProps<typeof MaterialIcons>["name"]
+> = {
+  Play: "play-arrow",
+  Download: "download",
+  "Add To": "playlist-add",
+  Background: "headphones",
+  Popup: "picture-in-picture-alt",
+  "Quality / audio": "tune",
+  Share: "share",
+  Description: "info-outline",
+  "Add to queue": "queue-music",
+  "Open URL": "link",
+  "Play all": "play-arrow",
+  "Import local audio or video": "folder-open",
+};
 export function Button({
   title,
   onPress,
@@ -70,187 +86,254 @@ export function Button({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useLocale();
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={t(title)}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.button, disabled && { opacity: 0.5 }]}
+      style={[styles.button, disabled && { opacity: 0.35 }]}
     >
-      <Text style={styles.buttonText}>{title}</Text>
+      <View style={styles.row}>
+        {icons[title] && (
+          <MaterialIcons name={icons[title]} color="#eee" size={20} />
+        )}
+        <Text style={styles.buttonText}>{title}</Text>
+      </View>
+    </Pressable>
+  );
+}
+export function IconButton({
+  name,
+  label,
+  onPress,
+  disabled,
+  active,
+  size = 25,
+}: {
+  name: React.ComponentProps<typeof MaterialIcons>["name"];
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  size?: number;
+}) {
+  const { t } = useLocale();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t(label)}
+      accessibilityState={{ disabled: !!disabled, selected: !!active }}
+      disabled={disabled}
+      onPress={onPress}
+      style={{
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      <MaterialIcons
+        name={name}
+        color={active ? "#ff4545" : "#eee"}
+        size={size}
+      />
     </Pressable>
   );
 }
 export function Input(props: React.ComponentProps<typeof TextInput>) {
+  const { t, rtl } = useLocale();
   return (
     <TextInput
-      placeholderTextColor="#929ab4"
-      style={styles.input}
-      autoCapitalize="none"
       {...props}
+      accessibilityLabel={
+        props.accessibilityLabel ? t(props.accessibilityLabel) : undefined
+      }
+      placeholder={props.placeholder ? t(props.placeholder) : undefined}
+      placeholderTextColor="#888"
+      style={[styles.input, { textAlign: rtl ? "right" : "left" }, props.style]}
+      autoCapitalize="none"
     />
   );
 }
 export function TrackCard({
   track,
   playlistId,
+  list,
 }: {
   track: Track;
   playlistId?: string;
+  list?: Track[];
 }) {
-  const favorite = usePlayerStore((s) => s.favorites.includes(track.id));
-  const playlists = usePlayerStore((s) => s.playlists);
-  const download = usePlayerStore((s) =>
-    s.downloads.find((d) => d.track.id === track.id),
-  );
-  const [error, setError] = useState("");
-  const [choose, setChoose] = useState(false);
-  const [formats, setFormats] = useState<StreamFormat[]>([]);
-  const [action, setAction] = useState<"play" | "download" | null>(null);
-  const [loadingFormats, setLoadingFormats] = useState(false);
-  async function selectFormat(action: "play" | "download") {
-    setError("");
-    setLoadingFormats(true);
-    setAction(action);
-    try {
-      const formats = await youtubeFormats(track);
-      setFormats(formats.filter((f) => action === "play" || f.downloadable));
-      if (!formats.some((f) => action === "play" || f.downloadable))
-        setError("No compatible format is available for this video.");
-    } catch (e) {
-      setError(message(e));
-      setAction(null);
-    } finally {
-      setLoadingFormats(false);
-    }
-  }
+  const [menu, setMenu] = useState(false);
+  const state = usePlayerStore();
+  const { t, rtl } = useLocale();
+  const favorite = state.favorites.includes(track.id);
+  const play = () => {
+    if (list)
+      state.playList(
+        list,
+        list.findIndex((x) => x.id === track.id),
+      );
+    else state.setCurrentTrack(track);
+  };
   return (
     <View style={styles.card}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Play ${track.title}`}
-        onPress={() => usePlayerStore.getState().setCurrentTrack(track)}
+        accessibilityLabel={`${t("Play")} ${track.title}`}
+        onPress={play}
       >
-        {!!track.cover && (
+        {track.cover ? (
           <Image
             source={{ uri: track.cover }}
-            style={{ width: "100%", height: 160, borderRadius: 8 }}
+            style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 12 }}
             resizeMode="cover"
           />
-        )}
-        <Text style={styles.heading}>{track.title}</Text>
-        <Text style={styles.text}>
-          {track.artist}
-          {track.formatLabel ? ` · ${track.formatLabel}` : ""}
-          {track.localUri ? " · Offline" : ""}
-        </Text>
-      </Pressable>
-      <View style={{ ...styles.row, flexWrap: "wrap" }}>
-        <Button
-          title="Play"
-          onPress={() => {
-            const local = usePlayerStore
-              .getState()
-              .downloads.find(
-                (d) => d.track.id === track.id && d.status === "complete",
-              )?.track;
-            usePlayerStore.getState().setCurrentTrack(local || track);
-          }}
-        />
-        {!!track.youtubeId && !track.localUri && (
-          <Button
-            title="Audio / quality"
-            onPress={() => selectFormat("play")}
-            disabled={loadingFormats}
-          />
-        )}
-        <Button
-          title={favorite ? "♥ Saved" : "♡ Favorite"}
-          onPress={() => {
-            usePlayerStore.getState().addTrack(track);
-            usePlayerStore.getState().toggleFavorite(track.id);
-          }}
-        />
-        {!track.localUri && (
-          <Button
-            title={
-              download?.status === "downloading"
-                ? `${Math.round(download.progress * 100)}%`
-                : download?.status === "complete"
-                  ? "Downloaded"
-                  : "Download"
-            }
-            disabled={
-              download?.status === "downloading" ||
-              download?.status === "complete"
-            }
-            onPress={() => {
-              setError("");
-              if (track.youtubeId && !track.formatId) selectFormat("download");
-              else downloadTrack(track).catch((e) => setError(message(e)));
+        ) : (
+          <View
+            style={{
+              height: 100,
+              backgroundColor: "#181818",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
+          >
+            <MaterialIcons name="music-note" size={40} color="#888" />
+          </View>
         )}
-        <Button
-          title={playlistId ? "Remove" : "Playlist"}
-          onPress={() =>
-            playlistId
-              ? usePlayerStore
-                  .getState()
-                  .removeFromPlaylist(playlistId, track.id)
-              : setChoose(!choose)
-          }
+      </Pressable>
+      <View style={styles.row}>
+        <Pressable
+          onPress={play}
+          style={{ flex: 1 }}
+          accessibilityRole="button"
+          accessibilityLabel={`${t("Play")} ${track.title}`}
+        >
+          <Text raw style={styles.heading} numberOfLines={2}>
+            {track.title}
+          </Text>
+          <Text raw style={styles.text}>
+            {track.artist}
+            {track.localUri ? ` · ${t("Offline")}` : ""}
+          </Text>
+        </Pressable>
+        {favorite && (
+          <MaterialIcons name="favorite" size={18} color="#ff4545" />
+        )}
+        <IconButton
+          name="more-vert"
+          label="More options"
+          onPress={() => setMenu(true)}
         />
       </View>
-      {loadingFormats && <ActivityIndicator color="#b7c4ff" />}
-      {!!action && !loadingFormats && (
-        <View style={{ gap: 8 }}>
-          <Text style={styles.text}>
-            {action === "play"
-              ? "Play audio or choose video quality"
-              : "Download audio or video"}
-          </Text>
-          {formats.map((format) => (
+      <Modal
+        visible={menu}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMenu(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "flex-end",
+            backgroundColor: "#0009",
+          }}
+        >
+          <Pressable
+            style={{ flex: 1 }}
+            accessibilityLabel={t("Close")}
+            onPress={() => setMenu(false)}
+          />
+          <SafeAreaView
+            style={{
+              backgroundColor: "#202020",
+              padding: 20,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              direction: rtl ? "rtl" : "ltr",
+            }}
+          >
+            <Text raw style={styles.heading} numberOfLines={2}>
+              {track.title}
+            </Text>
             <Button
-              key={format.id}
-              title={`${format.kind === "audio" ? "Audio" : "Video"} · ${format.label}`}
+              title="Play"
               onPress={() => {
-                const selected = formatTrack(track, format);
-                setAction(null);
-                if (action === "play")
-                  usePlayerStore.getState().setCurrentTrack(selected);
-                else downloadTrack(selected).catch((e) => setError(message(e)));
+                setMenu(false);
+                play();
               }}
             />
-          ))}
-          <Button title="Cancel" onPress={() => setAction(null)} />
-        </View>
-      )}
-      {choose && (
-        <View style={{ gap: 8 }}>
-          <Text style={styles.text}>
-            {playlists.length
-              ? "Add to playlist"
-              : "Create a playlist in Library first."}
-          </Text>
-          {playlists.map((p) => (
             <Button
-              key={p.id}
-              title={p.name}
+              title={favorite ? "♥ Saved" : "♡ Favorite"}
               onPress={() => {
-                usePlayerStore.getState().addTrack(track);
-                usePlayerStore.getState().addToPlaylist(p.id, track.id);
-                setChoose(false);
+                state.addTrack(track);
+                state.toggleFavorite(track.id);
+                setMenu(false);
               }}
             />
-          ))}
+            <Button
+              title="Add to queue"
+              onPress={() => {
+                state.enqueue(track);
+                setMenu(false);
+              }}
+            />
+            {playlistId && (
+              <Button
+                title="Remove"
+                onPress={() => {
+                  state.removeFromPlaylist(playlistId, track.id);
+                  setMenu(false);
+                }}
+              />
+            )}
+            <Button title="Cancel" onPress={() => setMenu(false)} />
+          </SafeAreaView>
         </View>
-      )}
-      {!!error && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      )}
+      </Modal>
     </View>
+  );
+}
+
+export function ActionButton({
+  title,
+  onPress,
+  disabled,
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const { t } = useLocale();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t(title)}
+      disabled={disabled}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        minHeight: 56,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 5,
+        opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      <MaterialIcons
+        name={icons[title] || "more-horiz"}
+        size={23}
+        color="#eee"
+      />
+      <Text
+        style={{ color: "#ddd", fontSize: 11, textAlign: "center" }}
+        numberOfLines={1}
+      >
+        {title}
+      </Text>
+    </Pressable>
   );
 }

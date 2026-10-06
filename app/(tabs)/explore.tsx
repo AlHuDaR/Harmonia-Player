@@ -1,7 +1,8 @@
+import { Text } from "@/components/LocalizedText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import VideoRow from "@/components/VideoRow";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Text, FlatList, View } from "react-native";
+import { ActivityIndicator, FlatList, View } from "react-native";
 import { Input, Button, styles } from "@/components/MediaUI";
 import { searchYouTube } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";

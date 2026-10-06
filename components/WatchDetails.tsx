@@ -1,6 +1,8 @@
+import { useLocale } from "@/utils/i18n";
+import { Text } from "@/components/LocalizedText";
 import { useEffect, useState } from "react";
-import { View, Text, Switch, Image, Share } from "react-native";
-import { Button, Input, styles } from "./MediaUI";
+import { View, Switch, Image, Share } from "react-native";
+import { Button, ActionButton, Input, styles } from "./MediaUI";
 import VideoRow, { count } from "./VideoRow";
 import { usePlayerStore } from "@/store/playerStore";
 import {
@@ -21,6 +23,7 @@ export default function WatchDetails({
   background: () => void;
   popup: () => void;
 }) {
+  const { t } = useLocale();
   const state = usePlayerStore();
   const [action, setAction] = useState<"play" | "download" | null>(null),
     [formats, setFormats] = useState<StreamFormat[]>([]),
@@ -59,9 +62,6 @@ export default function WatchDetails({
   );
   return (
     <View style={{ padding: 16, gap: 16 }}>
-      <Text style={{ ...styles.heading, writingDirection: "auto" }}>
-        {track.title}
-      </Text>
       <View style={styles.row}>
         {!!track.channelAvatar && (
           <Image
@@ -70,7 +70,9 @@ export default function WatchDetails({
           />
         )}
         <View style={{ flex: 1 }}>
-          <Text style={styles.heading}>{track.artist}</Text>
+          <Text raw style={styles.heading}>
+            {track.artist}
+          </Text>
           {track.subscribers != null && track.subscribers >= 0 && (
             <Text style={styles.text}>
               {count(track.subscribers)} subscribers
@@ -81,21 +83,21 @@ export default function WatchDetails({
       <Text style={styles.text}>
         {[
           track.views != null && track.views >= 0
-            ? `${count(track.views)} views`
+            ? `${count(track.views)} ${t("views")}`
             : "",
           track.likes != null && track.likes >= 0
-            ? `${count(track.likes)} likes`
+            ? `${count(track.likes)} ${t("likes")}`
             : "",
           track.uploaded,
         ]
           .filter(Boolean)
           .join(" · ")}
       </Text>
-      <View style={{ ...styles.row, flexWrap: "wrap" }}>
-        <Button title="Add To" onPress={() => setAdd(!add)} />
-        <Button title="Background" onPress={background} />
-        <Button title="Popup" onPress={popup} />
-        <Button
+      <View style={{ ...styles.row, justifyContent: "space-between" }}>
+        <ActionButton title="Add To" onPress={() => setAdd(!add)} />
+        <ActionButton title="Background" onPress={background} />
+        <ActionButton title="Popup" onPress={popup} />
+        <ActionButton
           title="Download"
           onPress={() =>
             track.youtubeId
@@ -180,7 +182,7 @@ export default function WatchDetails({
             formats.map((f) => (
               <Button
                 key={f.id}
-                title={`${f.kind} · ${f.label}`}
+                title={`${t(f.kind)} · ${f.label}`}
                 onPress={() => {
                   const t = formatTrack(track, f);
                   setAction(null);
@@ -199,7 +201,7 @@ export default function WatchDetails({
       {!!download && (
         <Text style={styles.text}>
           {download.status === "downloading"
-            ? `Downloading ${Math.round(download.progress * 100)}%`
+            ? `${t("Downloading")} ${Math.round(download.progress * 100)}%`
             : download.status === "complete"
               ? "Saved for offline playback"
               : download.error}
@@ -214,7 +216,7 @@ export default function WatchDetails({
         <Text style={{ ...styles.heading, flex: 1 }}>Up next</Text>
         <Text style={styles.text}>Auto-enqueue</Text>
         <Switch
-          accessibilityLabel="Auto-enqueue related videos"
+          accessibilityLabel={t("Auto-enqueue related videos")}
           value={state.autoQueue}
           onValueChange={(autoQueue) => usePlayerStore.setState({ autoQueue })}
         />
@@ -237,7 +239,7 @@ export default function WatchDetails({
       {!!state.queue.length && (
         <Button
           title="Play next"
-          onPress={() => state.advance(track.related)}
+          onPress={() => state.advance(track.related, true)}
         />
       )}
       {(track.related || []).map((t) => (

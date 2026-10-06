@@ -156,3 +156,62 @@ describe("playback navigation and queue", () => {
     expect(usePlayerStore.getState().position).toBe(0);
   });
 });
+
+describe("list transport", () => {
+  const list = [0, 1, 2].map((n) => ({
+    ...directTrack(`https://example.com/${n}.mp4`),
+    localUri: `file:///saved-${n}.mp4`,
+  }));
+  beforeEach(() =>
+    usePlayerStore.setState({
+      queue: [],
+      previousTracks: [],
+      playbackList: [],
+      playbackIndex: -1,
+      shuffle: false,
+      repeat: "off",
+    }),
+  );
+  it("advances and returns through offline downloads without losing the list", () => {
+    const s = usePlayerStore.getState();
+    s.playList(list, 0);
+    s.advance();
+    expect(usePlayerStore.getState().currentTrack?.localUri).toBe(
+      list[1].localUri,
+    );
+    s.previous();
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(list[0].id);
+    s.advance();
+    s.advance();
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(list[2].id);
+    s.advance();
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(list[2].id);
+  });
+  it("wraps only when repeat all is enabled and skips current item when shuffling", () => {
+    const s = usePlayerStore.getState();
+    s.playList(list, 2);
+    usePlayerStore.setState({ repeat: "all" });
+    s.advance();
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(list[0].id);
+    usePlayerStore.setState({ shuffle: true });
+    s.advance();
+    expect(usePlayerStore.getState().currentTrack?.id).not.toBe(list[0].id);
+  });
+  it("removes deleted downloads from pending playback", () => {
+    const s = usePlayerStore.getState();
+    s.playList(list, 0);
+    s.enqueue(list[1]);
+    s.removeDownload(list[1].id);
+    s.advance();
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(list[2].id);
+  });
+  it("persists language without restoring an active playback list", async () => {
+    usePlayerStore.setState({ language: "ar" });
+    usePlayerStore.getState().playList(list, 1);
+    const saved = JSON.parse(storage.get("harmonia-library-v1")!).state;
+    expect(saved.language).toBe("ar");
+    expect(saved.playbackList).toBeUndefined();
+    await usePlayerStore.persist.rehydrate();
+    expect(usePlayerStore.getState().language).toBe("ar");
+  });
+});

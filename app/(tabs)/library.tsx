@@ -1,5 +1,7 @@
+import { Text } from "@/components/LocalizedText";
+import OpenMedia from "@/components/OpenMedia";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { Page, TrackCard, Input, Button, styles } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 export default function LibraryScreen() {
@@ -7,6 +9,7 @@ export default function LibraryScreen() {
   const [name, setName] = useState("");
   return (
     <Page title="Library">
+      <OpenMedia />
       <Text style={styles.heading}>Favorites</Text>
       {!favorites.length && (
         <Text style={styles.text}>Tap Favorite on a track to save it.</Text>
@@ -34,7 +37,9 @@ export default function LibraryScreen() {
       />
       {playlists.map((p) => (
         <View key={p.id} style={{ gap: 12 }}>
-          <Text style={styles.heading}>{p.name}</Text>
+          <Text raw style={styles.heading}>
+            {p.name}
+          </Text>
           {!p.trackIds.length && (
             <Text style={styles.text}>
               Use the Playlist button on a track to add it here.
@@ -44,10 +49,17 @@ export default function LibraryScreen() {
             .map((id) => tracks.find((t) => t.id === id))
             .filter((t) => !!t)
             .map((t) => (
-              <TrackCard key={t.id} track={t} playlistId={p.id} />
+              <TrackCard
+                key={t.id}
+                track={t}
+                playlistId={p.id}
+                list={p.trackIds
+                  .map((id) => tracks.find((t) => t.id === id))
+                  .filter((t) => !!t)}
+              />
             ))}
           <Button
-            title={`Delete playlist ${p.name}`}
+            title="Delete playlist"
             onPress={() => usePlayerStore.getState().deletePlaylist(p.id)}
           />
         </View>

@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "Harmonia Player",
     slug: "harmonia-player",
-    version: "1.3.0",
+    version: "1.4.0",
     orientation: "default",
     icon: "./assets/images/icon.png",
     scheme: "harmonia",
@@ -10,7 +10,42 @@ export default {
     newArchEnabled: false,
     android: {
       package: "com.alhudar.harmonia",
-      versionCode: 4,
+      versionCode: 5,
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: false,
+          category: ["BROWSABLE", "DEFAULT"],
+          data: [
+            ...[
+              "youtube.com",
+              "www.youtube.com",
+              "m.youtube.com",
+              "music.youtube.com",
+            ].flatMap((host) =>
+              ["http", "https"].flatMap((scheme) =>
+                ["/watch", "/shorts/", "/live/", "/embed/"].map(
+                  (pathPrefix) => ({ scheme, host, pathPrefix }),
+                ),
+              ),
+            ),
+          ],
+        },
+        {
+          action: "VIEW",
+          autoVerify: false,
+          category: ["BROWSABLE", "DEFAULT"],
+          data: [
+            { scheme: "https", host: "youtu.be" },
+            { scheme: "http", host: "youtu.be" },
+          ],
+        },
+        {
+          action: "SEND",
+          category: ["DEFAULT"],
+          data: [{ mimeType: "text/plain" }],
+        },
+      ],
       permissions: [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE",
@@ -38,6 +73,7 @@ export default {
       "expo-router",
       "./plugins/withNativeAbiFilters",
       "./plugins/withNewPipe",
+      "./plugins/withReleaseSigning",
       "expo-asset",
       "expo-font",
       [

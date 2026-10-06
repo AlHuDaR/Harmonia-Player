@@ -1,4 +1,6 @@
-import { View, Text, Image, Pressable } from "react-native";
+import { useLocale } from "@/utils/i18n";
+import { Text } from "@/components/LocalizedText";
+import { View, Image, Pressable } from "react-native";
 import { usePlayerStore } from "@/store/playerStore";
 import type { Track } from "@/types/media";
 export const count = (n?: number) =>
@@ -13,7 +15,7 @@ export const duration = (n?: number) =>
     ? ""
     : [
         Math.floor(n / 3600) || null,
-        Math.floor(n / 60) % 60,
+        (Math.floor(n / 60) % 60).toString().padStart(n >= 3600 ? 2 : 1, "0"),
         Math.floor(n % 60)
           .toString()
           .padStart(2, "0"),
@@ -21,10 +23,11 @@ export const duration = (n?: number) =>
         .filter((x) => x !== null)
         .join(":");
 export default function VideoRow({ track }: { track: Track }) {
+  const { t } = useLocale();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Play ${track.title}`}
+      accessibilityLabel={`${t("Play")} ${track.title}`}
       onPress={() => usePlayerStore.getState().setCurrentTrack(track)}
       style={{
         flexDirection: "row",
@@ -65,18 +68,19 @@ export default function VideoRow({ track }: { track: Track }) {
       </View>
       <View style={{ flex: 1, gap: 5 }}>
         <Text
+          raw
           numberOfLines={2}
           style={{ color: "white", fontSize: 16, writingDirection: "auto" }}
         >
           {track.title}
         </Text>
-        <Text numberOfLines={1} style={{ color: "#aeb5c8" }}>
+        <Text raw numberOfLines={1} style={{ color: "#aeb5c8" }}>
           {track.artist}
         </Text>
         <Text style={{ color: "#aeb5c8", fontSize: 12 }}>
           {[
             track.views != null && track.views >= 0
-              ? `${count(track.views)} views`
+              ? `${count(track.views)} ${t("views")}`
               : "",
             track.uploaded,
           ]

@@ -1,3 +1,4 @@
+import { useLocale } from "@/utils/i18n";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 const tabs = [
@@ -8,12 +9,14 @@ const tabs = [
   ["settings", "Settings", "settings"],
 ] as const;
 export default function TabLayout() {
+  const { t } = useLocale();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: "#151925", borderTopColor: "#282d40" },
-        tabBarActiveTintColor: "#b7c4ff",
+        tabBarLabelStyle: { fontSize: 10 },
+        tabBarStyle: { backgroundColor: "#101010", borderTopColor: "#282d40" },
+        tabBarActiveTintColor: "#fff",
         tabBarInactiveTintColor: "#929ab4",
       }}
     >
@@ -22,7 +25,7 @@ export default function TabLayout() {
           key={name}
           name={name}
           options={{
-            title,
+            title: t(title),
             tabBarIcon: ({ size, color }) => (
               <MaterialIcons name={icon} size={size} color={color} />
             ),

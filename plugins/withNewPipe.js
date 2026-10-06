@@ -2,6 +2,7 @@ const {
   withAppBuildGradle,
   withProjectBuildGradle,
   withMainApplication,
+  withMainActivity,
   withDangerousMod,
 } = require("expo/config-plugins");
 const fs = require("node:fs");
@@ -34,6 +35,16 @@ module.exports = function withNewPipe(config) {
         anchor,
         (match) =>
           `${match}\n            ${marker}\n            packages.add(com.alhudar.harmonia.youtube.YouTubePackage())`,
+      );
+    }
+    return mod;
+  });
+  config = withMainActivity(config, (mod) => {
+    const marker = "// Harmonia incoming intent retention";
+    if (!mod.modResults.contents.includes(marker)) {
+      mod.modResults.contents = mod.modResults.contents.replace(
+        /\n}\s*$/,
+        `\n  ${marker}\n  override fun onNewIntent(intent: android.content.Intent) {\n    super.onNewIntent(intent)\n    setIntent(intent)\n  }\n}\n`,
       );
     }
     return mod;

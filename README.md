@@ -118,3 +118,7 @@ See the PR validation record for build/test outcomes and remaining external-serv
 Search results are compact tappable rows with duration, views and upload age when available. Tapping opens playback immediately. Back collapses the persistent player without restarting it. The watch view provides Add To (playlist or queue), Background, Android PiP, Download, quality/audio selection, sharing, description and related videos. Explicit queue entries play before optional unseen related recommendations. Quality changes restore position. Donation support is informational until the developer supplies a payment link; no payment details are collected.
 
 Release validation must cover Android Back, background/lock-screen playback, PiP, rotation, Bluetooth interruption, quality changes and offline files on a physical device. Browser tests cover local media only. Existing download restart/private-storage limitations remain; resumable persistent downloads, comments, full localization, production signing and store publication are separate release work.
+
+## 1.4 bilingual player and external links
+
+Adds saved Arabic/English selection, RTL layout, compact action sheets, audio/video controls, Previous/Next, shuffle/repeat, offline list playback and Android YouTube VIEW/SEND handling. Home is focused on browsing; manual links and imports are in Library. See [release scope and device checklist](docs/release-1.4.md) for production-signing configuration, Android link-default behavior and remaining commercial release gates.
