@@ -102,7 +102,7 @@ export default function SettingsScreen() {
         title="Source code and licences"
         onPress={() => {
           Linking.openURL(
-            "https://github.com/AlHuDaR/Harmonia-Player/tree/feat/on-device-youtube",
+            "https://github.com/AlHuDaR/Harmonia-Player/tree/feat/bilingual-release",
           ).catch(() => setFeedback("Could not open the source link."));
         }}
       />
