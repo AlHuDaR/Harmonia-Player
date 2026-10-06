@@ -48,6 +48,9 @@ jobs:
               assert abis == {'arm64-v8a'}, abis
               assert 'lib/arm64-v8a/libhermes.so' in apk.namelist()
               assert apk.getinfo('assets/index.android.bundle').file_size > 0
+              dex = b''.join(apk.read(name) for name in apk.namelist() if name.endswith('.dex'))
+              assert b'Lcom/alhudar/harmonia/youtube/YouTubeModule;' in dex, 'Missing native YouTube bridge'
+              assert b'Lorg/schabi/newpipe/extractor/NewPipe;' in dex, 'Missing NewPipe Extractor'
           PYCODE
       - uses: actions/upload-artifact@v4
         with:

@@ -1,7 +1,7 @@
 {
   "name": "harmonia-player",
   "main": "expo-router/entry",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
@@ -51,5 +51,6 @@
     "@types/react": "~18.3.12",
     "typescript": "^5.3.3",
     "vitest": "^5.0.3"
-  }
+  },
+  "license": "GPL-3.0-or-later"
 }

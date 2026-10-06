@@ -6,9 +6,16 @@ import {
   ScrollView,
   TextInput,
   StyleSheet,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlayerStore } from "@/store/playerStore";
+import {
+  youtubeFormats,
+  formatTrack,
+  type StreamFormat,
+} from "@/utils/youtube";
 import { downloadTrack } from "@/utils/downloads";
 import { message, type Track } from "@/types/media";
 export const styles = StyleSheet.create({
@@ -98,11 +105,38 @@ export function TrackCard({
   );
   const [error, setError] = useState("");
   const [choose, setChoose] = useState(false);
+  const [formats, setFormats] = useState<StreamFormat[]>([]);
+  const [action, setAction] = useState<"play" | "download" | null>(null);
+  const [loadingFormats, setLoadingFormats] = useState(false);
+  async function selectFormat(action: "play" | "download") {
+    setError("");
+    setLoadingFormats(true);
+    setAction(action);
+    try {
+      const formats = await youtubeFormats(track);
+      setFormats(formats.filter((f) => action === "play" || f.downloadable));
+      if (!formats.some((f) => action === "play" || f.downloadable))
+        setError("No compatible format is available for this video.");
+    } catch (e) {
+      setError(message(e));
+      setAction(null);
+    } finally {
+      setLoadingFormats(false);
+    }
+  }
   return (
     <View style={styles.card}>
+      {!!track.cover && (
+        <Image
+          source={{ uri: track.cover }}
+          style={{ width: "100%", height: 160, borderRadius: 8 }}
+          resizeMode="cover"
+        />
+      )}
       <Text style={styles.heading}>{track.title}</Text>
       <Text style={styles.text}>
         {track.artist}
+        {track.formatLabel ? ` · ${track.formatLabel}` : ""}
         {track.localUri ? " · Offline" : ""}
       </Text>
       <View style={{ ...styles.row, flexWrap: "wrap" }}>
@@ -117,6 +151,13 @@ export function TrackCard({
             usePlayerStore.getState().setCurrentTrack(local || track);
           }}
         />
+        {!!track.youtubeId && !track.localUri && (
+          <Button
+            title="Audio / quality"
+            onPress={() => selectFormat("play")}
+            disabled={loadingFormats}
+          />
+        )}
         <Button
           title={favorite ? "♥ Saved" : "♡ Favorite"}
           onPress={() => {
@@ -139,7 +180,8 @@ export function TrackCard({
             }
             onPress={() => {
               setError("");
-              downloadTrack(track).catch((e) => setError(message(e)));
+              if (track.youtubeId && !track.formatId) selectFormat("download");
+              else downloadTrack(track).catch((e) => setError(message(e)));
             }}
           />
         )}
@@ -154,6 +196,30 @@ export function TrackCard({
           }
         />
       </View>
+      {loadingFormats && <ActivityIndicator color="#b7c4ff" />}
+      {!!action && !loadingFormats && (
+        <View style={{ gap: 8 }}>
+          <Text style={styles.text}>
+            {action === "play"
+              ? "Play audio or choose video quality"
+              : "Download audio or video"}
+          </Text>
+          {formats.map((format) => (
+            <Button
+              key={format.id}
+              title={`${format.kind === "audio" ? "Audio" : "Video"} · ${format.label}`}
+              onPress={() => {
+                const selected = formatTrack(track, format);
+                setAction(null);
+                if (action === "play")
+                  usePlayerStore.getState().setCurrentTrack(selected);
+                else downloadTrack(selected).catch((e) => setError(message(e)));
+              }}
+            />
+          ))}
+          <Button title="Cancel" onPress={() => setAction(null)} />
+        </View>
+      )}
       {choose && (
         <View style={{ gap: 8 }}>
           <Text style={styles.text}>

@@ -7,6 +7,8 @@ export interface Track {
   youtubeId?: string;
   kind: "audio" | "video";
   localUri?: string;
+  formatId?: string;
+  formatLabel?: string;
 }
 export interface Playlist {
   id: string;

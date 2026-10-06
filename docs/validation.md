@@ -1,4 +1,17 @@
-# Implementation validation
+# On-device YouTube validation (1.2.0)
+
+Implementation: [PR #2](https://github.com/AlHuDaR/Harmonia-Player/pull/2), based on PR #1's Android player.
+
+- TypeScript and **26 unit/integration tests** pass locally. Tests cover native search forwarding, link validation, cancellation, media source/header handling, distinct format IDs, separate-file download/mux transitions, failure cleanup and existing offline library behavior.
+- Web export passes. Native prebuild passes repeatedly without duplicating the package registration, Gradle dependency or repository entries.
+- The initial integration revision passed all three GitHub browser tests using actual audio/video fixtures, plus TypeScript, tests and web export.
+- See the PR checks and its linked Android APK workflow for the current revision's native compilation and artifact result. The workflow verifies the signature, ARM64-only packaging, bundled JavaScript, YouTube bridge and NewPipe classes before uploading.
+
+No physical S24 Ultra or end-to-end live YouTube result is claimed. The browser tests exercise direct media playback, not the Android extractor. Generated separate-stream DASH playback, audio synchronization, codec compatibility and MediaMuxer outputs need the device tests in README. A successful APK compilation does not prove extraction still works against YouTube or that every video is accessible.
+
+The current app uses NewPipe Extractor v0.26.5 on-device. The API key/resolver requirements and APK hash below describe the **earlier 1.1 baseline only** and do not apply to 1.2.0.
+
+# Android 1.1 baseline (5 October 2026)
 
 Validated in the cloud environment on 5 October 2026 with Node 24.19.0, Java 17, Expo SDK 52 and React Native 0.76.9.
 

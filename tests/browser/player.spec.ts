@@ -73,7 +73,7 @@ test("shows actionable search setup and direct URL errors", async ({
   await page.getByRole("tab", { name: /Search/ }).click();
   await page.getByLabel("Search query").fill("test");
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(page.getByText(/Add your YouTube Data API key/)).toBeVisible();
+  await expect(page.getByText(/YouTube search and streams are available in the Android APK/)).toBeVisible();
   await page.getByRole("tab", { name: /Downloads/ }).click();
   await expect(page.getByText(/Files are saved privately/)).toBeVisible();
   await page.getByRole("tab", { name: /Settings/ }).click();
