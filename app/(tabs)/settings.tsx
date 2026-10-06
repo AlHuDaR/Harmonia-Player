@@ -1,49 +1,54 @@
+import { useLocale } from "@/utils/i18n";
+import { NativeModules, Platform } from "react-native";
+import { Text } from "@/components/LocalizedText";
 import { useState } from "react";
-import { Text, Switch, View } from "react-native";
-import { Page, Input, Button, styles } from "@/components/MediaUI";
+import { Switch, View, Linking } from "react-native";
+import { Page, Button, styles } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 export default function SettingsScreen() {
+  const { language, t } = useLocale();
   const settings = usePlayerStore((s) => s.settings);
-  const [key, setKey] = useState(settings.youtubeApiKey);
-  const [resolver, setResolver] = useState(settings.resolverUrl);
   const [feedback, setFeedback] = useState("");
-  function save() {
-    try {
-      if (resolver.trim()) {
-        const url = new URL(resolver.trim());
-        if (
-          url.protocol !== "https:" ||
-          url.username ||
-          url.password ||
-          url.search ||
-          url.hash
-        )
-          throw new Error(
-            "Enter an HTTPS resolver URL without credentials, query, or fragment.",
-          );
-      }
-      usePlayerStore
-        .getState()
-        .updateSettings({
-          youtubeApiKey: key.trim(),
-          resolverUrl: resolver.trim().replace(/\/$/, ""),
-        });
-      setFeedback("Settings saved on this device.");
-    } catch {
-      setFeedback(
-        "Enter an HTTPS resolver URL without credentials, query, or fragment.",
-      );
-    }
-  }
   return (
     <Page title="Settings">
+      <Text style={styles.heading}>Language</Text>
+      <View style={styles.row}>
+        <Button
+          title={language === "en" ? "✓ English" : "English"}
+          onPress={() => usePlayerStore.setState({ language: "en" })}
+        />
+        <Button
+          title={language === "ar" ? "✓ العربية" : "العربية"}
+          onPress={() => usePlayerStore.setState({ language: "ar" })}
+        />
+      </View>
+      <Text style={styles.heading}>YouTube links</Text>
+      <Text style={styles.text}>
+        Share a YouTube link to Harmonia, or enable supported links in Android
+        settings.
+      </Text>
+      {Platform.OS === "android" && (
+        <Button
+          title="Open link settings"
+          onPress={() =>
+            NativeModules.HarmoniaIntents.openSettings().catch(() =>
+              Linking.openSettings(),
+            )
+          }
+        />
+      )}
+      <Text style={styles.heading}>Privacy</Text>
+      <Text style={styles.text}>
+        Your library stays on this device. YouTube receives requests when you
+        search or stream. No advertising or analytics SDK is included.
+      </Text>
       <Text style={styles.heading}>Playback</Text>
       <View style={styles.row}>
         <Text style={{ ...styles.text, flex: 1 }}>
           Background playback & media controls
         </Text>
         <Switch
-          accessibilityLabel="Background playback"
+          accessibilityLabel={t("Background playback")}
           value={settings.background}
           onValueChange={(background) =>
             usePlayerStore.getState().updateSettings({ background })
@@ -55,36 +60,19 @@ export default function SettingsScreen() {
           Automatic Picture in Picture
         </Text>
         <Switch
-          accessibilityLabel="Automatic Picture in Picture"
+          accessibilityLabel={t("Automatic Picture in Picture")}
           value={settings.autoPip}
           onValueChange={(autoPip) =>
             usePlayerStore.getState().updateSettings({ autoPip })
           }
         />
       </View>
-      <Text style={styles.heading}>YouTube integration</Text>
+      <Text style={styles.heading}>YouTube</Text>
       <Text style={styles.text}>
-        Optional. Keys are stored locally in app storage, not encrypted. Use a
-        restricted YouTube Data API key, never a privileged server credential.
-        Playback requires your own resolver service.
+        Search, playback and downloads run directly on this Android device using
+        NewPipe Extractor. No API key, Google login or resolver server is
+        required. Restricted videos and YouTube changes can affect availability.
       </Text>
-      <Input
-        accessibilityLabel="YouTube API key"
-        placeholder="YouTube Data API key"
-        value={key}
-        onChangeText={setKey}
-        secureTextEntry
-        autoCorrect={false}
-      />
-      <Input
-        accessibilityLabel="Resolver URL"
-        placeholder="https://your-resolver.example.com"
-        value={resolver}
-        onChangeText={setResolver}
-        keyboardType="url"
-        autoCorrect={false}
-      />
-      <Button title="Save settings" onPress={save} />
       {!!feedback && (
         <Text accessibilityRole="alert" style={styles.text}>
           {feedback}
@@ -102,8 +90,25 @@ export default function SettingsScreen() {
           setFeedback("History cleared.");
         }}
       />
+      <Text style={styles.text}>Harmonia Player 1.4.0 · Coded By AlHuDaR</Text>
+      <Text style={styles.heading}>Support the developer</Text>
       <Text style={styles.text}>
-        Harmonia Player 1.1.0 · Audio and video playback with Expo Video
+        Enjoying Harmonia? Your support helps development and improvements.
+      </Text>
+      <Text style={styles.text}>
+        Donations will be available here once a payment method is added.
+      </Text>
+      <Button
+        title="Source code and licences"
+        onPress={() => {
+          Linking.openURL(
+            "https://github.com/AlHuDaR/Harmonia-Player/tree/feat/bilingual-release",
+          ).catch(() => setFeedback("Could not open the source link."));
+        }}
+      />
+      <Text style={styles.text}>
+        GPL-3.0-or-later · Uses NewPipe Extractor v0.26.5 by Team NewPipe.
+        Source and licence: github.com/AlHuDaR/Harmonia-Player
       </Text>
     </Page>
   );

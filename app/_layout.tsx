@@ -1,6 +1,9 @@
+import IncomingLinks from "@/components/IncomingLinks";
+import { useLocale } from "@/utils/i18n";
+import { Text } from "@/components/LocalizedText";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, Text, Pressable } from "react-native";
+import { View, Pressable } from "react-native";
 import { useEffect, useState } from "react";
 import { usePlayerStore, useLibraryStatus } from "@/store/playerStore";
 import { cleanInterruptedDownloads } from "@/utils/downloads";
@@ -10,6 +13,7 @@ import {
 } from "react-native-safe-area-context";
 import Player from "@/components/Player";
 function Layout() {
+  const { rtl } = useLocale();
   const insets = useSafeAreaInsets();
   const [ready, setReady] = useState(false);
   const library = useLibraryStatus();
@@ -58,6 +62,7 @@ function Layout() {
   return (
     <View
       style={{
+        direction: rtl ? "rtl" : "ltr",
         flex: 1,
         backgroundColor: "#0c0e16",
         paddingBottom: insets.bottom,
@@ -67,6 +72,7 @@ function Layout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="+not-found" />
       </Stack>
+      <IncomingLinks />
       <Player />
       <StatusBar style="light" />
     </View>

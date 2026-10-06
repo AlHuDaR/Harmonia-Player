@@ -34,6 +34,14 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:web
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: UI-checks
+          path: |
+            artifacts/screenshots
+            test-results
+          if-no-files-found: ignore
       - run: npm run build:web -- --max-workers 2
         env:
           EXPO_NO_TELEMETRY: "1"
@@ -48,6 +56,9 @@ jobs:
               assert abis == {'arm64-v8a'}, abis
               assert 'lib/arm64-v8a/libhermes.so' in apk.namelist()
               assert apk.getinfo('assets/index.android.bundle').file_size > 0
+              dex = b''.join(apk.read(name) for name in apk.namelist() if name.endswith('.dex'))
+              assert b'Lcom/alhudar/harmonia/youtube/YouTubeModule;' in dex, 'Missing native YouTube bridge'
+              assert b'Lorg/schabi/newpipe/extractor/NewPipe;' in dex, 'Missing NewPipe Extractor'
           PYCODE
       - uses: actions/upload-artifact@v4
         with:

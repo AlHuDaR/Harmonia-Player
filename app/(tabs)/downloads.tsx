@@ -1,14 +1,24 @@
+import { Text } from "@/components/LocalizedText";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { Page, TrackCard, Button, styles } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 import { deleteDownload, downloadTrack } from "@/utils/downloads";
 import { message } from "@/types/media";
 export default function DownloadsScreen() {
   const downloads = usePlayerStore((s) => s.downloads);
+  const offline = downloads
+    .filter((d) => d.status === "complete" && d.track.localUri)
+    .map((d) => d.track);
   const [error, setError] = useState("");
   return (
     <Page title="Downloads">
+      {!!offline.length && (
+        <Button
+          title="Play all"
+          onPress={() => usePlayerStore.getState().playList(offline, 0)}
+        />
+      )}
       <Text style={styles.text}>
         Files are saved privately on this device for offline playback.
       </Text>
@@ -24,7 +34,10 @@ export default function DownloadsScreen() {
             {d.status} · {Math.round(d.progress * 100)}%
             {d.error ? ` · ${d.error}` : ""}
           </Text>
-          <TrackCard track={d.track} />
+          <TrackCard
+            track={d.track}
+            list={d.status === "complete" ? offline : undefined}
+          />
           {d.status === "failed" && (
             <Button
               title="Retry download"
