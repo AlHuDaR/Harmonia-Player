@@ -183,7 +183,10 @@ function MediaEngine({
           <Text style={styles.title} numberOfLines={1}>
             {track.title}
           </Text>
-          <Text style={styles.muted}>{track.artist}{track.formatLabel ? ` · ${track.formatLabel}` : ""}</Text>
+          <Text style={styles.muted}>
+            {track.artist}
+            {track.formatLabel ? ` · ${track.formatLabel}` : ""}
+          </Text>
         </Pressable>
         <Pressable
           accessibilityLabel={favorite ? "Remove favorite" : "Favorite"}

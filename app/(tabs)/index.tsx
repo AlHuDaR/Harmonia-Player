@@ -14,7 +14,9 @@ export default function HomeScreen() {
   async function open() {
     setOpening(true);
     try {
-      usePlayerStore.getState().setCurrentTrack((await youtubeTrack(url)) || directTrack(url));
+      usePlayerStore
+        .getState()
+        .setCurrentTrack((await youtubeTrack(url)) || directTrack(url));
       setError("");
       setUrl("");
     } catch (e) {
@@ -37,7 +39,11 @@ export default function HomeScreen() {
         onSubmitEditing={open}
         keyboardType="url"
       />
-      <Button title={opening ? "Opening…" : "Open URL"} onPress={open} disabled={opening} />
+      <Button
+        title={opening ? "Opening…" : "Open URL"}
+        onPress={open}
+        disabled={opening}
+      />
       <Button
         title="Import local audio or video"
         onPress={() => {

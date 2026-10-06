@@ -21,9 +21,22 @@ export default function SearchScreen() {
     setBusy(true);
     setError("");
     try {
-      const page = await searchYouTube(term, more ? nextPage : undefined, controller.signal);
+      const page = await searchYouTube(
+        term,
+        more ? nextPage : undefined,
+        controller.signal,
+      );
       if (!controller.signal.aborted) {
-        setResults(previous => more ? [...previous, ...page.tracks.filter(t => !previous.some(p => p.id === t.id))] : page.tracks);
+        setResults((previous) =>
+          more
+            ? [
+                ...previous,
+                ...page.tracks.filter(
+                  (t) => !previous.some((p) => p.id === t.id),
+                ),
+              ]
+            : page.tracks,
+        );
         setNextPage(page.nextPage);
         setActiveQuery(term);
         if (!more && !page.tracks.length) setError("No results found.");
@@ -37,7 +50,8 @@ export default function SearchScreen() {
   return (
     <Page title="Search">
       <Text style={styles.text}>
-        Search YouTube directly on your Android phone. No API key or server setup.
+        Search YouTube directly on your Android phone. No API key or server
+        setup.
       </Text>
       <Input
         accessibilityLabel="Search query"
@@ -56,7 +70,13 @@ export default function SearchScreen() {
       {results.map((track) => (
         <TrackCard key={track.id} track={track} />
       ))}
-      {!!nextPage && <Button title="Load more" onPress={() => search(true)} disabled={busy} />}
+      {!!nextPage && (
+        <Button
+          title="Load more"
+          onPress={() => search(true)}
+          disabled={busy}
+        />
+      )}
     </Page>
   );
 }

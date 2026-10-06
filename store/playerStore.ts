@@ -136,7 +136,10 @@ export const usePlayerStore = create<PlayerStore>()(
         useLibraryStatus.setState({ hydrated: !error, error: !!error });
         if (state) {
           // Drop obsolete resolver/API credentials from existing installations.
-          state.settings = { background: state.settings.background ?? true, autoPip: state.settings.autoPip ?? false };
+          state.settings = {
+            background: state.settings.background ?? true,
+            autoPip: state.settings.autoPip ?? false,
+          };
           state.downloads = state.downloads.map((d) =>
             d.status === "downloading"
               ? {

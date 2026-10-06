@@ -41,7 +41,8 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
     @Override public void invalidate() { executor.shutdownNow(); pages.clear(); super.invalidate(); }
 
     private interface Work { Object run() throws Exception; }
-    private void submit(Promise promise, Work work) {
+    private void submit(Promise promise, Work work) { submit(promise, work, false); }
+    private void submit(Promise promise, Work work, boolean mux) {
         if (executor.isShutdown()) { promise.reject("E_CLOSED", "YouTube module is closed."); return; }
         executor.execute(() -> {
             try { promise.resolve(work.run()); }
@@ -50,7 +51,9 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
                         ? "YouTube blocked or rate limited this connection. Retry later or change network."
                         : "YouTube request failed. Check your connection and retry. Restricted videos or a YouTube change may require an extractor update.";
                 // Do not leak signed URLs, response bodies or cookies into JS errors/logs.
-                promise.reject("E_YOUTUBE", explanation);
+                promise.reject(mux ? "E_MUX" : "E_YOUTUBE", mux
+                        ? "Could not combine the downloaded audio and video. Check free storage or select a different MP4 quality."
+                        : explanation);
             }
         });
     }
@@ -69,7 +72,7 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
         map.putString("title", item.getName());
         map.putString("artist", item.getUploaderName());
         map.putString("kind", "video");
-        if (!item.getThumbnails().isEmpty()) map.putString("cover", item.getThumbnails().get(0).getUrl());
+        if (!item.getThumbnails().isEmpty()) map.putString("cover", item.getThumbnails().get(item.getThumbnails().size() - 1).getUrl());
         return map;
     }
     @ReactMethod public void search(String query, String token, Promise promise) {
@@ -114,13 +117,14 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
             map.putString("title", info.getName());
             map.putString("artist", info.getUploaderName());
             map.putString("kind", "video");
-            if (!info.getThumbnails().isEmpty()) map.putString("cover", info.getThumbnails().get(0).getUrl());
+            if (!info.getThumbnails().isEmpty()) map.putString("cover", info.getThumbnails().get(info.getThumbnails().size() - 1).getUrl());
             return map;
         });
     }
     private static boolean fileStream(Stream s) {
         return s.isUrl() && s.getContent().startsWith("https://")
-                && s.getDeliveryMethod() == DeliveryMethod.PROGRESSIVE_HTTP && s.getFormat() != null;
+                && s.getDeliveryMethod() == DeliveryMethod.PROGRESSIVE_HTTP && s.getFormat() != null
+                && (s.getItagItem() == null || !Boolean.TRUE.equals(s.getItagItem().isDrc()));
     }
     private static boolean indexed(Stream s) {
         ItagItem itag = s.getItagItem();
@@ -129,20 +133,26 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
     }
     private static AudioStream audio(StreamInfo info) {
         return info.getAudioStreams().stream().filter(s -> fileStream(s) && s.getFormat() == MediaFormat.M4A)
-                .max(Comparator.comparingInt(AudioStream::getAverageBitrate)).orElse(null);
+                .max(Comparator.comparingInt(YouTubeModule::audioPriority)
+                        .thenComparingInt(AudioStream::getAverageBitrate)).orElse(null);
+    }
+    private static int audioPriority(AudioStream stream) {
+        return stream.getAudioTrackType() == AudioTrackType.ORIGINAL ? 2
+                : stream.getAudioTrackType() == null ? 1 : 0;
     }
     private static List<Choice> choices(StreamInfo info) {
         List<Choice> result = new ArrayList<>();
         for (AudioStream stream : info.getAudioStreams()) if (fileStream(stream)) {
-            result.add(new Choice("audio:" + stream.getId(), stream, null, "audio",
-                    stream.getFormat().getName() + " · " + stream.getAverageBitrate() + " kbps", true));
+            result.add(new Choice("audio:" + stream.getId() + ":" + stream.getAudioTrackId() + ":" + stream.getAudioTrackType(), stream, null, "audio",
+                    stream.getFormat().getName() + " · " + stream.getAverageBitrate() + " kbps"
+                            + (stream.getAudioTrackName() == null ? "" : " · " + stream.getAudioTrackName()), true));
         }
         for (VideoStream stream : info.getVideoStreams()) if (fileStream(stream) && !stream.isVideoOnly()) {
             result.add(new Choice("video:" + stream.getId(), stream, null, "video",
                     stream.getResolution() + " · " + stream.getFormat().getName(), true));
         }
         AudioStream audio = audio(info);
-        if (audio != null && indexed(audio)) for (VideoStream stream : info.getVideoOnlyStreams()) {
+        if (info.getDuration() > 0 && audio != null && indexed(audio)) for (VideoStream stream : info.getVideoOnlyStreams()) {
             if (fileStream(stream) && stream.getFormat() == MediaFormat.MPEG_4 && indexed(stream)) {
                 result.add(new Choice("video:" + stream.getId(), stream, audio, "video",
                         stream.getResolution() + " · MP4", true));
@@ -153,6 +163,10 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
         }
         result.sort((a, b) -> {
             if (!a.kind.equals(b.kind)) return a.kind.equals("video") ? -1 : 1;
+            if (a.stream instanceof AudioStream && b.stream instanceof AudioStream) {
+                int preference = Integer.compare(audioPriority((AudioStream) b.stream), audioPriority((AudioStream) a.stream));
+                if (preference != 0) return preference;
+            }
             return Integer.compare(b.quality(), a.quality());
         });
         return result;
@@ -219,7 +233,9 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
             xml.attribute(null, "type", "static");
             xml.attribute(null, "profiles", "urn:mpeg:dash:profile:isoff-on-demand:2011");
             xml.attribute(null, "minBufferTime", "PT1.5S");
-            xml.attribute(null, "mediaPresentationDuration", "PT" + info.getDuration() + "S");
+            long durationMs = Math.max(info.getDuration() * 1000,
+                    Math.max(video.getItagItem().getApproxDurationMs(), audio.getItagItem().getApproxDurationMs()));
+            xml.attribute(null, "mediaPresentationDuration", "PT" + (durationMs / 1000.0) + "S");
             xml.startTag(NS, "Period");
             xml.attribute(null, "start", "PT0S");
             representation(xml, video, "video");
@@ -259,7 +275,7 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
             if (output.exists()) throw new IllegalArgumentException("Output exists");
             MediaMux.merge(video, audio, output);
             return Uri.fromFile(output).toString();
-        });
+        }, true);
     }
     private File privateFile(String uri) throws Exception {
         Uri parsed = Uri.parse(uri);
