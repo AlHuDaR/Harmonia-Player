@@ -164,7 +164,7 @@ export async function videoDetails(
   track: Track,
   signal?: AbortSignal,
 ): Promise<Track> {
-  return track.youtubeId
+  return track.youtubeId && !track.localUri
     ? abortable(() => extractor().details(track.youtubeId!), signal)
     : track;
 }

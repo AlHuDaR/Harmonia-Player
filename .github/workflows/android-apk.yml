@@ -34,6 +34,14 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:web
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: UI-checks
+          path: |
+            artifacts/screenshots
+            test-results
+          if-no-files-found: ignore
       - run: npm run build:web -- --max-workers 2
         env:
           EXPO_NO_TELEMETRY: "1"

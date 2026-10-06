@@ -29,7 +29,8 @@ for (const [file, type] of [
         },
       });
     });
-    await page.goto("/");
+    await page.goto("/library");
+    await page.getByRole("button", { name: "Open link", exact: true }).click();
     await page
       .getByLabel("Media URL", { exact: true })
       .fill(`https://media.test/${file}`);
@@ -46,6 +47,10 @@ for (const [file, type] of [
     await expect(
       page.getByRole("button", { name: "Add To", exact: true }),
     ).toBeVisible();
+    await page.screenshot({
+      path: `artifacts/screenshots/player-${file}.png`,
+      fullPage: true,
+    });
     await page.getByLabel("Pause", { exact: true }).click();
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
@@ -58,19 +63,20 @@ for (const [file, type] of [
     await page.getByLabel("Close player", { exact: true }).click();
     await expect(video).toHaveCount(0);
     await page.getByRole("tab", { name: /Library/ }).click();
-    await expect(page.getByText("♥ Saved").first()).toBeVisible();
+    await expect(page.getByText(file, { exact: true }).first()).toBeVisible();
     await page.getByLabel("Playlist name").fill("Road trip");
     await page.getByRole("button", { name: "Create playlist" }).click();
     await page.reload();
     await expect(page.getByText("Road trip", { exact: true })).toBeVisible();
-    await expect(page.getByText("♥ Saved").first()).toBeVisible();
+    await expect(page.getByText(file, { exact: true }).first()).toBeVisible();
     expect(errors).toEqual([]);
   });
 }
 test("shows actionable search setup and direct URL errors", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Open link", exact: true }).click();
   await page
     .getByLabel("Media URL", { exact: true })
     .fill("http://example.com/a.mp3");
@@ -92,4 +98,23 @@ test("shows actionable search setup and direct URL errors", async ({
   await expect(
     page.getByLabel("Background playback", { exact: true }),
   ).toBeVisible();
+});
+
+test("language switches instantly and persists with a clean Home", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByLabel("Media URL", { exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.getByRole("button", { name: "العربية", exact: true }).click();
+  await expect(page.getByRole("tab", { name: /الرئيسية/ })).toBeVisible();
+  await expect(page.getByText("اللغة", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("اللغة", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: "artifacts/screenshots/settings-ar.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await expect(page.getByRole("tab", { name: /Home/ })).toBeVisible();
 });
