@@ -2,7 +2,7 @@ import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
 import { useEffect, useState } from "react";
 import { View, Switch, Image, Share } from "react-native";
-import { Button, Input, styles } from "./MediaUI";
+import { Button, ActionButton, Input, styles } from "./MediaUI";
 import VideoRow, { count } from "./VideoRow";
 import { usePlayerStore } from "@/store/playerStore";
 import {
@@ -93,11 +93,11 @@ export default function WatchDetails({
           .filter(Boolean)
           .join(" · ")}
       </Text>
-      <View style={{ ...styles.row, flexWrap: "wrap" }}>
-        <Button title="Add To" onPress={() => setAdd(!add)} />
-        <Button title="Background" onPress={background} />
-        <Button title="Popup" onPress={popup} />
-        <Button
+      <View style={{ ...styles.row, justifyContent: "space-between" }}>
+        <ActionButton title="Add To" onPress={() => setAdd(!add)} />
+        <ActionButton title="Background" onPress={background} />
+        <ActionButton title="Popup" onPress={popup} />
+        <ActionButton
           title="Download"
           onPress={() =>
             track.youtubeId
@@ -239,7 +239,7 @@ export default function WatchDetails({
       {!!state.queue.length && (
         <Button
           title="Play next"
-          onPress={() => state.advance(track.related,true)}
+          onPress={() => state.advance(track.related, true)}
         />
       )}
       {(track.related || []).map((t) => (

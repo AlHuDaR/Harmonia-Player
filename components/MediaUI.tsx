@@ -297,3 +297,43 @@ export function TrackCard({
     </View>
   );
 }
+
+export function ActionButton({
+  title,
+  onPress,
+  disabled,
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const { t } = useLocale();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t(title)}
+      disabled={disabled}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        minHeight: 56,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 5,
+        opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      <MaterialIcons
+        name={icons[title] || "more-horiz"}
+        size={23}
+        color="#eee"
+      />
+      <Text
+        style={{ color: "#ddd", fontSize: 11, textAlign: "center" }}
+        numberOfLines={1}
+      >
+        {title}
+      </Text>
+    </Pressable>
+  );
+}

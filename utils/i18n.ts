@@ -188,7 +188,12 @@ Object.assign(ar, {
 export function translate(text: string, language: "en" | "ar"): string {
   if (language === "en") return text;
   const normalized = text.replace(/\s+/g, " ").trim();
-  if (ar[normalized]) return ar[normalized];
+  if (ar[normalized])
+    return (
+      (/^\s/.test(text) ? " " : "") +
+      ar[normalized] +
+      (/\s$/.test(text) ? " " : "")
+    );
   if (/^\s+$/.test(text)) return text;
   return text;
 }
