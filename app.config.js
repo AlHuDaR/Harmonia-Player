@@ -92,6 +92,7 @@ export default {
             compileSdkVersion: 36,
             targetSdkVersion: 36,
             buildToolsVersion: "36.0.0",
+            ndkVersion: "27.1.12297006",
           },
         },
       ],
