@@ -235,11 +235,6 @@ export default function WatchDetails({
           )}
         </>
       )}
-      <Text
-        style={{ ...styles.text, textAlign: "center", paddingVertical: 16 }}
-      >
-        Coded By AlHuDaR
-      </Text>
     </View>
   );
 }

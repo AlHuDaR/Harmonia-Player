@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { normalizePreset, type ThemePreset } from "@/constants/themes";
 import type { Track, Playlist, Download } from "@/types/media";
 
 interface PlayerStore {
@@ -32,6 +33,7 @@ interface PlayerStore {
     background: boolean;
     autoPip: boolean;
     theme: "light" | "dark" | "system";
+    preset: ThemePreset;
     transparency: "subtle" | "solid";
     downloadKind: "audio" | "video";
   };
@@ -151,6 +153,7 @@ export const usePlayerStore = create<PlayerStore>()(
         background: true,
         autoPip: false,
         theme: "system",
+        preset: "harmonia",
         transparency: "subtle",
         downloadKind: "audio",
       },
@@ -274,6 +277,7 @@ export const usePlayerStore = create<PlayerStore>()(
             theme: ["light", "dark", "system"].includes(state.settings.theme)
               ? state.settings.theme
               : "system",
+            preset: normalizePreset(state.settings.preset),
             transparency:
               state.settings.transparency === "solid" ? "solid" : "subtle",
             downloadKind:

@@ -3,11 +3,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import VideoRow from "@/components/VideoRow";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
-import { Input, Button, useMediaStyles } from "@/components/MediaUI";
+import {
+  Input,
+  Button,
+  EmptyState,
+  useMediaStyles,
+} from "@/components/MediaUI";
 import { searchYouTube } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";
+import { useTheme } from "@/utils/theme";
 export default function SearchScreen() {
   const styles = useMediaStyles();
+  const theme = useTheme();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -64,7 +71,7 @@ export default function SearchScreen() {
           onSubmitEditing={() => search()}
         />
         <Button title="Search" onPress={() => search()} disabled={busy} />
-        {busy && <ActivityIndicator color="#b7c4ff" />}
+        {busy && <ActivityIndicator color={theme.accent} />}
         {!!error && (
           <Text accessibilityRole="alert" style={styles.error}>
             {error}
@@ -81,6 +88,15 @@ export default function SearchScreen() {
           if (nextPage && !busy) search(true);
         }}
         onEndReachedThreshold={0.4}
+        ListEmptyComponent={
+          !busy && !error ? (
+            <EmptyState
+              icon="search"
+              title="Find your next listen"
+              description="Search YouTube by title or artist. You can also open a link or import a file in Library."
+            />
+          ) : null
+        }
         ListFooterComponent={
           nextPage ? (
             <Button
