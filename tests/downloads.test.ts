@@ -20,7 +20,7 @@ const fs = vi.hoisted(() => ({
   moveAsync: vi.fn(async () => {}),
   createDownloadResumable: vi.fn(),
 }));
-vi.mock("expo-file-system", () => fs);
+vi.mock("expo-file-system/legacy", () => fs);
 vi.mock("../utils/youtube", () => source);
 import { downloadTrack } from "../utils/downloads";
 import { usePlayerStore } from "../store/playerStore";

@@ -26,16 +26,26 @@ module.exports = function withNewPipe(config) {
   config = withMainApplication(config, (mod) => {
     const marker = "// @generated Harmonia NewPipe package";
     if (!mod.modResults.contents.includes(marker)) {
-      const anchor = /val packages = PackageList\(this\)\.packages/;
-      if (!anchor.test(mod.modResults.contents))
+      const applyAnchor = /PackageList\(this\)\.packages\.apply\s*\{/;
+      const legacyAnchor = /val packages = PackageList\(this\)\.packages/;
+
+      if (applyAnchor.test(mod.modResults.contents)) {
+        mod.modResults.contents = mod.modResults.contents.replace(
+          applyAnchor,
+          (match) =>
+            `${match}\n              ${marker}\n              add(com.alhudar.harmonia.youtube.YouTubePackage())`,
+        );
+      } else if (legacyAnchor.test(mod.modResults.contents)) {
+        mod.modResults.contents = mod.modResults.contents.replace(
+          legacyAnchor,
+          (match) =>
+            `${match}\n            ${marker}\n            packages.add(com.alhudar.harmonia.youtube.YouTubePackage())`,
+        );
+      } else {
         throw new Error(
           "Cannot register Harmonia YouTube native package in MainApplication.",
         );
-      mod.modResults.contents = mod.modResults.contents.replace(
-        anchor,
-        (match) =>
-          `${match}\n            ${marker}\n            packages.add(com.alhudar.harmonia.youtube.YouTubePackage())`,
-      );
+      }
     }
     return mod;
   });
