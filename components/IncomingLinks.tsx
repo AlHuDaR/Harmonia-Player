@@ -15,7 +15,7 @@ import { Text } from "./LocalizedText";
 export default function IncomingLinks() {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const controller = useRef<AbortController>();
+  const controller = useRef<AbortController | null>(null);
   useEffect(() => {
     const module = NativeModules.HarmoniaIntents;
     if (Platform.OS !== "android" || !module) return;
