@@ -5,7 +5,7 @@ export default defineConfig({
   workers: 1,
   use: {
     viewport: {width:412,height:915},
-    baseURL: "http://127.0.0.1:8081",
+    baseURL: "http://localhost:8081",
     launchOptions: {
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH,
       args: ["--autoplay-policy=no-user-gesture-required"],
@@ -14,7 +14,7 @@ export default defineConfig({
   webServer: {
     command:
       "EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 CI=1 npm run dev -- --web --localhost --port 8081 --max-workers 2",
-    url: "http://127.0.0.1:8081/",
+    url: "http://localhost:8081/",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

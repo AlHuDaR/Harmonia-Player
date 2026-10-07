@@ -49,6 +49,7 @@
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@playwright/test": "^1.63.0",
+    "@types/node": "^24.19.1",
     "@types/react": "~19.2.10",
     "typescript": "~6.0.3",
     "vite": "^8.3.3",
