@@ -33,7 +33,15 @@ jobs:
       - run: npx expo-doctor@latest
       - run: npm run typecheck
       - run: npm test
-      - run: npx playwright install --with-deps chromium
+      - name: Use preinstalled Chrome for Playwright
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          if [ -z "$CHROME_PATH" ]; then
+            echo "No preinstalled Chrome or Chromium found on runner."
+            exit 1
+          fi
+          echo "PLAYWRIGHT_CHROMIUM_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
+          "$CHROME_PATH" --version
       - run: npm run test:web
       - uses: actions/upload-artifact@v4
         if: always()
