@@ -8,6 +8,8 @@ ios/
 !.env.example
 *.apk
 *.aab
+*.jks
+*.keystore
 server/temp/
 coverage/
 artifacts/
