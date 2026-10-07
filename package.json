@@ -14,6 +14,9 @@
     "test": "vitest run",
     "prebuild:android": "EXPO_NO_TELEMETRY=1 expo prebuild --platform android --no-install",
     "build:apk": "bash scripts/build-apk.sh",
+    "build:universal-apk": "bash scripts/build-android-release.sh universal",
+    "build:aab": "bash scripts/build-android-release.sh aab",
+    "build:android-release": "bash scripts/build-android-release.sh all",
     "test:web": "playwright test"
   },
   "dependencies": {
