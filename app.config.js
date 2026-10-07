@@ -70,6 +70,7 @@ export default {
     },
     plugins: [
       "expo-router",
+      "expo-status-bar",
       "./plugins/withNativeAbiFilters",
       "./plugins/withNewPipe",
       "./plugins/withReleaseSigning",
