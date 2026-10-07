@@ -7,7 +7,6 @@ export default {
     icon: "./assets/images/icon.png",
     scheme: "harmonia",
     userInterfaceStyle: "dark",
-    newArchEnabled: false,
     android: {
       package: "com.alhudar.harmonia",
       versionCode: 5,

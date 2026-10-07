@@ -333,7 +333,7 @@ function MediaEngine({
           player={player}
           style={{ width: "100%", height: "100%", opacity: audioMode ? 0 : 1 }}
           nativeControls={expanded && !audioMode}
-          allowsFullscreen
+          fullscreenOptions={{ enable: true }}
           allowsPictureInPicture
           startsPictureInPictureAutomatically={
             expanded && !audioMode && settings.autoPip
