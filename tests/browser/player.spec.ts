@@ -40,6 +40,14 @@ for (const [file, type] of [
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
       .toBeGreaterThan(1);
     await page.getByLabel("Back to browsing", { exact: true }).click();
+    const mini = await page
+      .getByLabel("Expand player", { exact: true })
+      .boundingBox();
+    const nav = await page
+      .getByRole("tab", { name: "Home", exact: true })
+      .boundingBox();
+    expect(mini!.y + mini!.height).toBeLessThanOrEqual(nav!.y);
+    expect(nav!.y + nav!.height).toBe(915);
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
       .toBe(false);
@@ -92,9 +100,11 @@ test("shows actionable search setup and direct URL errors", async ({
       /YouTube search and streams are available in the Android APK/,
     ),
   ).toBeVisible();
-  await page.getByRole("tab", { name: /Downloads/ }).click();
+  await page.getByRole("tab", { name: /Library/ }).click();
+  await page.getByRole("button", { name: "Downloads", exact: true }).click();
   await expect(page.getByText(/Files are saved privately/)).toBeVisible();
-  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(
     page.getByLabel("Background playback", { exact: true }),
   ).toBeVisible();
@@ -105,12 +115,17 @@ test("language switches instantly and persists with a clean Home", async ({
 }) => {
   await page.goto("/");
   await expect(page.getByLabel("Media URL", { exact: true })).toHaveCount(0);
-  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Close menu", exact: true }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "العربية", exact: true }).click();
   await expect(page.getByRole("tab", { name: /الرئيسية/ })).toBeVisible();
   await expect(page.getByText("اللغة", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText("اللغة", { exact: true })).toBeVisible();
+  await expect(page.getByText("Harmonia", { exact: true })).toBeVisible();
   await page.screenshot({
     path: "artifacts/screenshots/settings-ar.png",
     fullPage: true,
@@ -180,4 +195,134 @@ test("Downloads Previous and Next follow the saved list", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Next", exact: true }),
   ).toBeDisabled();
+});
+
+test("four tabs, dismissible drawer, persistent themes and full developer credit", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByRole("tab")).toHaveCount(4);
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await page.mouse.click(400, 450);
+  await expect(
+    page.getByRole("button", { name: "About Harmonia", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Close menu", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Light", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "✓ Light", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "✓ Light", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "artifacts/screenshots/settings-light.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Dark", exact: true }).click();
+  await page.screenshot({
+    path: "artifacts/screenshots/settings-dark.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "System", exact: true }).click();
+  await page.emulateMedia({ colorScheme: "light" });
+  const lightColor = await page
+    .getByRole("button", { name: "Open menu", exact: true })
+    .locator("..")
+    .locator("..")
+    .evaluate((v) => getComputedStyle(v).backgroundColor);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect
+    .poll(() =>
+      page
+        .getByRole("button", { name: "Open menu", exact: true })
+        .locator("..")
+        .locator("..")
+        .evaluate((v) => getComputedStyle(v).backgroundColor),
+    )
+    .not.toBe(lightColor);
+  expect(
+    await page.getByRole("button", { name: "✓ System", exact: true }).count(),
+  ).toBe(1);
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await page
+    .getByRole("button", { name: "About Harmonia", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Close menu", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("developer-credit")).toHaveText(
+    "Coded By AlHuDaR",
+  );
+  await expect(page.getByText("1.5.0", { exact: false })).toBeVisible();
+  await page.setViewportSize({ width: 240, height: 640 });
+  const credit = page.getByTestId("developer-credit");
+  expect(
+    await credit.evaluate(
+      (v) =>
+        v.scrollWidth <= v.clientWidth &&
+        getComputedStyle(v).textOverflow !== "ellipsis",
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "artifacts/screenshots/about-small.png",
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Source Code & Licenses", exact: true })
+    .click();
+  await expect(
+    page.getByText("GPL-3.0-or-later", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("https://github.com/AlHuDaR/Harmonia-Player", {
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test("Home uses at most nine real saved tracks in a three-column grid", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const tracks = Array.from({ length: 12 }, (_, index) => ({
+      id: `saved:${index}`,
+      title: `Real ${index}`,
+      artist: "Saved",
+      kind: "audio",
+      uri: `https://media.test/${index}.mp3`,
+    }));
+    localStorage.setItem(
+      "harmonia-library-v1",
+      JSON.stringify({
+        state: {
+          tracks,
+          history: tracks.map((t) => t.id),
+          settings: { background: true, autoPip: false },
+          language: "en",
+        },
+        version: 0,
+      }),
+    );
+  });
+  await page.goto("/");
+  const cards = page.getByTestId("speed-dial").getByRole("button");
+  await expect(cards).toHaveCount(9);
+  const bounds = await cards.evaluateAll((elements) =>
+    elements.map((e) => {
+      const r = e.getBoundingClientRect();
+      return { x: r.x, y: r.y };
+    }),
+  );
+  expect(new Set(bounds.map((r) => r.y)).size).toBe(3);
+  expect(new Set(bounds.map((r) => r.x)).size).toBe(3);
+  await page.screenshot({
+    path: "artifacts/screenshots/home-grid.png",
+    fullPage: true,
+  });
 });

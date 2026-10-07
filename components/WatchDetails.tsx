@@ -1,9 +1,9 @@
 import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
 import { useEffect, useState } from "react";
-import { View, Switch, Image, Share } from "react-native";
-import { Button, ActionButton, Input, styles } from "./MediaUI";
-import VideoRow, { count } from "./VideoRow";
+import { View, Switch, Share } from "react-native";
+import { Button, ActionButton, Input, useMediaStyles } from "./MediaUI";
+import VideoRow from "./VideoRow";
 import { usePlayerStore } from "@/store/playerStore";
 import {
   youtubeFormats,
@@ -23,6 +23,7 @@ export default function WatchDetails({
   background: () => void;
   popup: () => void;
 }) {
+  const styles = useMediaStyles();
   const { t } = useLocale();
   const state = usePlayerStore();
   const [action, setAction] = useState<"play" | "download" | null>(null),
@@ -45,7 +46,16 @@ export default function WatchDetails({
     youtubeFormats(track, controller.signal)
       .then((f) => {
         if (!controller.signal.aborted)
-          setFormats(f.filter((x) => action === "play" || x.downloadable));
+          setFormats(
+            f
+              .filter((x) => action === "play" || x.downloadable)
+              .sort((a, b) =>
+                action === "download"
+                  ? Number(b.kind === state.settings.downloadKind) -
+                    Number(a.kind === state.settings.downloadKind)
+                  : 0,
+              ),
+          );
       })
       .catch((e) => {
         if (!controller.signal.aborted) setError(message(e));
@@ -60,39 +70,9 @@ export default function WatchDetails({
       (d.track.youtubeId === track.youtubeId && track.youtubeId) ||
       d.track.id === track.id,
   );
+  const [showQueue, setShowQueue] = useState(false);
   return (
-    <View style={{ padding: 16, gap: 16 }}>
-      <View style={styles.row}>
-        {!!track.channelAvatar && (
-          <Image
-            source={{ uri: track.channelAvatar }}
-            style={{ width: 44, height: 44, borderRadius: 22 }}
-          />
-        )}
-        <View style={{ flex: 1 }}>
-          <Text raw style={styles.heading}>
-            {track.artist}
-          </Text>
-          {track.subscribers != null && track.subscribers >= 0 && (
-            <Text style={styles.text}>
-              {count(track.subscribers)} subscribers
-            </Text>
-          )}
-        </View>
-      </View>
-      <Text style={styles.text}>
-        {[
-          track.views != null && track.views >= 0
-            ? `${count(track.views)} ${t("views")}`
-            : "",
-          track.likes != null && track.likes >= 0
-            ? `${count(track.likes)} ${t("likes")}`
-            : "",
-          track.uploaded,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </Text>
+    <View style={{ padding: 12, gap: 8 }}>
       <View style={{ ...styles.row, justifyContent: "space-between" }}>
         <ActionButton title="Add To" onPress={() => setAdd(!add)} />
         <ActionButton title="Background" onPress={background} />
@@ -212,41 +192,48 @@ export default function WatchDetails({
           {error}
         </Text>
       )}
-      <View style={styles.row}>
-        <Text style={{ ...styles.heading, flex: 1 }}>Up next</Text>
-        <Text style={styles.text}>Auto-enqueue</Text>
-        <Switch
-          accessibilityLabel={t("Auto-enqueue related videos")}
-          value={state.autoQueue}
-          onValueChange={(autoQueue) => usePlayerStore.setState({ autoQueue })}
-        />
-      </View>
-      {state.queue.map((t, i) => (
-        <View key={`${t.id}:${i}`} style={styles.card}>
-          <Text style={styles.text}>
-            {i + 1}. {t.title}
-          </Text>
-          <View style={{ ...styles.row, flexWrap: "wrap" }}>
-            <Button
-              title="Move up"
-              disabled={i === 0}
-              onPress={() => state.moveQueued(i, -1)}
+      <Button title="Up next" onPress={() => setShowQueue(!showQueue)} />
+      {showQueue && (
+        <>
+          <View style={styles.row}>
+            <Text style={{ ...styles.heading, flex: 1 }}>Up next</Text>
+            <Text style={styles.text}>Auto-enqueue</Text>
+            <Switch
+              accessibilityLabel={t("Auto-enqueue related videos")}
+              value={state.autoQueue}
+              onValueChange={(autoQueue) =>
+                usePlayerStore.setState({ autoQueue })
+              }
             />
-            <Button title="Remove" onPress={() => state.removeQueued(i)} />
           </View>
-        </View>
-      ))}
-      {!!state.queue.length && (
-        <Button
-          title="Play next"
-          onPress={() => state.advance(track.related, true)}
-        />
-      )}
-      {(track.related || []).map((t) => (
-        <VideoRow key={t.id} track={t} />
-      ))}
-      {!track.related?.length && (
-        <Text style={styles.text}>No related videos available.</Text>
+          {state.queue.map((t, i) => (
+            <View key={`${t.id}:${i}`} style={styles.card}>
+              <Text style={styles.text}>
+                {i + 1}. {t.title}
+              </Text>
+              <View style={{ ...styles.row, flexWrap: "wrap" }}>
+                <Button
+                  title="Move up"
+                  disabled={i === 0}
+                  onPress={() => state.moveQueued(i, -1)}
+                />
+                <Button title="Remove" onPress={() => state.removeQueued(i)} />
+              </View>
+            </View>
+          ))}
+          {!!state.queue.length && (
+            <Button
+              title="Play next"
+              onPress={() => state.advance(track.related, true)}
+            />
+          )}
+          {(track.related || []).map((t) => (
+            <VideoRow key={t.id} track={t} />
+          ))}
+          {!track.related?.length && (
+            <Text style={styles.text}>No related videos available.</Text>
+          )}
+        </>
       )}
       <Text
         style={{ ...styles.text, textAlign: "center", paddingVertical: 16 }}

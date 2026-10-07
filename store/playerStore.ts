@@ -31,6 +31,9 @@ interface PlayerStore {
   settings: {
     background: boolean;
     autoPip: boolean;
+    theme: "light" | "dark" | "system";
+    transparency: "subtle" | "solid";
+    downloadKind: "audio" | "video";
   };
   setCurrentTrack: (track: Track | null) => void;
   addTrack: (track: Track) => void;
@@ -147,6 +150,9 @@ export const usePlayerStore = create<PlayerStore>()(
       settings: {
         background: true,
         autoPip: false,
+        theme: "system",
+        transparency: "subtle",
+        downloadKind: "audio",
       },
       addTrack: (track) =>
         set((s) => ({
@@ -265,6 +271,13 @@ export const usePlayerStore = create<PlayerStore>()(
           state.settings = {
             background: state.settings.background ?? true,
             autoPip: state.settings.autoPip ?? false,
+            theme: ["light", "dark", "system"].includes(state.settings.theme)
+              ? state.settings.theme
+              : "system",
+            transparency:
+              state.settings.transparency === "solid" ? "solid" : "subtle",
+            downloadKind:
+              state.settings.downloadKind === "video" ? "video" : "audio",
           };
           state.downloads = state.downloads.map((d) =>
             d.status === "downloading"

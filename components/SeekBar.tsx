@@ -1,3 +1,4 @@
+import { useTheme } from "@/utils/theme";
 import { useState } from "react";
 import { View } from "react-native";
 import { useLocale } from "@/utils/i18n";
@@ -11,6 +12,7 @@ export default function SeekBar({
   onSeek: (n: number) => void;
 }) {
   const { t } = useLocale();
+  const theme = useTheme();
   const [width, setWidth] = useState(1);
   const valid = Number.isFinite(duration) && duration > 0;
   return (
@@ -55,13 +57,13 @@ export default function SeekBar({
     >
       <View
         pointerEvents="none"
-        style={{ height: 4, backgroundColor: "#383838", borderRadius: 3 }}
+        style={{ height: 4, backgroundColor: theme.border, borderRadius: 3 }}
       >
         <View
           style={{
             height: 4,
             width: `${valid ? Math.max(0, Math.min(100, (value / duration) * 100)) : 0}%`,
-            backgroundColor: "#fff",
+            backgroundColor: theme.accent,
             borderRadius: 3,
           }}
         />

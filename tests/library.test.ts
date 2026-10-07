@@ -215,3 +215,67 @@ describe("list transport", () => {
     expect(usePlayerStore.getState().language).toBe("ar");
   });
 });
+
+describe("release preference migration", () => {
+  it("adds preference defaults to an older library without losing saved media", async () => {
+    const track = {
+      ...directTrack("https://example.com/retained.mp3"),
+      localUri: "file:///documents/imports/retained.mp3",
+    };
+    const savedState = {
+      tracks: [track],
+      history: [track.id],
+      favorites: [track.id],
+      playlists: [{ id: "saved", name: "Keep", trackIds: [track.id] }],
+      downloads: [{ track, status: "complete", progress: 1 }],
+      settings: { background: false, autoPip: true },
+      language: "ar",
+    };
+    storage.set(
+      "harmonia-library-v1",
+      JSON.stringify({ state: savedState, version: 0 }),
+    );
+    await usePlayerStore.persist.rehydrate();
+    const state = usePlayerStore.getState();
+    expect(state.settings).toEqual({
+      background: false,
+      autoPip: true,
+      theme: "system",
+      transparency: "subtle",
+      downloadKind: "audio",
+    });
+    for (const key of [
+      "tracks",
+      "downloads",
+      "playlists",
+      "favorites",
+      "history",
+      "language",
+    ] as const)
+      expect(state[key]).toEqual(savedState[key]);
+  });
+  it("persists appearance and format preferences across a restart", async () => {
+    usePlayerStore
+      .getState()
+      .updateSettings({
+        theme: "light",
+        transparency: "solid",
+        downloadKind: "video",
+      });
+    const saved = storage.get("harmonia-library-v1")!;
+    usePlayerStore
+      .getState()
+      .updateSettings({
+        theme: "dark",
+        transparency: "subtle",
+        downloadKind: "audio",
+      });
+    storage.set("harmonia-library-v1", saved);
+    await usePlayerStore.persist.rehydrate();
+    expect(usePlayerStore.getState().settings).toMatchObject({
+      theme: "light",
+      transparency: "solid",
+      downloadKind: "video",
+    });
+  });
+});

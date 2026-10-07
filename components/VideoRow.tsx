@@ -1,3 +1,4 @@
+import { useTheme } from "@/utils/theme";
 import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
 import { View, Image, Pressable } from "react-native";
@@ -24,6 +25,7 @@ export const duration = (n?: number) =>
         .join(":");
 export default function VideoRow({ track }: { track: Track }) {
   const { t } = useLocale();
+  const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -33,14 +35,14 @@ export default function VideoRow({ track }: { track: Track }) {
         flexDirection: "row",
         gap: 12,
         paddingVertical: 12,
-        minHeight: 110,
+        minHeight: 84,
       }}
     >
       <View
         style={{
-          width: 140,
-          height: 80,
-          backgroundColor: "#292c38",
+          width: 110,
+          height: 66,
+          backgroundColor: theme.surface,
           borderRadius: 8,
           overflow: "hidden",
         }}
@@ -70,14 +72,14 @@ export default function VideoRow({ track }: { track: Track }) {
         <Text
           raw
           numberOfLines={2}
-          style={{ color: "white", fontSize: 16, writingDirection: "auto" }}
+          style={{ color: theme.text, fontSize: 14, writingDirection: "auto" }}
         >
           {track.title}
         </Text>
-        <Text raw numberOfLines={1} style={{ color: "#aeb5c8" }}>
+        <Text raw numberOfLines={1} style={{ color: theme.muted }}>
           {track.artist}
         </Text>
-        <Text style={{ color: "#aeb5c8", fontSize: 12 }}>
+        <Text style={{ color: theme.muted, fontSize: 12 }}>
           {[
             track.views != null && track.views >= 0
               ? `${count(track.views)} ${t("views")}`

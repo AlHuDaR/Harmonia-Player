@@ -150,3 +150,7 @@ Release validation must cover Android Back, background/lock-screen playback, PiP
 ## 1.4 bilingual player and external links
 
 Adds saved Arabic/English selection, RTL layout, compact action sheets, audio/video controls, Previous/Next, shuffle/repeat, offline list playback and Android YouTube VIEW/SEND handling. Home is focused on browsing; manual links and imports are in Library. See [release scope and device checklist](docs/release-1.4.md) for production-signing configuration, Android link-default behavior and remaining commercial release gates.
+
+## Release 1.5.0
+
+Fresh production baseline with compact navigation, a mini player above the four tabs, real-media Home grid, persistent Light/Dark/System themes, and separate Settings/About/Support/Licenses screens. Package ID stays `com.alhudar.harmonia`; Android versionCode is `6`. See [permanent signing, production build, storage and device checks](docs/release-1.5.md). PR/CI artifacts remain test-signed until the permanent production key is supplied explicitly.

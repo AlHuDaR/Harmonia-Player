@@ -1,9 +1,9 @@
+import { useTheme } from "@/utils/theme";
 import { IconButton } from "./MediaUI";
 import { useLocale } from "@/utils/i18n";
 import SeekBar from "./SeekBar";
 import { Text } from "@/components/LocalizedText";
 import WatchDetails from "./WatchDetails";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useRef, useState } from "react";
 import {
   View,
@@ -37,6 +37,9 @@ export default function Player() {
 }
 function ActivePlayer({ track }: { track: Track }) {
   const { t } = useLocale();
+  const theme = useTheme();
+  const styles = usePlayerStyles();
+  const expanded = usePlayerStore((s) => s.expanded);
   const [uri, setUri] = useState<MediaSource | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -55,7 +58,18 @@ function ActivePlayer({ track }: { track: Track }) {
   }, [track, retry]);
   if (!uri)
     return (
-      <View style={styles.container}>
+      <View
+        style={[
+          styles.container,
+          expanded && {
+            position: "absolute",
+            inset: 0,
+            zIndex: 20,
+            padding: 16,
+            justifyContent: "center",
+          },
+        ]}
+      >
         <Text raw style={styles.title}>
           {track.title}
         </Text>
@@ -94,6 +108,8 @@ function MediaEngine({
   onRetry: () => void;
 }) {
   const { t } = useLocale();
+  const theme = useTheme();
+  const styles = usePlayerStyles();
   const transport = usePlayerStore();
   const [audioMode, setAudioMode] = useState(track.kind === "audio");
   const [switching, setSwitching] = useState(false);
@@ -107,7 +123,7 @@ function MediaEngine({
   const [duration, setDuration] = useState(0);
   const expanded = usePlayerStore((s) => s.expanded);
   const setExpanded = usePlayerStore((s) => s.setExpanded);
-  const insets = useSafeAreaInsets();
+
   const { width, height } = useWindowDimensions();
   const [details, setDetails] = useState(track);
   const related = useRef<Track[]>([]);
@@ -272,300 +288,348 @@ function MediaEngine({
                 right: 0,
                 bottom: 0,
                 zIndex: 20,
-                paddingTop: insets.top,
               },
             ]
           : styles.container
       }
     >
-      {expanded && (
-        <View style={[styles.row, { justifyContent: "space-between" }]}>
-          <IconButton
-            name="keyboard-arrow-down"
-            label="Back to browsing"
-            onPress={() => setExpanded(false)}
-          />
+      <ScrollView
+        scrollEnabled={expanded}
+        style={expanded ? { flex: 1 } : { flexGrow: 0 }}
+        contentContainerStyle={expanded ? { paddingBottom: 12 } : undefined}
+      >
+        {expanded && (
           <View
             style={[
               styles.row,
-              { backgroundColor: "#202020", borderRadius: 24 },
+              { justifyContent: "space-between", flexWrap: "wrap" },
             ]}
           >
             <IconButton
-              name="headphones"
-              label="Audio"
-              active={audioMode}
-              disabled={switching}
-              onPress={() => changeMode(true)}
+              name="keyboard-arrow-down"
+              label="Back to browsing"
+              onPress={() => setExpanded(false)}
             />
-            <IconButton
-              name="smart-display"
-              label="Video"
-              active={!audioMode}
-              disabled={switching}
-              onPress={() => changeMode(false)}
-            />
-          </View>
-          <IconButton
-            name="picture-in-picture-alt"
-            label="Popup"
-            onPress={() =>
-              view.current
-                ?.startPictureInPicture()
-                .catch((e) => setActionError(message(e)))
-            }
-          />
-          <IconButton
-            name="close"
-            label="Close player"
-            onPress={() => transport.setCurrentTrack(null)}
-          />
-        </View>
-      )}
-      <View
-        style={{
-          height: expanded ? Math.min((width * 9) / 16, height * 0.32) : 1,
-          backgroundColor: "#000",
-        }}
-      >
-        <VideoView
-          ref={view}
-          player={player}
-          style={{ width: "100%", height: "100%", opacity: audioMode ? 0 : 1 }}
-          nativeControls={expanded && !audioMode}
-          fullscreenOptions={{ enable: true }}
-          allowsPictureInPicture
-          startsPictureInPictureAutomatically={
-            expanded && !audioMode && settings.autoPip
-          }
-          contentFit="contain"
-        />
-        {audioMode && expanded && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {track.cover ? (
-              <Image
-                source={{ uri: track.cover }}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="contain"
+            <View
+              style={[
+                styles.row,
+                { backgroundColor: theme.surface, borderRadius: 24 },
+              ]}
+            >
+              <IconButton
+                name="headphones"
+                label="Audio"
+                active={audioMode}
+                disabled={switching}
+                onPress={() => changeMode(true)}
               />
-            ) : (
-              <Text raw style={styles.title}>
-                {track.artist}
-              </Text>
-            )}
-          </View>
-        )}
-      </View>
-      <View style={[styles.row, { paddingHorizontal: 12 }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("Expand player")}
-          style={{ flex: 1, paddingVertical: 12 }}
-          onPress={() => setExpanded(!expanded)}
-        >
-          <Text
-            raw
-            style={[styles.title, { fontSize: expanded ? 20 : 14 }]}
-            numberOfLines={expanded ? 2 : 1}
-          >
-            {track.title}
-          </Text>
-          <Text raw style={styles.muted} numberOfLines={1}>
-            {track.artist}
-          </Text>
-        </Pressable>
-        {expanded ? (
-          <IconButton
-            name={favorite ? "favorite" : "favorite-border"}
-            label={favorite ? "Remove favorite" : "Favorite"}
-            active={favorite}
-            onPress={() => transport.toggleFavorite(track.id)}
-          />
-        ) : (
-          <>
+              <IconButton
+                name="smart-display"
+                label="Video"
+                active={!audioMode}
+                disabled={switching}
+                onPress={() => changeMode(false)}
+              />
+            </View>
             <IconButton
-              name={playing ? "pause" : "play-arrow"}
-              label={playing ? "Pause" : "Play"}
-              disabled={loading}
-              onPress={() => (playing ? player.pause() : player.play())}
+              name="fullscreen"
+              label="Fullscreen"
+              onPress={() =>
+                view.current
+                  ?.enterFullscreen()
+                  .catch((e) => setActionError(message(e)))
+              }
             />
             <IconButton
-              name="skip-next"
-              label="Next"
-              disabled={!canNext}
-              onPress={next}
+              name="picture-in-picture-alt"
+              label="Popup"
+              onPress={() =>
+                view.current
+                  ?.startPictureInPicture()
+                  .catch((e) => setActionError(message(e)))
+              }
             />
             <IconButton
               name="close"
               label="Close player"
               onPress={() => transport.setCurrentTrack(null)}
             />
-          </>
-        )}
-      </View>
-      {expanded && (
-        <>
-          <SeekBar
-            value={position}
-            duration={duration}
-            onSeek={(value) => {
-              player.currentTime = value;
-            }}
-          />
-          <View
-            style={[
-              styles.row,
-              {
-                direction: "ltr",
-                justifyContent: "space-between",
-                paddingHorizontal: 14,
-              },
-            ]}
-          >
-            <Text style={styles.muted}>{clock(position)}</Text>
-            <Text style={styles.muted}>{clock(duration)}</Text>
           </View>
-          <View
-            style={[
-              styles.row,
-              {
-                direction: "ltr",
-                justifyContent: "space-evenly",
-                paddingVertical: 8,
-              },
-            ]}
-          >
-            <IconButton
-              name="shuffle"
-              label="Shuffle"
-              active={transport.shuffle}
-              onPress={() =>
-                usePlayerStore.setState({ shuffle: !transport.shuffle })
-              }
-            />
-            <IconButton
-              name="skip-previous"
-              label="Previous"
-              size={36}
-              disabled={!canPrevious}
-              onPress={() => transport.previous()}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t(playing ? "Pause" : "Play")}
-              disabled={loading}
-              onPress={() => (playing ? player.pause() : player.play())}
+        )}
+        <View
+          style={{
+            height: expanded ? Math.min((width * 9) / 16, height * 0.25) : 1,
+            backgroundColor: audioMode ? theme.surface : "#000",
+          }}
+        >
+          <VideoView
+            ref={view}
+            player={player}
+            style={{
+              width: "100%",
+              height: "100%",
+              opacity: audioMode ? 0 : 1,
+            }}
+            nativeControls={expanded && !audioMode}
+            fullscreenOptions={{ enable: true }}
+            allowsPictureInPicture
+            startsPictureInPictureAutomatically={
+              expanded && !audioMode && settings.autoPip
+            }
+            contentFit="contain"
+          />
+          {audioMode && expanded && (
+            <View
+              pointerEvents="none"
               style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: "#fff",
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text
-                style={{ color: "#000", fontSize: 30, textAlign: "center" }}
-              >
-                {loading ? "…" : playing ? "Ⅱ" : "▶"}
-              </Text>
-            </Pressable>
-            <IconButton
-              name="skip-next"
-              label="Next"
-              size={36}
-              disabled={!canNext}
-              onPress={next}
-            />
-            <IconButton
-              name={transport.repeat === "one" ? "repeat-one" : "repeat"}
-              label={
-                transport.repeat === "one"
-                  ? "Repeat one"
-                  : transport.repeat === "all"
-                    ? "Repeat all"
-                    : "Repeat off"
-              }
-              active={transport.repeat !== "off"}
-              onPress={() =>
-                usePlayerStore.setState({
-                  repeat:
-                    transport.repeat === "off"
-                      ? "all"
-                      : transport.repeat === "all"
-                        ? "one"
-                        : "off",
-                })
-              }
-            />
-          </View>
-          <View
-            style={[styles.row, { direction: "ltr", justifyContent: "center" }]}
-          >
-            <IconButton
-              name="replay-10"
-              label="Seek back 10 seconds"
-              onPress={() => seek(-10)}
-            />
-            <IconButton
-              name="forward-10"
-              label="Seek forward 10 seconds"
-              onPress={() => seek(10)}
-            />
-          </View>
-        </>
-      )}
-      {!!error && (
-        <View style={styles.row}>
-          <Text accessibilityRole="alert" style={{ color: "#ff9c9c", flex: 1 }}>
-            {error}
-          </Text>
-          <IconButton name="refresh" label="Retry" onPress={onRetry} />
+              {track.cover ? (
+                <Image
+                  source={{ uri: track.cover }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.title}>Audio</Text>
+              )}
+            </View>
+          )}
         </View>
-      )}
-      {!!actionError && (
-        <Text accessibilityRole="alert" style={{ color: "#ff9c9c" }}>
-          {actionError}
-        </Text>
-      )}
-      {expanded && (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+        <View
+          style={[
+            styles.row,
+            { paddingHorizontal: 10, minHeight: expanded ? 52 : 50 },
+          ]}
         >
-          <WatchDetails
-            track={{ ...details, kind: track.kind, localUri: track.localUri }}
-            position={() => player.currentTime}
-            background={() => {
-              transport.updateSettings({ background: true });
-              setExpanded(false);
-            }}
-            popup={() =>
-              view.current
-                ?.startPictureInPicture()
-                .catch((e) => setActionError(message(e)))
-            }
-          />
-        </ScrollView>
-      )}
+          {!expanded &&
+            (track.cover ? (
+              <Image
+                source={{ uri: track.cover }}
+                style={{ width: 34, height: 34, borderRadius: 7 }}
+              />
+            ) : (
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 7,
+                  backgroundColor: theme.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: theme.muted }}>♪</Text>
+              </View>
+            ))}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("Expand player")}
+            style={{ flex: 1, minWidth: 0, paddingVertical: 8 }}
+            onPress={() => setExpanded(!expanded)}
+          >
+            <Text
+              raw
+              style={[styles.title, { fontSize: expanded ? 20 : 14 }]}
+              numberOfLines={expanded ? 2 : 1}
+            >
+              {track.title}
+            </Text>
+          </Pressable>
+          {expanded ? (
+            <IconButton
+              name={favorite ? "favorite" : "favorite-border"}
+              label={favorite ? "Remove favorite" : "Favorite"}
+              active={favorite}
+              onPress={() => transport.toggleFavorite(track.id)}
+            />
+          ) : (
+            <>
+              <IconButton
+                name={playing ? "pause" : "play-arrow"}
+                label={playing ? "Pause" : "Play"}
+                disabled={loading}
+                onPress={() => (playing ? player.pause() : player.play())}
+              />
+              <IconButton
+                name="skip-next"
+                label="Next"
+                disabled={!canNext}
+                onPress={next}
+              />
+            </>
+          )}
+        </View>
+        {expanded && (
+          <>
+            <SeekBar
+              value={position}
+              duration={duration}
+              onSeek={(value) => {
+                player.currentTime = value;
+              }}
+            />
+            <View
+              style={[
+                styles.row,
+                {
+                  direction: "ltr",
+                  justifyContent: "space-between",
+                  paddingHorizontal: 14,
+                },
+              ]}
+            >
+              <Text style={styles.muted}>{clock(position)}</Text>
+              <Text style={styles.muted}>{clock(duration)}</Text>
+            </View>
+            <View
+              style={[
+                styles.row,
+                {
+                  direction: "ltr",
+                  justifyContent: "space-evenly",
+                  paddingVertical: 8,
+                },
+              ]}
+            >
+              <IconButton
+                name="shuffle"
+                label="Shuffle"
+                active={transport.shuffle}
+                onPress={() =>
+                  usePlayerStore.setState({ shuffle: !transport.shuffle })
+                }
+              />
+              <IconButton
+                name="skip-previous"
+                label="Previous"
+                size={36}
+                disabled={!canPrevious}
+                onPress={() => transport.previous()}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t(playing ? "Pause" : "Play")}
+                disabled={loading}
+                onPress={() => (playing ? player.pause() : player.play())}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: theme.text,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.background,
+                    fontSize: 26,
+                    textAlign: "center",
+                  }}
+                >
+                  {loading ? "…" : playing ? "Ⅱ" : "▶"}
+                </Text>
+              </Pressable>
+              <IconButton
+                name="skip-next"
+                label="Next"
+                size={36}
+                disabled={!canNext}
+                onPress={next}
+              />
+              <IconButton
+                name={transport.repeat === "one" ? "repeat-one" : "repeat"}
+                label={
+                  transport.repeat === "one"
+                    ? "Repeat one"
+                    : transport.repeat === "all"
+                      ? "Repeat all"
+                      : "Repeat off"
+                }
+                active={transport.repeat !== "off"}
+                onPress={() =>
+                  usePlayerStore.setState({
+                    repeat:
+                      transport.repeat === "off"
+                        ? "all"
+                        : transport.repeat === "all"
+                          ? "one"
+                          : "off",
+                  })
+                }
+              />
+            </View>
+            <View
+              style={[
+                styles.row,
+                { direction: "ltr", justifyContent: "center" },
+              ]}
+            >
+              <IconButton
+                name="replay-10"
+                label="Seek back 10 seconds"
+                onPress={() => seek(-10)}
+              />
+              <IconButton
+                name="forward-10"
+                label="Seek forward 10 seconds"
+                onPress={() => seek(10)}
+              />
+            </View>
+          </>
+        )}
+        {!!error && (
+          <View style={styles.row}>
+            <Text
+              accessibilityRole="alert"
+              style={{ color: theme.error, flex: 1 }}
+            >
+              {error}
+            </Text>
+            <IconButton name="refresh" label="Retry" onPress={onRetry} />
+          </View>
+        )}
+        {!!actionError && (
+          <Text accessibilityRole="alert" style={{ color: theme.error }}>
+            {actionError}
+          </Text>
+        )}
+        {expanded && (
+          <View>
+            <WatchDetails
+              track={{ ...details, kind: track.kind, localUri: track.localUri }}
+              position={() => player.currentTime}
+              background={() => {
+                transport.updateSettings({ background: true });
+                setExpanded(false);
+              }}
+              popup={() =>
+                view.current
+                  ?.startPictureInPicture()
+                  .catch((e) => setActionError(message(e)))
+              }
+            />
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
-const styles = StyleSheet.create({
-  container: { backgroundColor: "#0b0b0b" },
-  row: { flexDirection: "row", alignItems: "center", gap: 6 },
-  title: { color: "white", fontWeight: "600", fontSize: 16 },
-  muted: { color: "#aaa", fontSize: 13 },
-  button: { color: "#eee", padding: 12, fontSize: 14 },
-});
+function usePlayerStyles() {
+  const theme = useTheme();
+  return StyleSheet.create({
+    container: { backgroundColor: theme.surface, flexShrink: 0 },
+    row: { flexDirection: "row", alignItems: "center", gap: 6 },
+    title: { color: theme.text, fontWeight: "600", fontSize: 16 },
+    muted: { color: theme.muted, fontSize: 13 },
+    button: { color: theme.text, padding: 12, fontSize: 14 },
+  });
+}
