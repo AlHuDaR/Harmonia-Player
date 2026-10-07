@@ -185,6 +185,49 @@ Object.assign(ar, {
   "Request cancelled.": "تم إلغاء الطلب.",
   "Could not open link settings.": "تعذر فتح إعدادات الروابط.",
 });
+Object.assign(ar, {
+  Samples: "مقتطفات",
+  "Speed dial": "تشغيل سريع",
+  "Explore your recent music and videos.":
+    "استكشف الموسيقى والفيديوهات الأخيرة في مكتبتك.",
+  "Open menu": "فتح القائمة",
+  "Close menu": "إغلاق القائمة",
+  "Main navigation": "التنقل الرئيسي",
+  "About Harmonia": "حول هارمونيا",
+  "Support the Developer": "دعم المطور",
+  "Source Code & Licenses": "الشيفرة المصدرية والتراخيص",
+  Appearance: "المظهر",
+  Light: "فاتح",
+  Dark: "داكن",
+  System: "النظام",
+  "Surface transparency": "شفافية الواجهة",
+  Subtle: "شفافية خفيفة",
+  Solid: "غير شفاف",
+  "Preferred download format": "صيغة التنزيل المفضلة",
+  "Choose available quality in the player before downloading.":
+    "اختر الجودة المتاحة في المشغل قبل التنزيل.",
+  Links: "الروابط",
+  "Storage & Privacy": "التخزين والخصوصية",
+  "Normal updates keep your library and preferences.":
+    "تحافظ التحديثات العادية على مكتبتك وتفضيلاتك.",
+  Version: "الإصدار",
+  Developer: "المطور",
+  "An independent player developed by AlHuDaR.": "مشغل مستقل من تطوير الهودار.",
+  "Report issues or suggest improvements on GitHub.":
+    "أبلغ عن المشكلات أو اقترح تحسينات عبر GitHub.",
+  "Developer support": "التواصل مع المطور",
+  "Donations coming soon": "التبرعات قريباً",
+  "Open repository": "فتح المستودع",
+  "NewPipe Extractor": "NewPipe Extractor",
+  "Harmonia is free software. Source code and license terms are available in the repository.":
+    "هارمونيا برنامج حر. تتوفر الشيفرة المصدرية وشروط الترخيص في المستودع.",
+  "Uses NewPipe Extractor by Team NewPipe under GPL-3.0-or-later.":
+    "يستخدم NewPipe Extractor من فريق NewPipe بترخيص GPL-3.0-or-later.",
+  "Other dependencies retain their respective licenses. See the third-party notices and bundled dependency license files.":
+    "تحتفظ المكتبات الأخرى بتراخيصها. راجع إشعارات الجهات الخارجية وملفات تراخيص المكتبات.",
+  "Third-party notices": "إشعارات الجهات الخارجية",
+  Fullscreen: "ملء الشاشة",
+});
 export function translate(text: string, language: "en" | "ar"): string {
   if (language === "en") return text;
   const normalized = text.replace(/\s+/g, " ").trim();

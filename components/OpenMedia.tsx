@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { Text } from "./LocalizedText";
-import { Input, Button, styles } from "./MediaUI";
+import { Input, Button, useMediaStyles } from "./MediaUI";
 import { youtubeTrack } from "@/utils/youtube";
 import { directTrack, message } from "@/types/media";
 import { usePlayerStore } from "@/store/playerStore";
 import { importMedia } from "@/utils/downloads";
 export default function OpenMedia() {
+  const styles = useMediaStyles();
   const [show, setShow] = useState(false),
     [url, setUrl] = useState(""),
     [error, setError] = useState(""),

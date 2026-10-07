@@ -10,9 +10,10 @@ import { incomingVideo } from "@/utils/incomingLinks";
 import { youtubeTrack } from "@/utils/youtube";
 import { message } from "@/types/media";
 import { usePlayerStore } from "@/store/playerStore";
-import { Button, styles } from "./MediaUI";
+import { Button, useMediaStyles } from "./MediaUI";
 import { Text } from "./LocalizedText";
 export default function IncomingLinks() {
+  const styles = useMediaStyles();
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const controller = useRef<AbortController | null>(null);
@@ -69,7 +70,7 @@ export default function IncomingLinks() {
     };
   }, []);
   return busy || error ? (
-    <View style={{ backgroundColor: "#202020", padding: 12 }}>
+    <View style={{ ...styles.page, flex: undefined, padding: 12 }}>
       <Text
         accessibilityRole="alert"
         style={error ? styles.error : styles.text}

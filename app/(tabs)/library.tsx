@@ -1,14 +1,23 @@
+import { router } from "expo-router";
 import { Text } from "@/components/LocalizedText";
 import OpenMedia from "@/components/OpenMedia";
 import { useState } from "react";
 import { View } from "react-native";
-import { Page, TrackCard, Input, Button, styles } from "@/components/MediaUI";
+import {
+  Page,
+  TrackCard,
+  Input,
+  Button,
+  useMediaStyles,
+} from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 export default function LibraryScreen() {
+  const styles = useMediaStyles();
   const { tracks, favorites, playlists } = usePlayerStore();
   const [name, setName] = useState("");
   return (
     <Page title="Library">
+      <Button title="Downloads" onPress={() => router.navigate("/downloads")} />
       <OpenMedia />
       <Text style={styles.heading}>Favorites</Text>
       {!favorites.length && (

@@ -1,9 +1,8 @@
 const { withAppBuildGradle } = require("expo/config-plugins");
 
-// React Native's architecture property limits native compilation, but the Expo
-// SDK 52 template does not filter prebuilt AAR libraries when packaging an APK.
-// Honor the same property for packaging; debug emulator builds can still use
-// x86_64 while build-apk.sh selects arm64-v8a for the Galaxy S24 Ultra.
+// Keep packaged native libraries aligned with React Native's selected ABI list.
+// Release builds can select a single ABI for a smaller APK or all supported ABIs
+// for a universal APK / Android App Bundle.
 module.exports = function withNativeAbiFilters(config) {
   return withAppBuildGradle(config, (mod) => {
     if (mod.modResults.language !== "groovy") {

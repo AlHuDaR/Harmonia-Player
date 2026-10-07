@@ -1,3 +1,36 @@
+# Release 1.5.0 redesign validation (7 October 2026)
+
+Validated on the `android-distribution` branch used by PR #24, with Node 24,
+Expo SDK 57 and React Native 0.86.3. No dependencies were changed for the redesign.
+
+- Expo Doctor: 21/21 checks passed.
+- TypeScript: passed.
+- Unit/integration tests: 47 passed, including migration of old preferences while
+  retaining imported/downloaded files, playlists, favorites, history and language.
+- Browser tests: 7 passed with Chromium 153 supplied through the existing
+  `PLAYWRIGHT_CHROMIUM_PATH` override. The default browser CDN download was
+  unavailable locally; a temporary browser outside the repo was used. No app
+  dependency or CI browser configuration was changed.
+- Browser coverage: MP3/MP4 playback, pause/seek, collapse without stopping,
+  mini-player/navigation separation, Previous/Next in saved downloads,
+  favorites/playlists, Arabic persistence, four tabs, drawer dismissal, theme
+  persistence/system changes, narrow-screen developer credit and a real 3x3 grid.
+- Web export, Android prebuild and native Android Hermes bundle export: passed.
+- Generated Gradle config checked: `com.alhudar.harmonia`, version `1.5.0`,
+  versionCode `6`, environment-only production signing retained.
+- Diff review: private storage paths, library key, native extractor/download
+  implementation and existing three-artifact build/signature checks preserved.
+
+Local `npm run build:android-release` could not assemble APK/AAB artifacts because
+this environment has no Android SDK. The existing PR workflow builds and verifies
+ARM64 APK, universal APK and AAB; its current run, rather than this local report,
+is authoritative for artifact availability. No production signing key or password
+was supplied or generated. CI defaults remain test-signed.
+
+No physical Android or live YouTube test is claimed. See
+[release 1.5 device/signing checklist](release-1.5.md) for PiP, background controls,
+YouTube links, offline media and a same-key upgrade test before distribution.
+
 # On-device YouTube validation (1.2.0)
 
 Implementation: [PR #2](https://github.com/AlHuDaR/Harmonia-Player/pull/2), based on PR #1's Android player.

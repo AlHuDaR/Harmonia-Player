@@ -1,3 +1,4 @@
+import { useTheme } from "@/utils/theme";
 import { useState } from "react";
 import {
   View,
@@ -14,33 +15,41 @@ import { Text } from "./LocalizedText";
 import { useLocale } from "@/utils/i18n";
 import { usePlayerStore } from "@/store/playerStore";
 import type { Track } from "@/types/media";
-export const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#0b0b0b" },
-  content: { padding: 16, paddingBottom: 32, gap: 16 },
-  title: { color: "#fff", fontSize: 25, fontWeight: "700" },
-  heading: { color: "#fff", fontSize: 18, fontWeight: "600" },
-  text: { color: "#b5b5b5", fontSize: 14 },
-  input: {
-    color: "#fff",
-    backgroundColor: "#202020",
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: "transparent",
-    borderRadius: 22,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  buttonText: { color: "#f0f0f0", fontSize: 13, fontWeight: "500" },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  card: { paddingVertical: 8, gap: 8 },
-  error: { color: "#ff9c9c" },
-});
+export function useMediaStyles() {
+  const theme = useTheme();
+  return StyleSheet.create({
+    page: { flex: 1, backgroundColor: theme.background },
+    content: { padding: 16, paddingBottom: 32, gap: 12 },
+    title: { color: theme.text, fontSize: 21, fontWeight: "700" },
+    heading: { color: theme.text, fontSize: 18, fontWeight: "600" },
+    text: { color: theme.muted, fontSize: 14 },
+    input: {
+      color: theme.text,
+      backgroundColor: theme.surface,
+      borderRadius: 24,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 16,
+    },
+    button: {
+      backgroundColor: "transparent",
+      borderRadius: 22,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      minHeight: 44,
+      justifyContent: "center",
+    },
+    buttonText: {
+      color: theme.text,
+      fontSize: 13,
+      fontWeight: "500",
+      flexShrink: 1,
+    },
+    row: { flexDirection: "row", alignItems: "center", gap: 8 },
+    card: { paddingVertical: 8, gap: 8 },
+    error: { color: theme.error },
+  });
+}
 export function Page({
   title,
   children,
@@ -48,8 +57,9 @@ export function Page({
   title: string;
   children: React.ReactNode;
 }) {
+  const styles = useMediaStyles();
   return (
-    <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.page} edges={["left", "right"]}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
@@ -86,6 +96,8 @@ export function Button({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const theme = useTheme();
+  const styles = useMediaStyles();
   const { t } = useLocale();
   return (
     <Pressable
@@ -97,7 +109,7 @@ export function Button({
     >
       <View style={styles.row}>
         {icons[title] && (
-          <MaterialIcons name={icons[title]} color="#eee" size={20} />
+          <MaterialIcons name={icons[title]} color={theme.text} size={20} />
         )}
         <Text style={styles.buttonText}>{title}</Text>
       </View>
@@ -119,6 +131,7 @@ export function IconButton({
   active?: boolean;
   size?: number;
 }) {
+  const theme = useTheme();
   const { t } = useLocale();
   return (
     <Pressable
@@ -137,13 +150,15 @@ export function IconButton({
     >
       <MaterialIcons
         name={name}
-        color={active ? "#ff4545" : "#eee"}
+        color={active ? theme.accent : theme.text}
         size={size}
       />
     </Pressable>
   );
 }
 export function Input(props: React.ComponentProps<typeof TextInput>) {
+  const theme = useTheme();
+  const styles = useMediaStyles();
   const { t, rtl } = useLocale();
   return (
     <TextInput
@@ -152,7 +167,7 @@ export function Input(props: React.ComponentProps<typeof TextInput>) {
         props.accessibilityLabel ? t(props.accessibilityLabel) : undefined
       }
       placeholder={props.placeholder ? t(props.placeholder) : undefined}
-      placeholderTextColor="#888"
+      placeholderTextColor={theme.muted}
       style={[styles.input, { textAlign: rtl ? "right" : "left" }, props.style]}
       autoCapitalize="none"
     />
@@ -167,6 +182,8 @@ export function TrackCard({
   playlistId?: string;
   list?: Track[];
 }) {
+  const theme = useTheme();
+  const styles = useMediaStyles();
   const [menu, setMenu] = useState(false);
   const state = usePlayerStore();
   const { t, rtl } = useLocale();
@@ -196,12 +213,12 @@ export function TrackCard({
           <View
             style={{
               height: 100,
-              backgroundColor: "#181818",
+              backgroundColor: theme.surface,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <MaterialIcons name="music-note" size={40} color="#888" />
+            <MaterialIcons name="music-note" size={40} color={theme.muted} />
           </View>
         )}
       </Pressable>
@@ -249,7 +266,7 @@ export function TrackCard({
           />
           <SafeAreaView
             style={{
-              backgroundColor: "#202020",
+              backgroundColor: theme.surface,
               padding: 20,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
@@ -307,6 +324,7 @@ export function ActionButton({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const theme = useTheme();
   const { t } = useLocale();
   return (
     <Pressable
@@ -326,10 +344,10 @@ export function ActionButton({
       <MaterialIcons
         name={icons[title] || "more-horiz"}
         size={23}
-        color="#eee"
+        color={theme.text}
       />
       <Text
-        style={{ color: "#ddd", fontSize: 11, textAlign: "center" }}
+        style={{ color: theme.muted, fontSize: 11, textAlign: "center" }}
         numberOfLines={1}
       >
         {title}

@@ -3,10 +3,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import VideoRow from "@/components/VideoRow";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
-import { Input, Button, styles } from "@/components/MediaUI";
+import { Input, Button, useMediaStyles } from "@/components/MediaUI";
 import { searchYouTube } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";
 export default function SearchScreen() {
+  const styles = useMediaStyles();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -51,7 +52,7 @@ export default function SearchScreen() {
     }
   }
   return (
-    <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.page} edges={["left", "right"]}>
       <View style={{ padding: 16, gap: 12 }}>
         <Text style={styles.title}>Search</Text>
 

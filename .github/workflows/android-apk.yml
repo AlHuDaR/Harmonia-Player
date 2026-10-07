@@ -1,4 +1,4 @@
-name: Android APK
+name: Android Release Artifacts
 on:
   push:
     branches: [main]
@@ -7,12 +7,12 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: apk-${{ github.ref }}
+  group: android-release-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  apk:
+  release:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,11 +28,20 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - name: Install Android build dependencies
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006'
       - run: npm ci
+      - run: npx expo-doctor@latest
       - run: npm run typecheck
       - run: npm test
-      - run: npx playwright install --with-deps chromium
+      - name: Use preinstalled Chrome for Playwright
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          if [ -z "$CHROME_PATH" ]; then
+            echo "No preinstalled Chrome or Chromium found on runner."
+            exit 1
+          fi
+          echo "PLAYWRIGHT_CHROMIUM_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
+          "$CHROME_PATH" --version
       - run: npm run test:web
       - uses: actions/upload-artifact@v4
         if: always()
@@ -45,24 +54,59 @@ jobs:
       - run: npm run build:web -- --max-workers 2
         env:
           EXPO_NO_TELEMETRY: "1"
-      - run: npm run build:apk
-      - name: Verify APK signature and ARM64 contents
+      - run: npm run build:android-release
+      - name: Verify Android release artifacts
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose artifacts/Harmonia-Player-arm64.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose artifacts/Harmonia-Player-arm64.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose artifacts/Harmonia-Player-universal.apk
+          jarsigner -verify artifacts/Harmonia-Player.aab
           python3 - <<'PYCODE'
           import zipfile
-          with zipfile.ZipFile('artifacts/Harmonia-Player-arm64.apk') as apk:
-              abis = {name.split('/')[1] for name in apk.namelist() if name.startswith('lib/')}
-              assert abis == {'arm64-v8a'}, abis
-              assert 'lib/arm64-v8a/libhermes.so' in apk.namelist()
-              assert apk.getinfo('assets/index.android.bundle').file_size > 0
-              dex = b''.join(apk.read(name) for name in apk.namelist() if name.endswith('.dex'))
-              assert b'Lcom/alhudar/harmonia/youtube/YouTubeModule;' in dex, 'Missing native YouTube bridge'
-              assert b'Lorg/schabi/newpipe/extractor/NewPipe;' in dex, 'Missing NewPipe Extractor'
+
+          expected = {'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'}
+
+          def apk_abis(path):
+              with zipfile.ZipFile(path) as archive:
+                  names = archive.namelist()
+                  abis = {
+                      name.split('/')[1]
+                      for name in names
+                      if name.startswith('lib/') and len(name.split('/')) > 2
+                  }
+                  assert archive.getinfo('assets/index.android.bundle').file_size > 0
+                  dex = b''.join(archive.read(name) for name in names if name.endswith('.dex'))
+                  assert b'Lcom/alhudar/harmonia/youtube/YouTubeModule;' in dex, 'Missing native YouTube bridge'
+                  assert b'Lorg/schabi/newpipe/extractor/NewPipe;' in dex, 'Missing NewPipe Extractor'
+                  return abis
+
+          assert apk_abis('artifacts/Harmonia-Player-arm64.apk') == {'arm64-v8a'}
+          assert apk_abis('artifacts/Harmonia-Player-universal.apk') == expected
+
+          with zipfile.ZipFile('artifacts/Harmonia-Player.aab') as bundle:
+              names = bundle.namelist()
+              abis = {
+                  name.split('/')[2]
+                  for name in names
+                  if name.startswith('base/lib/') and len(name.split('/')) > 3
+              }
+              assert abis == expected, abis
+              assert 'base/assets/index.android.bundle' in names
           PYCODE
       - uses: actions/upload-artifact@v4
         with:
           name: Harmonia-Player-arm64
           path: artifacts/Harmonia-Player-arm64.apk
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Harmonia-Player-universal
+          path: artifacts/Harmonia-Player-universal.apk
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Harmonia-Player-aab
+          path: artifacts/Harmonia-Player.aab
           if-no-files-found: error
           retention-days: 14

@@ -1,11 +1,12 @@
 import { Text } from "@/components/LocalizedText";
 import { useState } from "react";
 import { View } from "react-native";
-import { Page, TrackCard, Button, styles } from "@/components/MediaUI";
+import { Page, TrackCard, Button, useMediaStyles } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 import { deleteDownload, downloadTrack } from "@/utils/downloads";
 import { message } from "@/types/media";
 export default function DownloadsScreen() {
+  const styles = useMediaStyles();
   const downloads = usePlayerStore((s) => s.downloads);
   const offline = downloads
     .filter((d) => d.status === "complete" && d.track.localUri)
