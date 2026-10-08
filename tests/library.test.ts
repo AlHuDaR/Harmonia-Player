@@ -241,6 +241,7 @@ describe("release preference migration", () => {
       background: false,
       autoPip: true,
       theme: "system",
+      preset: "harmonia",
       transparency: "subtle",
       downloadKind: "audio",
     });
@@ -255,21 +256,17 @@ describe("release preference migration", () => {
       expect(state[key]).toEqual(savedState[key]);
   });
   it("persists appearance and format preferences across a restart", async () => {
-    usePlayerStore
-      .getState()
-      .updateSettings({
-        theme: "light",
-        transparency: "solid",
-        downloadKind: "video",
-      });
+    usePlayerStore.getState().updateSettings({
+      theme: "light",
+      transparency: "solid",
+      downloadKind: "video",
+    });
     const saved = storage.get("harmonia-library-v1")!;
-    usePlayerStore
-      .getState()
-      .updateSettings({
-        theme: "dark",
-        transparency: "subtle",
-        downloadKind: "audio",
-      });
+    usePlayerStore.getState().updateSettings({
+      theme: "dark",
+      transparency: "subtle",
+      downloadKind: "audio",
+    });
     storage.set("harmonia-library-v1", saved);
     await usePlayerStore.persist.rehydrate();
     expect(usePlayerStore.getState().settings).toMatchObject({
@@ -278,4 +275,19 @@ describe("release preference migration", () => {
       downloadKind: "video",
     });
   });
+});
+
+it("retains theme presets on restart and falls back safely for unknown presets", async () => {
+  const s = usePlayerStore.getState();
+  s.updateSettings({ preset: "ocean", theme: "dark" });
+  const saved = storage.get("harmonia-library-v1")!;
+  s.updateSettings({ preset: "sunset" });
+  storage.set("harmonia-library-v1", saved);
+  await usePlayerStore.persist.rehydrate();
+  expect(usePlayerStore.getState().settings.preset).toBe("ocean");
+  const unknown = JSON.parse(saved);
+  unknown.state.settings.preset = "unknown";
+  storage.set("harmonia-library-v1", JSON.stringify(unknown));
+  await usePlayerStore.persist.rehydrate();
+  expect(usePlayerStore.getState().settings.preset).toBe("harmonia");
 });

@@ -84,6 +84,11 @@ const icons: Record<
   Description: "info-outline",
   "Add to queue": "queue-music",
   "Open URL": "link",
+  "Open link": "link",
+  "Search songs, artists, or videos": "search",
+  Downloads: "download",
+  "View library": "library-music",
+  "View recent": "history",
   "Play all": "play-arrow",
   "Import local audio or video": "folder-open",
 };
@@ -91,10 +96,14 @@ export function Button({
   title,
   onPress,
   disabled,
+  raw = false,
+  expanded,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  raw?: boolean;
+  expanded?: boolean;
 }) {
   const theme = useTheme();
   const styles = useMediaStyles();
@@ -102,16 +111,25 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t(title)}
+      accessibilityLabel={raw ? title : t(title)}
+      accessibilityState={{ disabled: !!disabled, expanded }}
+      aria-expanded={expanded}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.button, disabled && { opacity: 0.35 }]}
+      style={({ pressed }) => [
+        styles.button,
+        { backgroundColor: pressed ? theme.selected : "transparent" },
+        disabled && { opacity: 0.35 },
+      ]}
     >
       <View style={styles.row}>
         {icons[title] && (
           <MaterialIcons name={icons[title]} color={theme.text} size={20} />
         )}
-        <Text style={styles.buttonText}>{title}</Text>
+        <Text raw={raw} style={styles.buttonText}>
+          {title}
+        </Text>
+        {expanded !== undefined && <MaterialIcons name={expanded ? "expand-less" : "expand-more"} color={theme.muted} size={22} />}
       </View>
     </Pressable>
   );
@@ -140,13 +158,15 @@ export function IconButton({
       accessibilityState={{ disabled: !!disabled, selected: !!active }}
       disabled={disabled}
       onPress={onPress}
-      style={{
+      style={({ pressed }) => ({
+        borderRadius: 22,
+        backgroundColor: active || pressed ? theme.selected : "transparent",
         minWidth: 44,
         minHeight: 44,
         alignItems: "center",
         justifyContent: "center",
         opacity: disabled ? 0.35 : 1,
-      }}
+      })}
     >
       <MaterialIcons
         name={name}
@@ -177,10 +197,12 @@ export function TrackCard({
   track,
   playlistId,
   list,
+  compact = false,
 }: {
   track: Track;
   playlistId?: string;
   list?: Track[];
+  compact?: boolean;
 }) {
   const theme = useTheme();
   const styles = useMediaStyles();
@@ -197,22 +219,34 @@ export function TrackCard({
     else state.setCurrentTrack(track);
   };
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        compact && { flexDirection: "row", alignItems: "center", gap: 12 },
+      ]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${t("Play")} ${track.title}`}
         onPress={play}
+        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       >
         {track.cover ? (
           <Image
             source={{ uri: track.cover }}
-            style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 12 }}
+            style={
+              compact
+                ? { width: 64, height: 64, borderRadius: 12 }
+                : { width: "100%", aspectRatio: 16 / 9, borderRadius: 12 }
+            }
             resizeMode="cover"
           />
         ) : (
           <View
             style={{
-              height: 100,
+              height: compact ? 64 : 100,
+              width: compact ? 64 : "100%",
+              borderRadius: 12,
               backgroundColor: theme.surface,
               alignItems: "center",
               justifyContent: "center",
@@ -222,23 +256,27 @@ export function TrackCard({
           </View>
         )}
       </Pressable>
-      <View style={styles.row}>
+      <View style={[styles.row, compact && { flex: 1, minWidth: 0 }]}>
         <Pressable
           onPress={play}
           style={{ flex: 1 }}
           accessibilityRole="button"
           accessibilityLabel={`${t("Play")} ${track.title}`}
         >
-          <Text raw style={styles.heading} numberOfLines={2}>
+          <Text
+            raw
+            style={[styles.heading, compact && { fontSize: 15 }]}
+            numberOfLines={2}
+          >
             {track.title}
           </Text>
-          <Text raw style={styles.text}>
+          <Text raw style={styles.text} numberOfLines={1}>
             {track.artist}
             {track.localUri ? ` · ${t("Offline")}` : ""}
           </Text>
         </Pressable>
         {favorite && (
-          <MaterialIcons name="favorite" size={18} color="#ff4545" />
+          <MaterialIcons name="favorite" size={18} color={theme.accent} />
         )}
         <IconButton
           name="more-vert"
@@ -256,7 +294,7 @@ export function TrackCard({
           style={{
             flex: 1,
             justifyContent: "flex-end",
-            backgroundColor: "#0009",
+            backgroundColor: theme.scrim,
           }}
         >
           <Pressable
@@ -353,5 +391,112 @@ export function ActionButton({
         {title}
       </Text>
     </Pressable>
+  );
+}
+
+export function SectionHeader({
+  title,
+  action,
+  onPress,
+}: {
+  title: string;
+  action?: string;
+  onPress?: () => void;
+}) {
+  const styles = useMediaStyles();
+  return (
+    <View
+      style={[
+        styles.row,
+        { justifyContent: "space-between", flexWrap: "wrap", marginTop: 8 },
+      ]}
+    >
+      <Text
+        accessibilityRole="header"
+        style={[styles.heading, { flexShrink: 1 }]}
+      >
+        {title}
+      </Text>
+      {action && onPress && <Button title={action} onPress={onPress} />}
+    </View>
+  );
+}
+export function SurfaceCard({ children }: { children: React.ReactNode }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        backgroundColor: theme.surface,
+        borderRadius: 18,
+        padding: 16,
+        gap: 12,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+export function ChoiceChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const { t } = useLocale();
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityLabel={t(label)}
+      accessibilityState={{ checked: selected }}
+      aria-checked={selected}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 44,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: selected ? theme.accent : theme.border,
+        backgroundColor: selected || pressed ? theme.selected : theme.surface,
+      })}
+    >
+      <Text
+        style={{
+          color: selected ? theme.accent : theme.text,
+          fontWeight: selected ? "700" : "500",
+          flexShrink: 1,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+export function EmptyState({
+  icon = "music-note",
+  title,
+  description,
+  action,
+  onPress,
+}: {
+  icon?: React.ComponentProps<typeof MaterialIcons>["name"];
+  title: string;
+  description: string;
+  action?: string;
+  onPress?: () => void;
+}) {
+  const theme = useTheme();
+  const styles = useMediaStyles();
+  return (
+    <SurfaceCard>
+      <MaterialIcons name={icon} size={28} color={theme.accent} />
+      <Text style={styles.heading}>{title}</Text>
+      <Text style={styles.text}>{description}</Text>
+      {action && onPress && <Button title={action} onPress={onPress} />}
+    </SurfaceCard>
   );
 }

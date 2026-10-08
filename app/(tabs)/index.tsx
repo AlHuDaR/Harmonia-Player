@@ -1,38 +1,99 @@
 import { router } from "expo-router";
-import { Image, Pressable, View } from "react-native";
+import { Image, Pressable, View, useWindowDimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Text } from "@/components/LocalizedText";
-import { Page, Button, useMediaStyles } from "@/components/MediaUI";
+import {
+  Page,
+  Button,
+  SectionHeader,
+  EmptyState,
+  useMediaStyles,
+} from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 import { useLocale } from "@/utils/i18n";
 import { useTheme } from "@/utils/theme";
 export default function HomeScreen() {
-  const { tracks, history, playList } = usePlayerStore();
+  const {
+    tracks,
+    history,
+    favorites,
+    downloads,
+    currentTrack,
+    setExpanded,
+    playList,
+  } = usePlayerStore();
+  const { width, fontScale } = useWindowDimensions();
+  const columns = width < 340 || fontScale > 1.3 ? 2 : 3;
   const styles = useMediaStyles();
   const theme = useTheme();
   const { t } = useLocale();
-  const ids = [
-    ...new Set([
-      ...history,
-      ...tracks
-        .slice()
-        .reverse()
-        .map((track) => track.id),
-    ]),
-  ];
-  const recent = ids
+  const recent = [...new Set(history)]
     .map((id) => tracks.find((track) => track.id === id))
     .filter((track) => !!track)
     .slice(0, 9);
+  const favoriteCount = tracks.filter((track) =>
+    favorites.includes(track.id),
+  ).length;
+  const offlineCount = downloads.filter(
+    (d) => d.status === "complete" && d.track.localUri,
+  ).length;
   return (
     <Page title="Home">
       <Button
         title="Search songs, artists, or videos"
         onPress={() => router.navigate("/explore")}
       />
-      <Text style={styles.heading}>Speed dial</Text>
+      {currentTrack && (
+        <>
+          <SectionHeader title="Now playing" />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("Expand player")}
+            onPress={() => setExpanded(true)}
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? theme.selected : theme.surface,
+              padding: 16,
+              borderRadius: 18,
+              gap: 6,
+            })}
+          >
+            <Text raw numberOfLines={2} style={styles.heading}>
+              {currentTrack.title}
+            </Text>
+            <Text raw numberOfLines={1} style={styles.text}>
+              {currentTrack.artist}
+            </Text>
+          </Pressable>
+        </>
+      )}
+      <SectionHeader title="Quick access" />
+      <View style={[styles.row, { flexWrap: "wrap" }]}>
+        <Button
+          title="View library"
+          onPress={() => router.navigate("/library")}
+        />
+        <Button
+          title="Downloads"
+          onPress={() => router.navigate("/downloads")}
+        />
+      </View>
+      {(favoriteCount > 0 || offlineCount > 0) && (
+        <Text raw style={styles.text}>
+          {t("Favorites")}: {favoriteCount} · {t("Downloaded")}: {offlineCount}
+        </Text>
+      )}
+      <SectionHeader
+        title="Recently played"
+        action={recent.length ? "View recent" : undefined}
+        onPress={() => router.navigate("/samples")}
+      />
       {!recent.length && (
-        <Text style={styles.text}>Discover something to play</Text>
+        <EmptyState
+          title="Make yourself at home"
+          description="Search for something you love, or import a file in Library. Your listening history will appear here."
+          action="View library"
+          onPress={() => router.navigate("/library")}
+        />
       )}
       <View
         testID="speed-dial"
@@ -49,12 +110,13 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={`${t("Play")} ${track.title}`}
             onPress={() => playList(recent, index)}
-            style={{
-              width: "33.333333%",
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.7 : 1,
+              width: `${100 / columns}%`,
               paddingHorizontal: 4,
               minHeight: 86,
               gap: 5,
-            }}
+            })}
           >
             <View
               style={{
@@ -83,7 +145,7 @@ export default function HomeScreen() {
             <Text
               raw
               numberOfLines={2}
-              style={{ color: theme.text, fontSize: 11, fontWeight: "600" }}
+              style={{ color: theme.text, fontSize: 13, fontWeight: "600" }}
             >
               {track.title}
             </Text>

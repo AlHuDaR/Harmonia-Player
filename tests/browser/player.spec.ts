@@ -72,10 +72,15 @@ for (const [file, type] of [
     await expect(video).toHaveCount(0);
     await page.getByRole("tab", { name: /Library/ }).click();
     await expect(page.getByText(file, { exact: true }).first()).toBeVisible();
+    await page.getByRole("radio", { name: "Playlists", exact: true }).click();
     await page.getByLabel("Playlist name").fill("Road trip");
     await page.getByRole("button", { name: "Create playlist" }).click();
     await page.reload();
-    await expect(page.getByText("Road trip", { exact: true })).toBeVisible();
+    await page.getByRole("radio", { name: "Playlists", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Road trip", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("radio", { name: "Favorites", exact: true }).click();
     await expect(page.getByText(file, { exact: true }).first()).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -120,7 +125,7 @@ test("language switches instantly and persists with a clean Home", async ({
   await expect(
     page.getByRole("button", { name: "Close menu", exact: true }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "العربية", exact: true }).click();
+  await page.getByRole("radio", { name: "العربية", exact: true }).click();
   await expect(page.getByRole("tab", { name: /الرئيسية/ })).toBeVisible();
   await expect(page.getByText("اللغة", { exact: true })).toBeVisible();
   await page.reload();
@@ -130,7 +135,7 @@ test("language switches instantly and persists with a clean Home", async ({
     path: "artifacts/screenshots/settings-ar.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "English", exact: true }).click();
+  await page.getByRole("radio", { name: "English", exact: true }).click();
   await expect(page.getByRole("tab", { name: /Home/ })).toBeVisible();
 });
 
@@ -212,24 +217,24 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
   await expect(
     page.getByRole("button", { name: "Close menu", exact: true }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Light", exact: true }).click();
+  await page.getByRole("radio", { name: "Light", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "✓ Light", exact: true }),
-  ).toBeVisible();
+    page.getByRole("radio", { name: "Light", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "✓ Light", exact: true }),
-  ).toBeVisible();
+    page.getByRole("radio", { name: "Light", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
   await page.screenshot({
     path: "artifacts/screenshots/settings-light.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Dark", exact: true }).click();
+  await page.getByRole("radio", { name: "Dark", exact: true }).click();
   await page.screenshot({
     path: "artifacts/screenshots/settings-dark.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "System", exact: true }).click();
+  await page.getByRole("radio", { name: "System", exact: true }).click();
   await page.emulateMedia({ colorScheme: "light" });
   const lightColor = await page
     .getByRole("button", { name: "Open menu", exact: true })
@@ -246,9 +251,9 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
         .evaluate((v) => getComputedStyle(v).backgroundColor),
     )
     .not.toBe(lightColor);
-  expect(
-    await page.getByRole("button", { name: "✓ System", exact: true }).count(),
-  ).toBe(1);
+  await expect(
+    page.getByRole("radio", { name: "System", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Open menu", exact: true }).click();
   await page
     .getByRole("button", { name: "About Harmonia", exact: true })
@@ -286,7 +291,7 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
   ).toBeVisible();
 });
 
-test("Home uses at most nine real saved tracks in a three-column grid", async ({
+test("Home uses at most nine real recently played tracks in a three-column grid", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -323,6 +328,114 @@ test("Home uses at most nine real saved tracks in a three-column grid", async ({
   expect(new Set(bounds.map((r) => r.x)).size).toBe(3);
   await page.screenshot({
     path: "artifacts/screenshots/home-grid.png",
+    fullPage: true,
+  });
+});
+
+test("Recent uses listening order, excludes unplayed saved items and honors history clearing", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const tracks = ["Old", "Latest", "Unplayed"].map((title) => ({
+      id: title,
+      title,
+      artist: "Library",
+      kind: "audio",
+      uri: `https://media.test/${title}.mp3`,
+    }));
+    localStorage.setItem(
+      "harmonia-library-v1",
+      JSON.stringify({
+        state: {
+          tracks,
+          history: ["Latest", "missing", "Old"],
+          language: "en",
+          settings: { theme: "light" },
+        },
+        version: 0,
+      }),
+    );
+  });
+  await page.goto("/");
+  await expect(page.getByTestId("speed-dial").getByRole("button")).toHaveCount(
+    2,
+  );
+  await expect(page.getByText("Unplayed", { exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Recent", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Play Latest", exact: true }).first(),
+  ).toBeVisible();
+  const titles = page.getByRole("button", {
+    name: /Play (Latest|Old)$/,
+    exact: true,
+  });
+  await expect(titles.first()).toHaveAttribute("aria-label", "Play Latest");
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Clear listening history", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "Recent", exact: true }).click();
+  await expect(
+    page
+      .getByText("No listening history yet", { exact: true })
+      .filter({ visible: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Library", exact: true }).click();
+  await page.getByRole("radio", { name: "Saved tracks", exact: true }).click();
+  await expect(page.getByText("Unplayed", { exact: true })).toBeVisible();
+});
+
+test("theme presets persist, AMOLED stays black, and Arabic choices fit narrow and landscape screens", async ({
+  page,
+}) => {
+  await page.goto("/settings");
+  await page.getByRole("radio", { name: "Dark", exact: true }).click();
+  await page.getByRole("radio", { name: "AMOLED Black", exact: true }).click();
+  await expect(
+    page.getByRole("radio", { name: "AMOLED Black", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
+  await page.reload();
+  await expect(
+    page.getByRole("radio", { name: "AMOLED Black", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("tab", { name: "Home", exact: true }).click();
+  const home = page.getByTestId("speed-dial");
+  await expect
+    .poll(() =>
+      home.evaluate((v) => {
+        let element: Element | null = v;
+        while (element) {
+          const color = getComputedStyle(element).backgroundColor;
+          if (color !== "rgba(0, 0, 0, 0)" && color !== "transparent")
+            return color;
+          element = element.parentElement;
+        }
+        return "transparent";
+      }),
+    )
+    .toBe("rgb(0, 0, 0)");
+  await page.goto("/settings");
+  await page.getByRole("radio", { name: "العربية", exact: true }).click();
+  await expect(
+    page.getByRole("radio", { name: "المحيط", exact: true }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 280, height: 700 });
+  await page.getByRole("radio", { name: "المحيط", exact: true }).click();
+  await expect(
+    page.getByRole("radio", { name: "المحيط", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
+  const palette = page.getByRole("radio", { name: "المحيط", exact: true });
+  expect(await palette.evaluate((v) => v.scrollWidth <= v.clientWidth)).toBe(
+    true,
+  );
+  await page.screenshot({
+    path: "artifacts/screenshots/themes-ar-narrow.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 915, height: 412 });
+  await page.screenshot({
+    path: "artifacts/screenshots/themes-ar-landscape.png",
     fullPage: true,
   });
 });

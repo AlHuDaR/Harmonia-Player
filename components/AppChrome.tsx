@@ -15,7 +15,7 @@ const menu = [
 ] as const;
 const tabs = [
   ["Home", "/", "home"],
-  ["Samples", "/samples", "smart-display"],
+  ["Recent", "/samples", "history"],
   ["Search", "/explore", "search"],
   ["Library", "/library", "library-music"],
 ] as const;
@@ -80,7 +80,7 @@ export function Header() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "#0006",
+            backgroundColor: theme.scrim,
             direction: rtl ? "rtl" : "ltr",
           }}
         >
@@ -188,6 +188,7 @@ export function BottomNavigation() {
             accessibilityRole="tab"
             accessibilityLabel={t(label)}
             accessibilityState={{ selected }}
+            aria-selected={selected}
             onPress={() => {
               usePlayerStore.getState().setExpanded(false);
               router.navigate(href as Href);
@@ -201,8 +202,8 @@ export function BottomNavigation() {
               gap: 3,
             }}
           >
-            <MaterialIcons name={icon} size={22} color={color} />
-            <Text style={{ color, fontSize: 10, textAlign: "center" }}>
+            <MaterialIcons name={icon} size={22} color={color} style={{ backgroundColor: selected ? theme.selected : "transparent", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 3 }} />
+            <Text style={{ color, fontSize: 11, textAlign: "center" }}>
               {label}
             </Text>
           </Pressable>

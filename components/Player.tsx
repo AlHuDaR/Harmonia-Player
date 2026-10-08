@@ -1,3 +1,4 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/utils/theme";
 import { IconButton } from "./MediaUI";
 import { useLocale } from "@/utils/i18n";
@@ -359,7 +360,7 @@ function MediaEngine({
         <View
           style={{
             height: expanded ? Math.min((width * 9) / 16, height * 0.25) : 1,
-            backgroundColor: audioMode ? theme.surface : "#000",
+            backgroundColor: audioMode ? theme.surface : theme.mediaBackground,
           }}
         >
           <VideoView
@@ -442,6 +443,11 @@ function MediaEngine({
             >
               {track.title}
             </Text>
+            {expanded && (
+              <Text raw numberOfLines={1} style={styles.muted}>
+                {track.artist}
+              </Text>
+            )}
           </Pressable>
           {expanded ? (
             <IconButton
@@ -523,20 +529,22 @@ function MediaEngine({
                   width: 56,
                   height: 56,
                   borderRadius: 28,
-                  backgroundColor: theme.text,
+                  backgroundColor: theme.accent,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text
-                  style={{
-                    color: theme.background,
-                    fontSize: 26,
-                    textAlign: "center",
-                  }}
-                >
-                  {loading ? "…" : playing ? "Ⅱ" : "▶"}
-                </Text>
+                <MaterialIcons
+                  name={
+                    loading
+                      ? "hourglass-empty"
+                      : playing
+                        ? "pause"
+                        : "play-arrow"
+                  }
+                  size={32}
+                  color={theme.onAccent}
+                />
               </Pressable>
               <IconButton
                 name="skip-next"

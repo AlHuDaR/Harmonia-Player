@@ -1,27 +1,29 @@
 import { router } from "expo-router";
-import { Page, Button, useMediaStyles } from "@/components/MediaUI";
-import { Text } from "@/components/LocalizedText";
-import VideoRow from "@/components/VideoRow";
+import { Page, TrackCard, EmptyState, Button } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
-export default function SamplesScreen() {
-  const tracks = usePlayerStore((s) => s.tracks);
-  const styles = useMediaStyles();
+export default function RecentScreen() {
+  const { tracks, history, playList } = usePlayerStore();
+  const recent = [...new Set(history)]
+    .map((id) => tracks.find((track) => track.id === id))
+    .filter((track) => !!track);
   return (
-    <Page title="Samples">
-      <Text style={styles.text}>Explore your recent music and videos.</Text>
-      {!tracks.length && (
-        <Button
-          title="Discover something to play"
+    <Page title="Recent">
+      {!recent.length ? (
+        <EmptyState
+          icon="history"
+          title="No listening history yet"
+          description="Play a file or stream to start your listening history."
+          action="Search"
           onPress={() => router.navigate("/explore")}
         />
+      ) : (
+        <>
+          <Button title="Play all" onPress={() => playList(recent, 0)} />
+          {recent.map((track) => (
+            <TrackCard key={track.id} track={track} list={recent} compact />
+          ))}
+        </>
       )}
-      {tracks
-        .slice()
-        .reverse()
-        .slice(0, 20)
-        .map((track) => (
-          <VideoRow key={track.id} track={track} />
-        ))}
     </Page>
   );
 }

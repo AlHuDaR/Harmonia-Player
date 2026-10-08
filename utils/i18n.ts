@@ -228,6 +228,36 @@ Object.assign(ar, {
   "Third-party notices": "إشعارات الجهات الخارجية",
   Fullscreen: "ملء الشاشة",
 });
+Object.assign(ar, {
+  Recent: "الأخيرة",
+  "Quick access": "وصول سريع",
+  "View library": "فتح المكتبة",
+  "View recent": "عرض السجل",
+  "Make yourself at home": "ابدأ رحلتك مع هارمونيا",
+  "Search for something you love, or import a file in Library. Your listening history will appear here.": "ابحث عما تحب أو استورد ملفاً من المكتبة. سيظهر سجل التشغيل هنا.",
+  "No listening history yet": "لا يوجد سجل تشغيل بعد",
+  "Color palette": "ألوان الواجهة",
+  Harmonia: "هارمونيا",
+  Midnight: "منتصف الليل",
+  "AMOLED Black": "أسود AMOLED",
+  Ocean: "المحيط",
+  Sunset: "الغروب",
+  "AMOLED Black uses a true black background in Dark mode.": "يستخدم أسود AMOLED خلفية سوداء بالكامل في الوضع الداكن.",
+  "Local media": "وسائط محلية",
+  "Saved tracks": "مقاطع محفوظة",
+  "Your playlists start here": "أنشئ قوائمك هنا",
+  "Create a playlist, then use Add To in the player to save tracks to it.": "أنشئ قائمة ثم استخدم إضافة إلى في المشغل لحفظ المقاطع فيها.",
+  "Keep what you love": "احتفظ بما تحب",
+  "Nothing here yet": "لا توجد مقاطع هنا بعد",
+  "Import local audio or video using the button above.": "استورد صوتاً أو فيديو من الزر أعلاه.",
+  "Tracks you open or play are saved here. Downloads have their own space.": "تظهر هنا المقاطع التي تفتحها أو تشغلها. للتنزيلات قسم مستقل.",
+  "Find your next listen": "اعثر على مقطعك التالي",
+  "Search YouTube by title or artist. You can also open a link or import a file in Library.": "ابحث في يوتيوب بالعنوان أو الفنان. يمكنك أيضاً فتح رابط أو استيراد ملف من المكتبة.",
+  "Ready offline": "جاهز دون إنترنت",
+  "Download failed": "تعذر التنزيل",
+  "No downloads yet": "لا توجد تنزيلات بعد",
+  "Use Download in the player to keep a track for offline listening.": "استخدم تنزيل في المشغل لحفظ مقطع للاستماع دون إنترنت.",
+});
 export function translate(text: string, language: "en" | "ar"): string {
   if (language === "en") return text;
   const normalized = text.replace(/\s+/g, " ").trim();

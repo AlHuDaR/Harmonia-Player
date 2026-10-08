@@ -1,3 +1,4 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/utils/theme";
 import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
@@ -31,12 +32,13 @@ export default function VideoRow({ track }: { track: Track }) {
       accessibilityRole="button"
       accessibilityLabel={`${t("Play")} ${track.title}`}
       onPress={() => usePlayerStore.getState().setCurrentTrack(track)}
-      style={{
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.7 : 1,
         flexDirection: "row",
         gap: 12,
         paddingVertical: 12,
         minHeight: 84,
-      }}
+      })}
     >
       <View
         style={{
@@ -45,8 +47,11 @@ export default function VideoRow({ track }: { track: Track }) {
           backgroundColor: theme.surface,
           borderRadius: 8,
           overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
+        {!track.cover && <MaterialIcons name={track.kind === "audio" ? "music-note" : "smart-display"} size={28} color={theme.muted} />}
         {!!track.cover && (
           <Image
             source={{ uri: track.cover }}
@@ -59,8 +64,8 @@ export default function VideoRow({ track }: { track: Track }) {
               position: "absolute",
               bottom: 3,
               right: 3,
-              color: "white",
-              backgroundColor: "#000b",
+              color: theme.mediaText,
+              backgroundColor: theme.scrim,
               paddingHorizontal: 4,
             }}
           >
