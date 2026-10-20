@@ -1,5 +1,7 @@
 # Harmonia 2.0 preview delivery report
 
+Draft pull request: [AlHuDaR/Harmonia-Player#27](https://github.com/AlHuDaR/Harmonia-Player/pull/27), targeting `main`. Not merged.
+
 ## Scope and baseline
 
 This is the first focused PR of the roadmap, not a completed Harmonia 2.0 release. Baseline main: `ecf20e0` (v1.5.0). Branch: `feat/harmonia-v2-universal-media`. App: `2.0.0-preview.1`, Android versionCode 7, unchanged `com.alhudar.harmonia` package. The existing production signing plugin and key configuration were not modified; no production key was generated, inspected or committed.
@@ -51,7 +53,7 @@ Generated `android/`, `dist/`, test results and build logs are not source change
 - SHA-256: `63f6bd62cd59bff20a0ef5e0c11e560d4e5c83db57bb4ccf34ad5e3b89f35570`.
 - `apksigner verify --verbose`: passed, APK Signature Scheme v2, one signer.
 - `aapt dump badging`: package `com.alhudar.harmonia`, versionCode `7`, versionName `2.0.0-preview.1`, minSdk `24`, targetSdk `36`.
-- ZIP/dex checks: nonempty `assets/index.android.bundle`; ARM64 ABI only; YouTubeModule, IntentModule and NewPipe classes present.
+- ZIP/dex checks: nonempty `assets/index.android.bundle`; ARM64 ABI only; YouTubeModule, IntentModule and NewPipe classes present. Packaged JavaScript contains the new sharing action/validation strings. Final APK permissions include network/media playback/notifications; broad storage, microphone and overlay permissions remain absent.
 - Signing uses the established generated **development/test configuration**, not the production identity. Production signing configuration was unchanged. This APK may not update an installed production-signed app; preserve its data and key identity.
 - No universal APK or AAB was generated in this increment. No device installation or native lifecycle/UI test was executed.
 
