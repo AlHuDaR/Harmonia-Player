@@ -10,7 +10,11 @@ import {
   useMediaStyles,
 } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
-import { deleteDownload, downloadTrack } from "@/utils/downloads";
+import {
+  deleteDownload,
+  downloadTrack,
+  cancelDownload,
+} from "@/utils/downloads";
 import { message } from "@/types/media";
 import { useTheme } from "@/utils/theme";
 export default function DownloadsScreen() {
@@ -49,9 +53,15 @@ export default function DownloadsScreen() {
               ? "Ready offline"
               : d.status === "failed"
                 ? "Download failed"
-                : "Downloading"}
+                : d.status === "cancelled"
+                  ? "Download cancelled."
+                  : d.status === "queued"
+                    ? "Queued"
+                    : d.status === "retrying"
+                      ? "Waiting to retry"
+                      : "Downloading"}
           </Text>
-          {d.status === "downloading" && (
+          {["queued", "downloading", "retrying"].includes(d.status) && (
             <>
               <View
                 accessibilityRole="progressbar"
@@ -86,7 +96,7 @@ export default function DownloadsScreen() {
             track={d.track}
             list={d.status === "complete" ? offline : undefined}
           />
-          {d.status === "failed" && (
+          {["failed", "cancelled"].includes(d.status) && (
             <Button
               title="Retry download"
               onPress={() =>
@@ -94,7 +104,16 @@ export default function DownloadsScreen() {
               }
             />
           )}
-          {d.status !== "downloading" && (
+          {d.nativeId &&
+            ["queued", "downloading", "retrying"].includes(d.status) && (
+              <Button
+                title="Cancel download"
+                onPress={() =>
+                  cancelDownload(d.track.id).catch((e) => setError(message(e)))
+                }
+              />
+            )}
+          {!["queued", "downloading", "retrying"].includes(d.status) && (
             <Button
               title="Delete download"
               onPress={() =>

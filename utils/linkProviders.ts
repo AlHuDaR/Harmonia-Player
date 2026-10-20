@@ -66,7 +66,7 @@ export function classifyLink(input: string): SharedLink {
       url: `https://www.youtube.com/watch?v=${id}`,
       provider: "YouTube",
       kind: "youtube",
-      actions: ["play", "download", "audio", "save", "browser"],
+      actions: ["save", "browser"],
     };
   // Known platform page URLs are never treated as files, even with an .mp4 suffix.
   const direct =
@@ -75,16 +75,12 @@ export function classifyLink(input: string): SharedLink {
     /\.(mp3|m4a|aac|wav|ogg|flac|mp4|webm|mov|mkv|m3u8|mpd)$/i.test(
       url.pathname,
     );
-  const adaptive = /\.(m3u8|mpd)$/i.test(url.pathname);
   return {
     url: url.href,
     provider: provider?.name || (direct ? "Direct media" : host),
     kind: direct ? "direct" : "web",
-    actions: direct
-      ? adaptive
-        ? ["play", "save", "browser"]
-        : ["play", "download", "save", "browser"]
-      : ["save", "browser"],
+    // URL recognition is not format discovery. Media actions are gated by discoverMedia.
+    actions: ["save", "browser"],
   };
 }
 export function sharedLinks(text: string): SharedLink[] {

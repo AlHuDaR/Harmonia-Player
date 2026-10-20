@@ -328,7 +328,7 @@ export const usePlayerStore = create<PlayerStore>()(
               state.settings.downloadKind === "video" ? "video" : "audio",
           };
           state.downloads = state.downloads.map((d) =>
-            d.status === "downloading"
+            d.status === "downloading" && !d.nativeId
               ? {
                   ...d,
                   status: "failed",

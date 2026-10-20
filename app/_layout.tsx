@@ -3,10 +3,13 @@ import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, Pressable } from "react-native";
+import { View, Pressable, AppState } from "react-native";
 import { useEffect, useState } from "react";
 import { usePlayerStore, useLibraryStatus } from "@/store/playerStore";
-import { cleanInterruptedDownloads } from "@/utils/downloads";
+import {
+  cleanInterruptedDownloads,
+  syncNativeDownloads,
+} from "@/utils/downloads";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Player from "@/components/Player";
 import { Header, BottomNavigation } from "@/components/AppChrome";
@@ -16,6 +19,13 @@ function Layout() {
   const theme = useTheme();
   const expanded = usePlayerStore((s) => s.expanded);
   const [ready, setReady] = useState(false);
+  const [downloadSyncError, setDownloadSyncError] = useState(false);
+  const hasNativeJobs = usePlayerStore((s) =>
+    s.downloads.some(
+      (d) =>
+        d.nativeId && ["queued", "downloading", "retrying"].includes(d.status),
+    ),
+  );
   const library = useLibraryStatus();
   useEffect(() => {
     let mounted = true;
@@ -30,6 +40,31 @@ function Layout() {
       mounted = false;
     };
   }, [library.hydrated]);
+  useEffect(() => {
+    if (!ready) return;
+    let pending = false;
+    const sync = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        await syncNativeDownloads();
+        setDownloadSyncError(false);
+      } catch {
+        setDownloadSyncError(true);
+      } finally {
+        pending = false;
+      }
+    };
+    sync();
+    const timer = hasNativeJobs ? setInterval(sync, 1500) : undefined;
+    const foreground = AppState.addEventListener("change", (state) => {
+      if (state === "active") sync();
+    });
+    return () => {
+      if (timer) clearInterval(timer);
+      foreground.remove();
+    };
+  }, [ready, hasNativeJobs]);
   if (library.error)
     return (
       <View
@@ -67,6 +102,15 @@ function Layout() {
         backgroundColor: theme.background,
       }}
     >
+      {downloadSyncError && (
+        <Text
+          accessibilityRole="alert"
+          style={{ color: theme.error, padding: 8 }}
+        >
+          Could not synchronize background downloads. Records remain on this
+          device.
+        </Text>
+      )}
       <Header />
       <View style={{ flex: 1, minHeight: 0 }}>
         <View

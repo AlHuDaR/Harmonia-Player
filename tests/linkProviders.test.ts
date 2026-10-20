@@ -30,7 +30,7 @@ describe("provider capabilities", () => {
     );
   });
   it("offers candidate HTTPS files and keeps adaptive streams playback-only", () => {
-    expect(classifyLink("https://example.com/a.mp4?sig=1").actions).toContain(
+    expect(classifyLink("https://example.com/a.mp4?sig=1").actions).not.toContain(
       "download",
     );
     expect(classifyLink("https://example.com/a.m3u8").actions).not.toContain(
