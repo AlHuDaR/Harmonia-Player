@@ -1,0 +1,12 @@
+# Changelog
+
+## 2.0.0-preview.1 — sharing foundation
+
+- Audit baseline v1.5.0 and define separate, gated PRs for the full 2.0 roadmap.
+- Extend the existing Android intent module with FIFO pending delivery and browser dispatch.
+- Classify shared YouTube videos, HTTPS media candidates and social/web pages; present supported actions without automatic playback.
+- Add saved web links independently of playable library items, with additive legacy storage migration and Arabic labels.
+- Reject credentials, IP literals, internal/local hosts and nonstandard ports in shared/direct inputs.
+- Preserve package ID and existing signing configuration; increase Android versionCode from 6 to 7. This preview is not a completed 2.0 release.
+
+Social extraction, durable downloads, advanced player/library/studio, new icon/branding and optional features remain scheduled follow-ups. Existing launcher/splash assets are unchanged.

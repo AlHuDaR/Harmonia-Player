@@ -154,3 +154,13 @@ Adds saved Arabic/English selection, RTL layout, compact action sheets, audio/vi
 ## Release 1.5.0
 
 Fresh production baseline with compact navigation, a mini player above the four tabs, real-media Home grid, persistent Light/Dark/System themes, and separate Settings/About/Support/Licenses screens. Package ID stays `com.alhudar.harmonia`; Android versionCode is `6`. See [permanent signing, production build, storage and device checks](docs/release-1.5.md). PR/CI artifacts remain test-signed until the permanent production key is supplied explicitly.
+
+## 2.0 preview: universal sharing foundation
+
+This branch starts the 2.0 roadmap in the existing app. It is **2.0.0-preview.1**, Android versionCode **7**, not the full 2.0 release. Read the [audit and ordered PR gates](docs/HARMONIA_V2_AUDIT.md), [sharing architecture](docs/HARMONIA_V2_ARCHITECTURE.md), and [implementation/validation report](docs/HARMONIA_V2_IMPLEMENTATION.md).
+
+Share a text link from another Android app and choose Harmonia. The sheet offers Play, Audio Only and available Download formats for recognized YouTube videos. Direct HTTPS media-file candidates offer playback/download; HLS/DASH candidates offer playback only. Actual availability depends on the source and codecs. Instagram, Facebook, TikTok, X/Twitter, Reddit, Vimeo and other web pages offer **Save Link** and **Open in Browser**; social media extraction is not claimed. Saved links appear in Library → Saved links and can be removed without deleting media. Unknown extensionless streams can still be opened manually through the existing Open link workflow.
+
+HTTP links remain browser/save-only. Local/internal addresses, IP literals, embedded credentials and nonstandard URL ports are rejected. Hostname checks do not guarantee DNS/redirect safety. Android app-link defaults may keep opening the original app until the user changes supported-link settings; no verified ownership of social domains is claimed. Share text/plain remains the universal entry point.
+
+Downloads retain the existing private-storage/restart limitations in this first PR. No new media-processing dependency, launcher icon, signing key or permission has been introduced. Physical-device share/PiP/Bluetooth/background tests and dependency remediation remain release gates.

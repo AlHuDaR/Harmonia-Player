@@ -44,3 +44,7 @@ Vitest covers link parsing, media input, mocked download status/mux/cleanup, lib
 7. **Optional/release** Cast requires SDK/license/network/discovery and media-URL authorization evaluation; TV requires remote focus and manifest/UI testing; LAN and Wi-Fi transfer require explicit user-controlled network trust, authentication and lifecycle design; widgets require native session integration. Defer until core gates pass. Production key identity stays unchanged; versionCode must exceed installed production build, not merely this baseline. Publish only after legal/license/privacy and physical-device gates.
 
 This split deliberately avoids declaring the entire 2.0 roadmap complete in one unvalidated change.
+
+## Executed dependency checks (after audit, same lockfile dependency versions)
+
+`npm audit --json` reports 25 affected dependency entries (14 high, 11 moderate; no critical). High chains include node-forge signature validation and braces pattern DoS, propagated through Expo/Metro tooling. Affected-package count is not a count of independently exploitable application flaws. Expo Doctor with Node proxy support reports 20/21 checks passed; the remaining check identifies six SDK-57 patch mismatches (expo, expo-asset, expo-constants, expo-linking, expo-router, expo-splash-screen). Automatic audit fixes propose SDK/RN downgrades for several chains and must not be applied blindly. Dependency remediation, transitive license inventory and runtime-exposure assessment remain release gates. No dependency version was changed in this PR.
