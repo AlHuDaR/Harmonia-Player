@@ -25,7 +25,20 @@ public final class IntentModule extends ReactContextBaseJavaModule implements Ac
         if(text==null || text.length()>4096) return null;
         WritableMap value=Arguments.createMap();value.putString("text",text);value.putString("token",UUID.randomUUID().toString());return value;
     }
+    private void readInitial(Intent arriving) {
+        if(initialRead) return;
+        Activity activity=getCurrentActivity();
+        if(activity==null) return; // Foreground drain can retry when attached.
+        initialRead=true;
+        Intent initial=activity.getIntent();
+        if(initial!=arriving) {
+            WritableMap value=capture(initial);
+            if(value!=null) pending.addLast(value);
+        }
+    }
     @Override public synchronized void onNewIntent(Intent intent) {
+        // Preserve the launch share if a second intent arrives before JS drains.
+        readInitial(intent);
         initialRead=true;
         WritableMap value=capture(intent);
         if(value==null) return;
@@ -36,7 +49,7 @@ public final class IntentModule extends ReactContextBaseJavaModule implements Ac
             getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("HarmoniaLink",Arguments.makeNativeMap(value.toHashMap()));
     }
     @ReactMethod public synchronized void getPending(Promise promise) {
-        if(!initialRead) {initialRead=true;Activity activity=getCurrentActivity();WritableMap initial=capture(activity==null?null:activity.getIntent());if(initial!=null) pending.addLast(initial);}
+        readInitial(null);
         promise.resolve(pending.pollFirst());
     }
     @ReactMethod public void openBrowser(String url, Promise promise) {
