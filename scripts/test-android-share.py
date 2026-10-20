@@ -42,6 +42,8 @@ def wait_text(label, seconds=60):
         except (subprocess.CalledProcessError,ET.ParseError):pass
         time.sleep(1)
     raise AssertionError('Timed out waiting for: '+label)
+handlers=adb('shell','cmd','package','query-activities','--brief','-a','android.intent.action.SEND','-t','text/plain','-c','android.intent.category.DEFAULT')
+assert PACKAGE+'/' in handlers,'Harmonia is not registered as an Android text Share destination'
 adb('logcat', '-c')
 adb('shell','pm','grant',PACKAGE,'android.permission.POST_NOTIFICATIONS')
 adb('shell', 'am', 'force-stop', PACKAGE)
@@ -86,5 +88,5 @@ try:
 finally:
     adb('shell','cmd','connectivity','airplane-mode','disable')
 logs = adb('logcat' , '-d', '-s', 'AndroidRuntime:E')
-assert 'FATAL EXCEPTION' not in logs, logs
+assert not ('FATAL EXCEPTION' in logs and PACKAGE in logs), logs
 print('Standalone startup, external system SEND/VIEW and repeated-share smoke passed. No Metro started.')

@@ -26,6 +26,8 @@ export default function IncomingLinks() {
     function receive(value: unknown) {
       if (!mounted) return;
       const text = accept(value);
+      if (text !== undefined)
+        module.acknowledge?.((value as { token: string }).token);
       if (text === undefined || text.startsWith("harmonia:")) return;
       const found = sharedLinks(text);
       if (!found.length) {

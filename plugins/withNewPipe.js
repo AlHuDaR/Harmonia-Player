@@ -65,6 +65,25 @@ module.exports = function withNewPipe(config) {
         `\n  ${marker}\n  override fun onNewIntent(intent: android.content.Intent) {\n    super.onNewIntent(intent)\n    setIntent(intent)\n  }\n}\n`,
       );
     }
+    const coldMarker = "// Harmonia capture before React initialization";
+    if (!mod.modResults.contents.includes(coldMarker)) {
+      const anchor = /override fun onCreate\(savedInstanceState: Bundle\?\) \{/;
+      if (!anchor.test(mod.modResults.contents))
+        throw new Error(
+          "Cannot capture Harmonia launch intent before React initialization.",
+        );
+      mod.modResults.contents = mod.modResults.contents.replace(
+        anchor,
+        (match) =>
+          `${match}\n    ${coldMarker}\n    if (savedInstanceState == null) com.alhudar.harmonia.youtube.IntentModule.captureIncoming(intent)`,
+      );
+    }
+    const warmMarker = "// Harmonia capture before React onNewIntent";
+    if (!mod.modResults.contents.includes(warmMarker))
+      mod.modResults.contents = mod.modResults.contents.replace(
+        "super.onNewIntent(intent)",
+        `${warmMarker}\n    com.alhudar.harmonia.youtube.IntentModule.captureIncoming(intent)\n    super.onNewIntent(intent)`,
+      );
     return mod;
   });
   return withDangerousMod(config, [

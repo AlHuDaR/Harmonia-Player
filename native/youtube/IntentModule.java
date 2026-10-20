@@ -1,57 +1,41 @@
 package com.alhudar.harmonia.youtube;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.provider.Settings;
 import com.facebook.react.bridge.*;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import java.util.UUID;
-import java.util.ArrayDeque;
 
-public final class IntentModule extends ReactContextBaseJavaModule implements ActivityEventListener {
-    private final ArrayDeque<WritableMap> pending = new ArrayDeque<>();
-    private boolean initialRead;
-    IntentModule(ReactApplicationContext context) { super(context); context.addActivityEventListener(this); }
-    @Override public String getName() { return "HarmoniaIntents"; }
-    private WritableMap capture(Intent intent) {
-        if(intent==null) return null;
+public final class IntentModule extends ReactContextBaseJavaModule {
+    private static final IntentInbox INBOX=new IntentInbox();
+    private static volatile java.lang.ref.WeakReference<IntentModule> active=new java.lang.ref.WeakReference<>(null);
+    IntentModule(ReactApplicationContext context) {super(context);active=new java.lang.ref.WeakReference<>(this);}
+    @Override public String getName() {return "HarmoniaIntents";}
+    // Called by the existing MainActivity hooks BEFORE React can replace the launch Intent.
+    public static synchronized void captureIncoming(Intent intent) {
+        if(intent==null)return;
         String text=null;
-        if(Intent.ACTION_VIEW.equals(intent.getAction())) text=intent.getDataString();
-        if(Intent.ACTION_SEND.equals(intent.getAction()) && "text/plain".equals(intent.getType())) {
-            CharSequence shared=intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-            if(shared!=null) text=shared.toString();
-        }
-        if(text==null || text.length()>4096) return null;
-        WritableMap value=Arguments.createMap();value.putString("text",text);value.putString("token",UUID.randomUUID().toString());return value;
-    }
-    private void readInitial(Intent arriving) {
-        if(initialRead) return;
-        Activity activity=getCurrentActivity();
-        if(activity==null) return; // Foreground drain can retry when attached.
-        initialRead=true;
-        Intent initial=activity.getIntent();
-        if(initial!=arriving) {
-            WritableMap value=capture(initial);
-            if(value!=null) pending.addLast(value);
+        try {
+            if(Intent.ACTION_VIEW.equals(intent.getAction()))text=intent.getDataString();
+            if(Intent.ACTION_SEND.equals(intent.getAction()) && "text/plain".equals(intent.getType())) {
+                CharSequence shared=intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+                if(shared!=null)text=shared.toString();
+            }
+        } catch(RuntimeException malformed) {return;}
+        IntentInbox.Entry value=INBOX.offer(text,UUID.randomUUID().toString());
+        IntentModule module=active.get();
+        if(value!=null && module!=null && module.getReactApplicationContext().hasActiveReactInstance()) {
+            try {module.getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("HarmoniaLink",map(value));}
+            catch(RuntimeException closedBridge) { /* Retained until a live JS bridge drains/acknowledges it. */ }
         }
     }
-    @Override public synchronized void onNewIntent(Intent intent) {
-        // Preserve the launch share if a second intent arrives before JS drains.
-        readInitial(intent);
-        initialRead=true;
-        WritableMap value=capture(intent);
-        if(value==null) return;
-        // Bounded retention while JS starts; do not overwrite the previous share.
-        if(pending.size()>=32) pending.removeFirst();
-        pending.addLast(value);
-        if(getReactApplicationContext().hasActiveReactInstance())
-            getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("HarmoniaLink",Arguments.makeNativeMap(value.toHashMap()));
+    private static WritableMap map(IntentInbox.Entry value) {
+        if(value==null)return null;
+        WritableMap m=Arguments.createMap();m.putString("text",value.text);m.putString("token",value.token);return m;
     }
-    @ReactMethod public synchronized void getPending(Promise promise) {
-        readInitial(null);
-        promise.resolve(pending.pollFirst());
-    }
+    @ReactMethod public void getPending(Promise promise) {promise.resolve(map(INBOX.poll()));}
+    @ReactMethod public void acknowledge(String token) {INBOX.acknowledge(token);}
     @ReactMethod public void openBrowser(String url, Promise promise) {
         try {
             Uri uri=Uri.parse(url);
@@ -72,6 +56,5 @@ public final class IntentModule extends ReactContextBaseJavaModule implements Ac
     }
     @ReactMethod public void addListener(String name) {}
     @ReactMethod public void removeListeners(double count) {}
-    @Override public void onActivityResult(Activity activity,int requestCode,int resultCode,Intent data) {}
-    @Override public void invalidate(){getReactApplicationContext().removeActivityEventListener(this);super.invalidate();}
+    @Override public void invalidate(){java.lang.ref.WeakReference<IntentModule> current=active;if(current.get()==this)current.clear();super.invalidate();}
 }
