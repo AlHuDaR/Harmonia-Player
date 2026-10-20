@@ -5,6 +5,8 @@ const bridge = vi.hoisted(() => ({
   cancel: vi.fn(),
   forgetDownload: vi.fn(),
 }));
+const resolve = vi.hoisted(() => vi.fn());
+const removeFile = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("react-native", () => ({
   NativeModules: { HarmoniaMedia: bridge },
   Platform: { OS: "android" },
@@ -21,13 +23,10 @@ vi.mock("expo-file-system/legacy", () => ({
   documentDirectory: "file:///app/",
   makeDirectoryAsync: async () => {},
   getInfoAsync: async () => ({ exists: false }),
-  deleteAsync: async () => {},
+  deleteAsync: removeFile,
 }));
 vi.mock("../utils/youtube", () => ({
-  resolveSource: async () => ({
-    uri: "https://cdn.example.com/a.mp4",
-    extension: "mp4",
-  }),
+  resolveSource: resolve,
   muxDownload: vi.fn(),
 }));
 import {
@@ -46,9 +45,37 @@ const track = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  resolve.mockReset().mockResolvedValue({uri:"https://cdn.example.com/a.mp4",extension:"mp4"});
   usePlayerStore.setState({ downloads: [], tracks: [] });
 });
 describe("durable native job/library reconciliation", () => {
+  it.each(["queued","downloading","retrying"] as const)("preserves %s native work when Download is tapped again", async (status) => {
+    const record={track,nativeId:"existing",status,progress:0.4,createdAt:1};
+    usePlayerStore.getState().setDownload(record);
+    await downloadTrack(track);
+    expect(resolve).not.toHaveBeenCalled();
+    expect(bridge.enqueueDownload).not.toHaveBeenCalled();
+    expect(usePlayerStore.getState().downloads[0]).toEqual(record);
+  });
+  it("ignores an old native poll while fresh source resolution is in flight", async () => {
+    let finish!: (value: {uri:string;extension:string})=>void;
+    resolve.mockImplementationOnce(()=>new Promise(r=>{finish=r;}));
+    usePlayerStore.getState().setDownload({track,nativeId:"old",createdAt:1,status:"failed",progress:0});
+    const work=downloadTrack(track);
+    await vi.waitFor(()=>expect(resolve).toHaveBeenCalledOnce());
+    bridge.downloads.mockResolvedValue(JSON.stringify([{track,nativeId:"old",createdAt:1,status:"failed",progress:0}]));
+    await syncNativeDownloads();
+    expect(usePlayerStore.getState().downloads[0].status).toBe("downloading");
+    bridge.enqueueDownload.mockResolvedValue(JSON.stringify({track,nativeId:"new",createdAt:Date.now(),status:"queued",progress:0}));
+    finish({uri:"https://cdn.example.com/a.mp4",extension:"mp4"});
+    await work;
+    expect(usePlayerStore.getState().downloads[0].nativeId).toBe("new");
+  });
+  it("deletes the current saved file even when the caller holds an older online track", async () => {
+    usePlayerStore.getState().setDownload({track:{...track,localUri:"file:///latest.mp4"},nativeId:"job",status:"complete",progress:1});
+    await deleteDownload(track);
+    expect(removeFile).toHaveBeenCalledWith("file:///latest.mp4",{idempotent:true});
+  });
   it("records queued work without falsely reporting a completed download", async () => {
     bridge.enqueueDownload.mockResolvedValue(
       JSON.stringify({ track, nativeId: "job", status: "queued", progress: 0 }),

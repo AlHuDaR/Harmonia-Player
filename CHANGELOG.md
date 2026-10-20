@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-preview.4 — download/library reliability
+
+- Normalize public Instagram post share URLs and deduplicate saved-link tracking variants, preserving existing track, history and playlist identities. Direct signed-media queries remain intact.
+- Preserve active native download jobs on repeated taps, ignore stale native polls during retry preparation, and delete the latest stored file when callers hold an older track.
+- Add bilingual download search and All/Active/Offline/Needs attention filters. Play all follows the visible offline results.
+- VersionCode 10; no dependency, native-code, package-identity or signing changes. Android release builds remain in CI.
+
 ## 2.0.0-preview.3 — public Instagram embed videos
 
 - Replace the unconditional Instagram exclusion with bounded public-embed metadata discovery and actual MP4 response/container verification. Match the requested shortcode; reject private markers, missing media, photos/carousels and unsupported link shapes without assuming every failure means a private account.

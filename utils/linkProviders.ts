@@ -68,6 +68,14 @@ export function classifyLink(input: string): SharedLink {
       kind: "youtube",
       actions: ["save", "browser"],
     };
+  // Public embed discovery uses only this post path, never tracking/query tokens.
+  // Leave other hosts and direct signed-media URLs untouched.
+  if (url.protocol === "https:" && /^(www\.|m\.)?instagram\.com$/.test(host) &&
+      /^\/(reel|p|tv)\/[A-Za-z0-9_-]{5,64}\/?$/.test(url.pathname))
+    return {
+      url: `https://www.instagram.com${url.pathname.replace(/\/+$/, "")}/`,
+      provider: "Instagram", kind: "web", actions: ["save", "browser"],
+    };
   // Known platform page URLs are never treated as files, even with an .mp4 suffix.
   const direct =
     !provider &&

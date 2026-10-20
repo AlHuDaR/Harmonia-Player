@@ -173,6 +173,10 @@ Android downloads now use persistent **WorkManager** jobs, foreground dataSync n
 
 For Windows without WSL: [PowerShell build instructions](docs/WINDOWS_BUILD.md). The standalone test APK includes its JavaScript bundle. See [validation and remaining acceptance gates](docs/MULTIPLATFORM_VALIDATION.md); do not interpret a hostname match or mocked test as verified social extraction support.
 
-## Current preview 3: public Instagram embed videos
+## Preview 3: public Instagram embed videos
 
 `2.0.0-preview.3`, Android versionCode **9**, adds a bounded public Instagram post/Reel embed adapter. When Instagram actually delivers matching public video metadata and a verified MP4 response, the shared-link sheet enables **Play Video** and **Download Video**. It no longer rejects every Instagram link before checking. Audio extraction, Stories, photos/carousels and authenticated/private content are not provided. Facebook/TikTok/X extraction remains unavailable. See the [Instagram implementation, source evidence and Android Studio instructions](docs/INSTAGRAM_PUBLIC_EMBED.md) and updated [provider matrix](docs/MULTIPLATFORM_PROVIDER_REVIEW.md). Live Android outcomes and APK links are recorded in the draft PR.
+
+## Current preview 4: download/library reliability
+
+`2.0.0-preview.4`, versionCode **10**, preserves the existing discovery/player/native worker and adds download search by title, artist or provider, plus All/Active/Offline/Needs attention filters. Play all uses the visible offline results. Repeated taps preserve active native jobs; retries ignore stale polling results while preparing a new source. Instagram tracking-link variants now share one canonical saved URL; existing track IDs, playlists and history are not rewritten. Signed direct-media URLs keep their queries. Provider support and audio-extraction limits above remain unchanged.

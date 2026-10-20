@@ -1,6 +1,37 @@
 import { test, expect } from "@playwright/test";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
+import packageInfo from "../../package.json";
+
+for (const language of ["en", "ar"] as const) {
+  test(`download search and status filters preserve stored records (${language})`, async ({page}) => {
+    await page.addInitScript((language) => {
+      const track=(id:string,title:string,artist:string)=>({id,title,artist,provider:artist,kind:"video"});
+      localStorage.setItem("harmonia-library-v1",JSON.stringify({version:0,state:{
+        language, settings:{theme:"light"},tracks:[],history:[],favorites:[],playlists:[],savedLinks:[],
+        downloads:[
+          {track:{...track("offline","Offline clip","Instagram"),localUri:"file:///saved.mp4"},status:"complete",progress:1},
+          {track:track("queued","Queued clip","YouTube"),nativeId:"queued-job",status:"queued",progress:0},
+          {track:track("failed","Failed clip","Library"),status:"failed",progress:0},
+        ],
+      }}));
+    },language);
+    await page.goto("/downloads");
+    await page.getByRole("radio",{name:language==="en"?"Active":"نشطة",exact:true}).click();
+    await expect(page.getByText("Queued clip",{exact:true})).toBeVisible();
+    await expect(page.getByText("Offline clip",{exact:true})).toHaveCount(0);
+    await page.getByRole("radio",{name:language==="en"?"Offline":"دون إنترنت",exact:true}).click();
+    const search=page.getByLabel(language==="en"?"Search downloads":"البحث في التنزيلات",{exact:true});
+    await search.fill("INSTAGRAM");
+    await expect(page.getByText("Offline clip",{exact:true})).toBeVisible();
+    await search.fill("nothing matches");
+    await expect(page.getByText(language==="en"?"No matching downloads.":"لا توجد تنزيلات مطابقة.",{exact:true})).toBeVisible();
+    await search.fill("");
+    await page.getByRole("radio",{name:language==="en"?"Needs attention":"تحتاج إلى مراجعة",exact:true}).click();
+    await expect(page.getByText("Failed clip",{exact:true})).toBeVisible();
+    expect(await page.evaluate(()=>JSON.parse(localStorage.getItem("harmonia-library-v1")!).state.downloads.length)).toBe(3);
+  });
+}
 for (const [file, type] of [
   ["tone.mp3", "audio/mpeg"],
   ["video.mp4", "video/mp4"],
@@ -268,7 +299,7 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
     "Coded By AlHuDaR",
   );
   await expect(
-    page.getByText("2.0.0-preview.3", { exact: false }),
+    page.getByText(packageInfo.version, { exact: false }),
   ).toBeVisible();
   await page.setViewportSize({ width: 240, height: 640 });
   const credit = page.getByTestId("developer-credit");
