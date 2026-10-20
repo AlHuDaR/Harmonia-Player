@@ -39,6 +39,9 @@ for (const [file, type] of [
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
       .toBeGreaterThan(1);
+    await expect(page.getByLabel(/^Playback position /)).toHaveAttribute(
+      "aria-label", /^Playback position 0:(0[1-9]|1[0-5])$/,
+    );
     await page.getByLabel("Back to browsing", { exact: true }).click();
     const mini = await page
       .getByLabel("Expand player", { exact: true })

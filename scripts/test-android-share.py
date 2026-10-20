@@ -87,12 +87,14 @@ try:
     while time.monotonic()<deadline:
         adb('shell','uiautomator','dump','/sdcard/harmonia-window.xml')
         current=ET.fromstring(adb('shell','cat','/sdcard/harmonia-window.xml'))
-        if any(re.search(r'(?<![0-9:])0:(0[1-9]|1[0-4])(?![0-9])',n.get('text','')+' '+n.get('content-desc','')) for n in current.iter('node')):
+        # UIAutomator may wait for idle until the 15-second fixture ends.
+        # Check the explicitly named elapsed clock, never a duration label.
+        if any(re.fullmatch(r'Playback position 0:(0[1-9]|1[0-5])',n.get('content-desc','')) for n in current.iter('node')):
             playing=True;break
         time.sleep(1)
     if not playing:
         print('Player labels:',[(n.get('text'),n.get('content-desc')) for n in current.iter('node') if n.get('text') or n.get('content-desc')],flush=True)
-    assert playing,'Offline playback time did not advance' 
+    assert playing,'Offline playback time did not advance'
     print('Native file download, process restart and offline playback passed')
 finally:
     adb('shell','cmd','connectivity','airplane-mode','disable')

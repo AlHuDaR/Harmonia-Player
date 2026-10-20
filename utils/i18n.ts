@@ -1,5 +1,7 @@
 import { usePlayerStore } from "@/store/playerStore";
 export const ar: Record<string, string> = {
+  "Playback position": "موضع التشغيل",
+  "Media duration": "مدة الوسائط",
   "No playable media source is available.": "لا يتوفر مصدر وسائط قابل للتشغيل.",
   "No downloadable formats available.": "لا تتوفر صيغ قابلة للتنزيل.",
   "No compatible audio format available.": "لا تتوفر صيغة صوت متوافقة.",
