@@ -36,7 +36,7 @@ mkdir -p artifacts
 gradle() {
   (
     cd android
-    ./gradlew "$@" --max-workers=2 --no-daemon
+    ./gradlew "$@" --max-workers=2 --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g"
   )
 }
 

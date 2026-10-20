@@ -291,3 +291,53 @@ it("retains theme presets on restart and falls back safely for unknown presets",
   await usePlayerStore.persist.rehydrate();
   expect(usePlayerStore.getState().settings.preset).toBe("harmonia");
 });
+
+it("restores a v1 library with no savedLinks and round-trips saved links independently", async () => {
+  usePlayerStore.setState({ savedLinks: [] });
+  storage.set(
+    "harmonia-library-v1",
+    JSON.stringify({
+      version: 0,
+      state: {
+        tracks: [],
+        history: ["keep"],
+        playlists: [{ id: "p", name: "Keep", trackIds: ["keep"] }],
+        favorites: ["keep"],
+        downloads: [],
+        settings: { background: true },
+      },
+    }),
+  );
+  await usePlayerStore.persist.rehydrate();
+  expect(usePlayerStore.getState().savedLinks).toEqual([]);
+  const s = usePlayerStore.getState();
+  s.saveLink({ url: "https://instagram.com/reel/123", provider: "Instagram" });
+  s.saveLink({ url: "https://instagram.com/reel/123", provider: "Instagram" });
+  await usePlayerStore.persist.rehydrate();
+  expect(usePlayerStore.getState().savedLinks).toHaveLength(1);
+  expect(usePlayerStore.getState().playlists[0].trackIds).toEqual(["keep"]);
+  expect(usePlayerStore.getState().history).toEqual(["keep"]);
+  s.removeSavedLink("https://instagram.com/reel/123");
+  expect(usePlayerStore.getState().savedLinks).toEqual([]);
+});
+
+it("rejects unsafe saved links and sanitizes persisted link entries", async () => {
+  const s = usePlayerStore.getState();
+  expect(() =>
+    s.saveLink({ url: "https://127.0.0.1/a.mp4", provider: "fake" }),
+  ).toThrow();
+  s.saveLink({ url: "https://vimeo.com/123", provider: "fake" });
+  const saved = JSON.parse(storage.get("harmonia-library-v1")!);
+  saved.state.savedLinks.push(
+    { url: "file:///etc/passwd", provider: "fake" },
+    null,
+  );
+  storage.set("harmonia-library-v1", JSON.stringify(saved));
+  await usePlayerStore.persist.rehydrate();
+  expect(usePlayerStore.getState().savedLinks).toEqual([
+    expect.objectContaining({
+      url: "https://vimeo.com/123",
+      provider: "Vimeo",
+    }),
+  ]);
+});

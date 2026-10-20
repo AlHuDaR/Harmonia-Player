@@ -13,9 +13,9 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 CI=1 npm run dev -- --web --localhost --port 8081 --max-workers 2",
+      "EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 CI=1 npm run dev -- --web --localhost --port 8081 --max-workers 2 --clear",
     url: "http://localhost:8081/",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120000,
   },
 });

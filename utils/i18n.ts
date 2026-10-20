@@ -1,5 +1,75 @@
 import { usePlayerStore } from "@/store/playerStore";
 export const ar: Record<string, string> = {
+  "Playback position": "موضع التشغيل",
+  "Media duration": "مدة الوسائط",
+  "No playable media source is available.": "لا يتوفر مصدر وسائط قابل للتشغيل.",
+  "No downloadable formats available.": "لا تتوفر صيغ قابلة للتنزيل.",
+  "No compatible audio format available.": "لا تتوفر صيغة صوت متوافقة.",
+  "Invalid web link.": "رابط الويب غير صالح.",
+  "Only web links without credentials are supported.":
+    "تُدعم روابط الويب الخالية من بيانات تسجيل الدخول فقط.",
+  "Local, internal and nonstandard-port links are not supported.":
+    "لا تُدعم الروابط المحلية أو الداخلية أو ذات المنافذ غير القياسية.",
+  "Saved links": "الروابط المحفوظة",
+  "Save Link": "حفظ الرابط",
+  "Link saved": "تم حفظ الرابط",
+  "Open in Browser": "فتح في المتصفح",
+  "Audio Only": "صوت فقط",
+  "Remove saved link": "إزالة الرابط المحفوظ",
+  "Working…": "جارٍ العمل…",
+  "No safe web link was found in the shared text.":
+    "لم يتم العثور على رابط ويب آمن في النص المشارك.",
+  "Could not read the shared link. Please share it again.":
+    "تعذرت قراءة الرابط المشارك. يرجى مشاركته مجدداً.",
+  "Could not open the browser.": "تعذر فتح المتصفح.",
+  "Playback and download are not supported for this page. Save the link or open the original source.":
+    "لا تدعم هذه الصفحة التشغيل والتنزيل. احفظ الرابط أو افتح المصدر الأصلي.",
+  "Media availability and download formats depend on the source. Only use media you are authorized to access.":
+    "يعتمد توفر الوسائط وصيغ التنزيل على المصدر. استخدم فقط الوسائط المصرح لك بالوصول إليها.",
+  "Share a web link to Harmonia, then choose Save Link.":
+    "شارك رابط ويب مع هارمونيا، ثم اختر حفظ الرابط.",
+  "Play Video": "تشغيل الفيديو",
+  "Download Video": "تنزيل الفيديو",
+  "Download Audio": "تنزيل الصوت",
+  "Refresh formats": "تحديث الصيغ",
+  "Discovering available media…": "جارٍ اكتشاف الوسائط المتاحة…",
+  Queued: "في قائمة الانتظار",
+  "Waiting to retry": "في انتظار إعادة المحاولة",
+  "Cancel download": "إلغاء التنزيل",
+  "Download cancelled.": "تم إلغاء التنزيل.",
+  "Use an Instagram post or Reel link.": "استخدم رابط منشور أو ريل من إنستغرام.",
+  "Use an Instagram post or Reel link; profiles, Stories and share redirects are not extracted.":
+    "استخدم رابط منشور أو ريل من إنستغرام؛ لا يتم استخراج الملفات الشخصية أو القصص أو روابط إعادة توجيه المشاركة.",
+  "Instagram embed response is too large.": "استجابة تضمين إنستغرام كبيرة جداً.",
+  "This Instagram embed marks the content as private. It is not accessed.":
+    "يشير تضمين إنستغرام إلى أن المحتوى خاص. لا يتم الوصول إليه.",
+  "This Instagram embed does not expose a single public video. Photos and carousels are not extracted.":
+    "لا يعرض هذا التضمين فيديو عاماً منفرداً. لا يتم استخراج الصور أو المنشورات المتعددة.",
+  "Instagram did not expose a public video in this embed. The post may be unavailable, restricted or embedding may be disabled. Open in Browser to check.":
+    "لم يوفر إنستغرام فيديو عاماً في هذا التضمين. قد يكون المنشور غير متاح أو مقيداً أو قد يكون التضمين معطلاً. افتحه في المتصفح للتحقق.",
+  "Instagram did not return a compatible public MP4 file.":
+    "لم يوفر إنستغرام ملف MP4 عاماً متوافقاً.",
+  "Facebook media discovery requires an authorized platform interface. Login-required, private and restricted videos are not accessed.":
+    "يتطلب اكتشاف وسائط فيسبوك واجهة منصة مصرحاً بها. لا يتم الوصول إلى الفيديوهات الخاصة أو المقيدة أو التي تتطلب تسجيل الدخول.",
+  "TikTok's public embed interface does not expose a supported downloadable media stream here. Open the original source.":
+    "لا توفر واجهة تضمين تيك توك العامة بث وسائط مدعوماً للتنزيل هنا. افتح المصدر الأصلي.",
+  "X media access requires an authorized API interface. Harmonia does not collect account credentials or bypass access restrictions.":
+    "يتطلب الوصول إلى وسائط إكس واجهة برمجية مصرحاً بها. لا يجمع هارمونيا بيانات الحساب ولا يتجاوز قيود الوصول.",
+  "No supported public media interface is available for this page.":
+    "لا تتوفر واجهة وسائط عامة مدعومة لهذه الصفحة.",
+  "Media discovery requires the standalone Android app.":
+    "يتطلب اكتشاف الوسائط تطبيق أندرويد المستقل.",
+  "Could not synchronize background downloads. Records remain on this device.":
+    "تعذرت مزامنة التنزيلات في الخلفية. لا تزال السجلات محفوظة على هذا الجهاز.",
+  "Network interrupted. Waiting to retry.":
+    "انقطع الاتصال. في انتظار إعادة المحاولة.",
+  "Not enough free storage.": "لا تتوفر مساحة تخزين كافية.",
+  "DRM-protected media is not supported.":
+    "الوسائط المحمية بحقوق رقمية غير مدعومة.",
+  "Encrypted/DRM playlists are not supported.":
+    "قوائم البث المشفرة أو المحمية بحقوق رقمية غير مدعومة.",
+  "Background job stopped. Retry to resolve fresh media.":
+    "توقفت المهمة في الخلفية. أعد المحاولة للحصول على وسائط متاحة مجدداً.",
   Home: "الرئيسية",
   Search: "البحث",
   Downloads: "التنزيلات",
@@ -234,7 +304,8 @@ Object.assign(ar, {
   "View library": "فتح المكتبة",
   "View recent": "عرض السجل",
   "Make yourself at home": "ابدأ رحلتك مع هارمونيا",
-  "Search for something you love, or import a file in Library. Your listening history will appear here.": "ابحث عما تحب أو استورد ملفاً من المكتبة. سيظهر سجل التشغيل هنا.",
+  "Search for something you love, or import a file in Library. Your listening history will appear here.":
+    "ابحث عما تحب أو استورد ملفاً من المكتبة. سيظهر سجل التشغيل هنا.",
   "No listening history yet": "لا يوجد سجل تشغيل بعد",
   "Color palette": "ألوان الواجهة",
   Harmonia: "هارمونيا",
@@ -242,21 +313,27 @@ Object.assign(ar, {
   "AMOLED Black": "أسود AMOLED",
   Ocean: "المحيط",
   Sunset: "الغروب",
-  "AMOLED Black uses a true black background in Dark mode.": "يستخدم أسود AMOLED خلفية سوداء بالكامل في الوضع الداكن.",
+  "AMOLED Black uses a true black background in Dark mode.":
+    "يستخدم أسود AMOLED خلفية سوداء بالكامل في الوضع الداكن.",
   "Local media": "وسائط محلية",
   "Saved tracks": "مقاطع محفوظة",
   "Your playlists start here": "أنشئ قوائمك هنا",
-  "Create a playlist, then use Add To in the player to save tracks to it.": "أنشئ قائمة ثم استخدم إضافة إلى في المشغل لحفظ المقاطع فيها.",
+  "Create a playlist, then use Add To in the player to save tracks to it.":
+    "أنشئ قائمة ثم استخدم إضافة إلى في المشغل لحفظ المقاطع فيها.",
   "Keep what you love": "احتفظ بما تحب",
   "Nothing here yet": "لا توجد مقاطع هنا بعد",
-  "Import local audio or video using the button above.": "استورد صوتاً أو فيديو من الزر أعلاه.",
-  "Tracks you open or play are saved here. Downloads have their own space.": "تظهر هنا المقاطع التي تفتحها أو تشغلها. للتنزيلات قسم مستقل.",
+  "Import local audio or video using the button above.":
+    "استورد صوتاً أو فيديو من الزر أعلاه.",
+  "Tracks you open or play are saved here. Downloads have their own space.":
+    "تظهر هنا المقاطع التي تفتحها أو تشغلها. للتنزيلات قسم مستقل.",
   "Find your next listen": "اعثر على مقطعك التالي",
-  "Search YouTube by title or artist. You can also open a link or import a file in Library.": "ابحث في يوتيوب بالعنوان أو الفنان. يمكنك أيضاً فتح رابط أو استيراد ملف من المكتبة.",
+  "Search YouTube by title or artist. You can also open a link or import a file in Library.":
+    "ابحث في يوتيوب بالعنوان أو الفنان. يمكنك أيضاً فتح رابط أو استيراد ملف من المكتبة.",
   "Ready offline": "جاهز دون إنترنت",
   "Download failed": "تعذر التنزيل",
   "No downloads yet": "لا توجد تنزيلات بعد",
-  "Use Download in the player to keep a track for offline listening.": "استخدم تنزيل في المشغل لحفظ مقطع للاستماع دون إنترنت.",
+  "Use Download in the player to keep a track for offline listening.":
+    "استخدم تنزيل في المشغل لحفظ مقطع للاستماع دون إنترنت.",
 });
 export function translate(text: string, language: "en" | "ar"): string {
   if (language === "en") return text;

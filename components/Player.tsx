@@ -492,8 +492,14 @@ function MediaEngine({
                 },
               ]}
             >
-              <Text style={styles.muted}>{clock(position)}</Text>
-              <Text style={styles.muted}>{clock(duration)}</Text>
+              <Text
+                accessibilityLabel={`${t("Playback position")} ${clock(position)}`}
+                style={styles.muted}
+              >{clock(position)}</Text>
+              <Text
+                accessibilityLabel={`${t("Media duration")} ${clock(duration)}`}
+                style={styles.muted}
+              >{clock(duration)}</Text>
             </View>
             <View
               style={[
