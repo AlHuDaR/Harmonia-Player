@@ -1,9 +1,17 @@
 """Standalone APK/system-intent smoke test. Run after adb install; no Metro used.
 This injects Android SEND/VIEW from adb shell, not Instagram/TikTok UI automation.
 """
-import subprocess, time, xml.etree.ElementTree as ET, pathlib
+import subprocess, time, xml.etree.ElementTree as ET, pathlib, atexit, re
 PACKAGE = 'com.alhudar.harmonia'
 COMPONENT = PACKAGE + '/.MainActivity'
+ARTIFACTS=pathlib.Path('artifacts/android-smoke');ARTIFACTS.mkdir(parents=True,exist_ok=True)
+def capture():
+    for name,command in [('logcat.txt',['adb','logcat','-d']),('media-session.txt',['adb','shell','dumpsys','media_session']),('window.xml',['adb','shell','cat','/sdcard/harmonia-window.xml'])]:
+        try:(ARTIFACTS/name).write_bytes(subprocess.check_output(command,stderr=subprocess.STDOUT,timeout=20))
+        except Exception:pass
+    try:(ARTIFACTS/'screen.png').write_bytes(subprocess.check_output(['adb','exec-out','screencap','-p'],timeout=20))
+    except Exception:pass
+atexit.register(capture)
 def adb(*args):
     return subprocess.check_output(['adb', *args], text=True, stderr=subprocess.STDOUT)
 def wait_sheet(source, media=False):
@@ -15,9 +23,8 @@ def wait_sheet(source, media=False):
             root = ET.fromstring(xml)
             labels = [n.get('text', '') or n.get('content-desc', '') for n in root.iter('node')]
             if source in labels and 'Save Link' in labels:
-                for label in ['Play Video', 'Audio Only', 'Download Video', 'Download Audio']:
-                    assert any((n.get('text') == label or n.get('content-desc') == label) and n.get('enabled') == ('true' if media and label in ['Play Video', 'Download Video'] else 'false') for n in root.iter('node')), (label, labels)
-                return root
+                ready=all(any((n.get('text') == label or n.get('content-desc') == label) and n.get('enabled') == ('true' if media and label in ['Play Video', 'Download Video'] else 'false') for n in root.iter('node')) for label in ['Play Video', 'Audio Only', 'Download Video', 'Download Audio'])
+                if ready:return root
         except (subprocess.CalledProcessError, ET.ParseError):
             pass
         time.sleep(1)
@@ -80,9 +87,11 @@ try:
     while time.monotonic()<deadline:
         adb('shell','uiautomator','dump','/sdcard/harmonia-window.xml')
         current=ET.fromstring(adb('shell','cat','/sdcard/harmonia-window.xml'))
-        if any(re.fullmatch(r'0:(0[1-9]|1[0-4])',n.get('text','')) for n in current.iter('node')):
+        if any(re.search(r'(?<![0-9:])0:(0[1-9]|1[0-4])(?![0-9])',n.get('text','')+' '+n.get('content-desc','')) for n in current.iter('node')):
             playing=True;break
         time.sleep(1)
+    if not playing:
+        print('Player labels:',[(n.get('text'),n.get('content-desc')) for n in current.iter('node') if n.get('text') or n.get('content-desc')],flush=True)
     assert playing,'Offline playback time did not advance' 
     print('Native file download, process restart and offline playback passed')
 finally:

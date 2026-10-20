@@ -136,11 +136,20 @@ jobs:
         with:
           api-level: 35
           target: google_apis
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -feature -Vulkan
           arch: x86_64
           disable-animations: true
           script: |
             adb install -r artifacts/Harmonia-Player-universal.apk
             python3 scripts/test-android-share.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-share-smoke-diagnostics
+          path: artifacts/android-smoke
+          if-no-files-found: ignore
 
   windows-script:
     runs-on: windows-latest

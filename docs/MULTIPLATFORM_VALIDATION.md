@@ -20,6 +20,8 @@ Scope: feature branch `feat/harmonia-multiplatform-discovery`, based on PR #27 (
 | Windows execution | Native PowerShell release script and hosted Windows build job added. This Linux host does not execute Windows binaries. Only an observed hosted result establishes Windows build verification. |
 | Local Android emulator/device | No emulator or physical device attached. No claim of local device testing. |
 
+Hosted run `39474413932` passed Linux release validation (ARM64/universal/AAB and native tests) and the full native Windows PowerShell build. Its Android emulator confirmed cold/warm/repeated SEND and download completion, then failed the offline playback-clock assertion on the default 320x640 AVD. That failed assertion is not counted as offline playback success. The emulator harness is being rerun with a representative Pixel 6 profile, capability-readiness waits and retained XML/screenshot/logcat/media-session diagnostics.
+
 The first hosted run passed Doctor and failed type checking before Android builds. Its skipped emulator job is not a passed test. The strict-null guard was fixed before the replacement run. The hosted Windows build also runs type checking and must pass independently.
 
 ## Build/artifact record
