@@ -164,3 +164,11 @@ Share a text link from another Android app and choose Harmonia. The sheet offers
 HTTP links remain browser/save-only. Local/internal addresses, IP literals, embedded credentials and nonstandard URL ports are rejected. Hostname checks do not guarantee DNS/redirect safety. Android app-link defaults may keep opening the original app until the user changes supported-link settings; no verified ownership of social domains is claimed. Share text/plain remains the universal entry point.
 
 Downloads retain the existing private-storage/restart limitations in this first PR. No new media-processing dependency, launcher icon, signing key or permission has been introduced. Physical-device share/PiP/Bluetooth/background tests and dependency remediation remain release gates.
+
+## Multi-platform preview 2
+
+Preview `2.0.0-preview.2` / Android versionCode **8** separates URL recognition from real format discovery. The share sheet exposes Play Video, Audio Only, Download Video and Download Audio only when matching formats have been discovered. Save Link and Browser remain available without extraction. [Provider capability/evidence matrix](docs/MULTIPLATFORM_PROVIDER_REVIEW.md) explains the exact Vimeo/Reddit public adapters and why Instagram/Facebook/TikTok/X are not advertised as working download sources.
+
+Android downloads now use persistent **WorkManager** jobs, foreground dataSync notifications, cancellation, bounded exponential retries, storage/length/media-track/DRM validation and final-file commit. Separate compatible MP4/AAC files retain the existing native mux. Retried transfers restart cleanly; HTTP Range resume, MP3 transcoding and HLS offline export are not included. Failed/expired sources stay failed and can be retried to resolve fresh formats. Existing library/playlists/settings and package identity are preserved.
+
+For Windows without WSL: [PowerShell build instructions](docs/WINDOWS_BUILD.md). The standalone test APK includes its JavaScript bundle. See [validation and remaining acceptance gates](docs/MULTIPLATFORM_VALIDATION.md); do not interpret a hostname match or mocked test as verified social extraction support.
