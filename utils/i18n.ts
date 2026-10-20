@@ -1,5 +1,11 @@
 import { usePlayerStore } from "@/store/playerStore";
 export const ar: Record<string, string> = {
+  "No playable media source is available.": "لا يتوفر مصدر وسائط قابل للتشغيل.",
+  "No downloadable formats available.": "لا تتوفر صيغ قابلة للتنزيل.",
+  "No compatible audio format available.": "لا تتوفر صيغة صوت متوافقة.",
+  "Invalid web link.": "رابط الويب غير صالح.",
+  "Only web links without credentials are supported.": "تُدعم روابط الويب الخالية من بيانات تسجيل الدخول فقط.",
+  "Local, internal and nonstandard-port links are not supported.": "لا تُدعم الروابط المحلية أو الداخلية أو ذات المنافذ غير القياسية.",
   "Saved links": "الروابط المحفوظة",
   "Save Link": "حفظ الرابط",
   "Link saved": "تم حفظ الرابط",
