@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as DocumentPicker from "expo-document-picker";
-import { NativeModules, Platform } from "react-native";
+import { NativeModules, Platform, PermissionsAndroid } from "react-native";
 import { usePlayerStore } from "@/store/playerStore";
 import { resolveSource, muxDownload } from "./youtube";
 import { message, type Track } from "@/types/media";
@@ -41,6 +41,12 @@ export async function downloadTrack(track: Track): Promise<void> {
         "Offline download requires a single media file; adaptive streams are playback-only.",
       );
     if (NativeModules?.HarmoniaMedia?.enqueueDownload) {
+      if (Platform.OS === "android" && Number(Platform.Version) >= 33) {
+        // Denial hides normal notifications, but does not authorize bypassing Android's foreground rules.
+        await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+        ).catch(() => {});
+      }
       const record = JSON.parse(
         await NativeModules.HarmoniaMedia.enqueueDownload(
           JSON.stringify(track),

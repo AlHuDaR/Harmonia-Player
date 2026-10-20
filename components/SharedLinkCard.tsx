@@ -96,7 +96,7 @@ export default function SharedLinkCard({
       )}
       {busy && (
         <Text accessibilityRole="alert" style={styles.text}>
-          Discovering available media…
+          {media ? "Working…" : "Discovering available media…"}
         </Text>
       )}
       <View style={[styles.row, { flexWrap: "wrap" }]}>
