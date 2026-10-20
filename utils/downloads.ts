@@ -231,7 +231,8 @@ export async function syncNativeDownloads(): Promise<void> {
       )
         continue;
       if (
-        previous?.nativeId === record.nativeId &&
+        previous &&
+        previous.nativeId === record.nativeId &&
         previous.status === record.status &&
         previous.progress === record.progress &&
         previous.error === record.error &&

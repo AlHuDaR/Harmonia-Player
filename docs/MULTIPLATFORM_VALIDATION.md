@@ -8,7 +8,7 @@ Scope: feature branch `feat/harmonia-multiplatform-discovery`, based on PR #27 (
 | --- | --- |
 | PR #27 inspection | CI failed at Expo Doctor; later tests/build were skipped. Existing social classifier had no discovery implementation. |
 | Expo Doctor after compatible patches | **21/21 passed**. Expo and five Expo modules aligned with SDK-57 recommendations; RN/NewPipe preserved. |
-| Type checking | Passed. |
+| Type checking | Earlier checks passed; the first hosted clean-install run caught TS18048 in the last polling change. An explicit previous-record guard fixes it; clean-install type checking is rerun before the updated CI run. |
 | Vitest | **107 tests passed**, 10 files. Provider policy, discovered formats/kinds, unsafe/invalid results, cancellation, native-job reconciliation/generation races, unchanged-record suppression and existing library/download/NewPipe/server regressions. Native job tests in Vitest use a mocked bridge, not an Android scheduler. |
 | Chromium browser suite | **11 passed**. Real fixture MP3/MP4 playback/seek, queues, history/playlists/favorites, themes, Arabic/RTL and disabled unsupported-source actions. Initial runs caught stale Expo config caching and a media-start timeout during native CPU contention; Metro cache was refreshed and a full rerun passed. |
 | Web export | Passed. |
@@ -20,7 +20,11 @@ Scope: feature branch `feat/harmonia-multiplatform-discovery`, based on PR #27 (
 | Windows execution | Native PowerShell release script and hosted Windows build job added. This Linux host does not execute Windows binaries. Only an observed hosted result establishes Windows build verification. |
 | Local Android emulator/device | No emulator or physical device attached. No claim of local device testing. |
 
+The first hosted run passed Doctor and failed type checking before Android builds. Its skipped emulator job is not a passed test. The strict-null guard was fixed before the replacement run. The hosted Windows build also runs type checking and must pass independently.
+
 ## Build/artifact record
+
+Local APK record below predates the final TypeScript null-guard fix; the fix does not change the discovered capabilities. Use the updated hosted artifact/PR checks for the final revision. No claim of a hosted result is made here.
 
 Final local Android build: **BUILD SUCCESSFUL in 2m 16s**, 444 tasks (25 executed, 419 up-to-date). Native source/class timestamps were checked; no stale native classes remained. **12 JVM tests passed**, four test classes, zero failures/errors. An earlier build failed for a missing ListenableFuture class; explicit compatible Guava resolved it. No test was marked passed from that failed run.
 
