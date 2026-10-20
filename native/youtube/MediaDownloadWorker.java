@@ -61,7 +61,7 @@ public final class MediaDownloadWorker extends Worker {
             transfer(source.getString("uri"),video,separate?0.7:1,0,title,source.optJSONObject("headers"));
             if(separate) {
                 transfer(source.getString("audioUri"),audio,0.25,0.7,title,source.optJSONObject("headers"));
-                checkStopped();MediaMux.merge(video,audio,output);
+                checkStopped();inspect(video,"video",false);inspect(audio,"audio",false);MediaMux.merge(video,audio,output);
             } else if(!video.renameTo(output))throw new IOException("Could not finalize temporary media.");
             checkStopped();
             inspect(output,record.getJSONObject("track").getString("kind"),separate);
@@ -126,11 +126,13 @@ public final class MediaDownloadWorker extends Worker {
         try {
             e.setDataSource(file.getPath());
             if(e.getDrmInitData()!=null) throw new PermanentFailure("DRM-protected media is not supported.");
-            java.nio.ByteBuffer sample=java.nio.ByteBuffer.allocate(16*1024*1024);
             for(int i=0;i<e.getTrackCount();i++) {
                 String mime=e.getTrackFormat(i).getString(MediaFormat.KEY_MIME);
                 if(mime!=null && (mime.startsWith("audio/") || mime.startsWith("video/"))) {
-                    e.selectTrack(i);e.seekTo(0,MediaExtractor.SEEK_TO_CLOSEST_SYNC);sample.clear();
+                    e.selectTrack(i);e.seekTo(0,MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+                    long sampleSize=Build.VERSION.SDK_INT>=28?e.getSampleSize():16L*1024*1024;
+                    if(sampleSize<=0 || sampleSize>16L*1024*1024)throw new PermanentFailure("Media sample is empty or exceeds the supported decoder buffer.");
+                    java.nio.ByteBuffer sample=java.nio.ByteBuffer.allocate((int)sampleSize);
                     if((e.getSampleFlags() & MediaExtractor.SAMPLE_FLAG_ENCRYPTED)!=0)throw new PermanentFailure("Encrypted media samples are not supported.");
                     if(e.readSampleData(sample,0)<=0)throw new PermanentFailure("Downloaded track contains no playable samples.");
                     e.unselectTrack(i);
