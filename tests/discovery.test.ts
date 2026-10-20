@@ -16,7 +16,6 @@ import { validateDiscovery } from "../utils/providerBridge";
 beforeEach(() => vi.clearAllMocks());
 describe("discovered capabilities", () => {
   it.each([
-    "https://instagram.com/reel/123",
     "https://facebook.com/reel/123",
     "https://tiktok.com/@x/video/123",
     "https://x.com/user/status/123",
@@ -32,6 +31,27 @@ describe("discovered capabilities", () => {
       "download-audio",
     ] as const)
       expect(choicesFor(null, action)).toEqual([]);
+  });
+  it("discovers actual Instagram video files without inventing isolated audio", async () => {
+    native.discover.mockResolvedValue(JSON.stringify({title:"Public Reel",formats:[{
+      id:"instagram-progressive",label:"MP4",kind:"video",uri:"https://cdn.example.com/reel.mp4",
+      extension:"mp4",downloadable:true,
+    }]}));
+    const link=classifyLink("https://www.instagram.com/reel/DerYMOFsvXQ/?igsh=tracking");
+    expect(policy(link).adapter).toBe("public-embed");
+    const result=await discoverMedia(link);
+    expect(native.discover).toHaveBeenCalledWith(link.url);
+    expect(choicesFor(result,"play-video")).toHaveLength(1);
+    expect(choicesFor(result,"download-video")).toHaveLength(1);
+    expect(choicesFor(result,"play-audio")).toEqual([]);
+    expect(choicesFor(result,"download-audio")).toEqual([]);
+    expect(result.choices[0].track.uri).toBeUndefined();
+    expect(result.choices[0].track.provider).toBe("Instagram");
+  });
+  it("reports an unavailable Instagram embed without assuming a private account", async () => {
+    native.discover.mockRejectedValue(new Error("Instagram did not expose a public video in this embed."));
+    await expect(discoverMedia(classifyLink("https://instagram.com/reel/DerYMOFsvXQ/")))
+      .rejects.toThrow("did not expose a public video");
   });
   it("enables only returned Vimeo formats, never adaptive download or fake audio", async () => {
     native.discover.mockResolvedValue(

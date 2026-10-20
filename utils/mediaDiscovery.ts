@@ -23,7 +23,7 @@ export interface Discovery {
 export const providerPolicy: Record<
   string,
   {
-    adapter: "newpipe" | "public-json" | "direct" | "unavailable";
+    adapter: "newpipe" | "public-json" | "public-embed" | "direct" | "unavailable";
     reason?: string;
   }
 > = {
@@ -31,9 +31,7 @@ export const providerPolicy: Record<
   Vimeo: { adapter: "public-json" },
   Reddit: { adapter: "public-json" },
   Instagram: {
-    adapter: "unavailable",
-    reason:
-      "Instagram does not provide anonymous downloadable media through its supported public interfaces. Private/login-required content is not accessed.",
+    adapter: "public-embed",
   },
   Facebook: {
     adapter: "unavailable",

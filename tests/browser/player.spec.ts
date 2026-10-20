@@ -268,7 +268,7 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
     "Coded By AlHuDaR",
   );
   await expect(
-    page.getByText("2.0.0-preview.2", { exact: false }),
+    page.getByText("2.0.0-preview.3", { exact: false }),
   ).toBeVisible();
   await page.setViewportSize({ width: 240, height: 640 });
   const credit = page.getByTestId("developer-credit");

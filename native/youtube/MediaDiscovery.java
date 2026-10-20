@@ -7,7 +7,7 @@ import java.util.regex.*;
 import okhttp3.*;
 import org.json.*;
 
-/** Deliberately bounded public interfaces. No HTML scraping, cookies or account login. */
+/** Bounded public metadata/files. No script execution, cookies or account login. */
 final class MediaDiscovery {
     static JSONObject format(String id,String uri,String kind,String extension,boolean downloadable) throws Exception {
         SafeHttp.url(uri);
@@ -16,6 +16,7 @@ final class MediaDiscovery {
     }
     static JSONObject discover(String input) throws Exception {
         HttpUrl url=SafeHttp.url(input);String host=url.host();
+        if(host.matches("(?:www\\.|m\\.)?instagram\\.com"))return InstagramEmbed.discover(input);
         if(host.equals("vimeo.com") || host.equals("www.vimeo.com") || host.equals("player.vimeo.com")) {
             Matcher m=Pattern.compile("^/(?:video/)?([0-9]+)/*$").matcher(url.encodedPath());
             if(!m.matches()) throw new IOException("Only public Vimeo video links are supported; private/unlisted hashes are not used.");

@@ -37,8 +37,18 @@ export const ar: Record<string, string> = {
   "Waiting to retry": "في انتظار إعادة المحاولة",
   "Cancel download": "إلغاء التنزيل",
   "Download cancelled.": "تم إلغاء التنزيل.",
-  "Instagram does not provide anonymous downloadable media through its supported public interfaces. Private/login-required content is not accessed.":
-    "لا توفر واجهات إنستغرام العامة المدعومة هنا وسائط قابلة للتنزيل دون تسجيل الدخول. لا يتم الوصول إلى المحتوى الخاص أو الذي يتطلب تسجيل الدخول.",
+  "Use an Instagram post or Reel link.": "استخدم رابط منشور أو ريل من إنستغرام.",
+  "Use an Instagram post or Reel link; profiles, Stories and share redirects are not extracted.":
+    "استخدم رابط منشور أو ريل من إنستغرام؛ لا يتم استخراج الملفات الشخصية أو القصص أو روابط إعادة توجيه المشاركة.",
+  "Instagram embed response is too large.": "استجابة تضمين إنستغرام كبيرة جداً.",
+  "This Instagram embed marks the content as private. It is not accessed.":
+    "يشير تضمين إنستغرام إلى أن المحتوى خاص. لا يتم الوصول إليه.",
+  "This Instagram embed does not expose a single public video. Photos and carousels are not extracted.":
+    "لا يعرض هذا التضمين فيديو عاماً منفرداً. لا يتم استخراج الصور أو المنشورات المتعددة.",
+  "Instagram did not expose a public video in this embed. The post may be unavailable, restricted or embedding may be disabled. Open in Browser to check.":
+    "لم يوفر إنستغرام فيديو عاماً في هذا التضمين. قد يكون المنشور غير متاح أو مقيداً أو قد يكون التضمين معطلاً. افتحه في المتصفح للتحقق.",
+  "Instagram did not return a compatible public MP4 file.":
+    "لم يوفر إنستغرام ملف MP4 عاماً متوافقاً.",
   "Facebook media discovery requires an authorized platform interface. Login-required, private and restricted videos are not accessed.":
     "يتطلب اكتشاف وسائط فيسبوك واجهة منصة مصرحاً بها. لا يتم الوصول إلى الفيديوهات الخاصة أو المقيدة أو التي تتطلب تسجيل الدخول.",
   "TikTok's public embed interface does not expose a supported downloadable media stream here. Open the original source.":
