@@ -2,17 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import { Linking, NativeModules, Platform, View } from "react-native";
 import { Text } from "./LocalizedText";
 import { Button, useMediaStyles } from "./MediaUI";
-import { directTrack, message, type Track } from "@/types/media";
-import {
-  formatTrack,
-  youtubeFormats,
-  youtubeTrack,
-  type StreamFormat,
-} from "@/utils/youtube";
+import { message } from "@/types/media";
 import { classifyLink, type SharedLink } from "@/utils/linkProviders";
+import {
+  discoverMedia,
+  choicesFor,
+  policy,
+  type Discovery,
+  type MediaChoice,
+  type MediaAction,
+} from "@/utils/mediaDiscovery";
 import { downloadTrack } from "@/utils/downloads";
 import { usePlayerStore } from "@/store/playerStore";
-
+const actions: [MediaAction, string][] = [
+  ["play-video", "Play Video"],
+  ["play-audio", "Audio Only"],
+  ["download-video", "Download Video"],
+  ["download-audio", "Download Audio"],
+];
 export default function SharedLinkCard({
   link,
   onClose,
@@ -21,60 +28,52 @@ export default function SharedLinkCard({
   onClose: () => void;
 }) {
   const styles = useMediaStyles();
-  const [track, setTrack] = useState<Track | null>(null);
-  const [formats, setFormats] = useState<StreamFormat[]>([]);
+  const [media, setMedia] = useState<Discovery | null>(null);
+  const [choices, setChoices] = useState<MediaChoice[]>([]);
+  const [action, setAction] = useState<MediaAction>("play-video");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const alive = useRef(true);
-  const operation = useRef<AbortController | null>(null);
+  const p = policy(link);
   useEffect(() => {
     alive.current = true;
+    const controller = new AbortController();
+    setMedia(null);
+    setChoices([]);
+    setError("");
+    if (p.adapter !== "unavailable") {
+      setBusy(true);
+      discoverMedia(link, controller.signal)
+        .then((value) => {
+          if (!controller.signal.aborted) setMedia(value);
+        })
+        .catch((e) => {
+          if (!controller.signal.aborted) setError(message(e));
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setBusy(false);
+        });
+    }
     return () => {
       alive.current = false;
-      operation.current?.abort();
+      controller.abort();
     };
-  }, []);
-  async function act(
-    action: "play" | "audio" | "download",
-    format?: StreamFormat,
-  ) {
-    if (busy) return;
+  }, [link.url, attempt]);
+  async function select(choice: MediaChoice, selectedAction: MediaAction) {
     setBusy(true);
     setError("");
-    const controller = new AbortController();
-    operation.current = controller;
     try {
-      const media =
-        track ||
-        (link.kind === "youtube"
-          ? await youtubeTrack(link.url, controller.signal)
-          : directTrack(link.url));
-      if (!media) throw new Error("No playable media source is available.");
-      if (!alive.current || controller.signal.aborted) return;
-      setTrack(media);
-      if (action === "download" && link.kind === "youtube" && !format) {
-        const options = await youtubeFormats(media, controller.signal);
-        if (!options.some((f) => f.downloadable))
-          throw new Error("No downloadable formats available.");
-        if (alive.current) setFormats(options.filter((f) => f.downloadable));
-        return;
-      }
-      let selected = format ? formatTrack(media, format) : media;
-      if (action === "audio") {
-        const options = await youtubeFormats(media, controller.signal);
-        const audio = options.find((f) => f.kind === "audio");
-        if (!audio) throw new Error("No compatible audio format available.");
-        selected = formatTrack(media, audio);
-      }
-      if (!alive.current || controller.signal.aborted) return;
-      if (action === "download") await downloadTrack(selected);
+      if (selectedAction.startsWith("download"))
+        await downloadTrack(choice.track);
       else {
-        usePlayerStore.getState().setCurrentTrack(selected);
+        usePlayerStore.getState().setCurrentTrack(choice.track);
         onClose();
       }
+      if (alive.current) setChoices([]);
     } catch (e) {
-      if (alive.current && !controller.signal.aborted) setError(message(e));
+      if (alive.current) setError(message(e));
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -85,13 +84,11 @@ export default function SharedLinkCard({
         {link.provider}
       </Text>
       <Text raw style={styles.text}>
-        {track?.title || link.url}
+        {media?.title || link.url}
       </Text>
-      <Text style={styles.text}>
-        {link.kind === "web"
-          ? "Playback and download are not supported for this page. Save the link or open the original source."
-          : "Media availability and download formats depend on the source. Only use media you are authorized to access."}
-      </Text>
+      {p.adapter === "unavailable" && (
+        <Text style={styles.text}>{p.reason}</Text>
+      )}
       {!!error && (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
@@ -99,25 +96,29 @@ export default function SharedLinkCard({
       )}
       {busy && (
         <Text accessibilityRole="alert" style={styles.text}>
-          Working…
+          {media ? "Working…" : "Discovering available media…"}
         </Text>
       )}
       <View style={[styles.row, { flexWrap: "wrap" }]}>
-        {link.actions.includes("play") && (
-          <Button title="Play" disabled={busy} onPress={() => act("play")} />
-        )}
-        {link.actions.includes("audio") && (
+        {actions.map(([key, label]) => {
+          const options = choicesFor(media, key);
+          return (
+            <Button
+              key={key}
+              title={label}
+              disabled={busy || !options.length}
+              onPress={() => {
+                setAction(key);
+                if (options.length === 1) select(options[0], key);
+                else setChoices(options);
+              }}
+            />
+          );
+        })}
+        {p.adapter !== "unavailable" && !busy && (
           <Button
-            title="Audio Only"
-            disabled={busy}
-            onPress={() => act("audio")}
-          />
-        )}
-        {link.actions.includes("download") && (
-          <Button
-            title="Download"
-            disabled={busy}
-            onPress={() => act("download")}
+            title="Refresh formats"
+            onPress={() => setAttempt((x) => x + 1)}
           />
         )}
         <Button
@@ -147,13 +148,13 @@ export default function SharedLinkCard({
         />
         <Button title="Close" onPress={onClose} />
       </View>
-      {formats.map((format) => (
+      {choices.map((choice) => (
         <Button
           raw
-          key={format.id}
-          title={format.label}
+          key={choice.id}
+          title={choice.label}
           disabled={busy}
-          onPress={() => act("download", format)}
+          onPress={() => select(choice, action)}
         />
       ))}
     </View>

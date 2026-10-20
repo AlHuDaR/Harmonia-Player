@@ -21,6 +21,14 @@ module.exports = function withNewPipe(config) {
     if (!mod.modResults.contents.includes(marker)) {
       mod.modResults.contents += `\n${marker}\nandroid { compileOptions { coreLibraryDesugaringEnabled true } }\ndependencies {\n    implementation 'com.github.teamnewpipe:NewPipeExtractor:${VERSION}'\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.1.5'\n}\n`;
     }
+    const jobsMarker = "// @generated Harmonia media jobs";
+    if (!mod.modResults.contents.includes(jobsMarker))
+      mod.modResults.contents += `\n${jobsMarker}\ndependencies {\n    implementation 'androidx.work:work-runtime:2.10.1'\n    testImplementation 'junit:junit:4.13.2'\n    testImplementation 'org.json:json:20250517'\n}\n`;
+    if (
+      !mod.modResults.contents.includes("com.google.guava:guava:33.4.8-android")
+    )
+      mod.modResults.contents +=
+        "\ndependencies { implementation 'com.google.guava:guava:33.4.8-android' }\n";
     return mod;
   });
   config = withMainApplication(config, (mod) => {
@@ -57,6 +65,25 @@ module.exports = function withNewPipe(config) {
         `\n  ${marker}\n  override fun onNewIntent(intent: android.content.Intent) {\n    super.onNewIntent(intent)\n    setIntent(intent)\n  }\n}\n`,
       );
     }
+    const coldMarker = "// Harmonia capture before React initialization";
+    if (!mod.modResults.contents.includes(coldMarker)) {
+      const anchor = /override fun onCreate\(savedInstanceState: Bundle\?\) \{/;
+      if (!anchor.test(mod.modResults.contents))
+        throw new Error(
+          "Cannot capture Harmonia launch intent before React initialization.",
+        );
+      mod.modResults.contents = mod.modResults.contents.replace(
+        anchor,
+        (match) =>
+          `${match}\n    ${coldMarker}\n    if (savedInstanceState == null) com.alhudar.harmonia.youtube.IntentModule.captureIncoming(intent)`,
+      );
+    }
+    const warmMarker = "// Harmonia capture before React onNewIntent";
+    if (!mod.modResults.contents.includes(warmMarker))
+      mod.modResults.contents = mod.modResults.contents.replace(
+        "super.onNewIntent(intent)",
+        `${warmMarker}\n    com.alhudar.harmonia.youtube.IntentModule.captureIncoming(intent)\n    super.onNewIntent(intent)`,
+      );
     return mod;
   });
   return withDangerousMod(config, [
@@ -75,6 +102,17 @@ module.exports = function withNewPipe(config) {
             path.join(__dirname, "../native/youtube", file),
             path.join(target, file),
           );
+      }
+      const tests = path.join(__dirname, "../native/tests");
+      if (fs.existsSync(tests)) {
+        const dest = path.join(
+          mod.modRequest.platformProjectRoot,
+          "app/src/test/java/com/alhudar/harmonia/youtube",
+        );
+        fs.mkdirSync(dest, { recursive: true });
+        for (const file of fs.readdirSync(tests))
+          if (file.endsWith(".java"))
+            fs.copyFileSync(path.join(tests, file), path.join(dest, file));
       }
       const rules = path.join(
         mod.modRequest.platformProjectRoot,

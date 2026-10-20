@@ -2,14 +2,14 @@ export default {
   expo: {
     name: "Harmonia Player",
     slug: "harmonia-player",
-    version: "2.0.0-preview.1",
+    version: "2.0.0-preview.3",
     orientation: "default",
     icon: "./assets/images/icon.png",
     scheme: "harmonia",
     userInterfaceStyle: "automatic",
     android: {
       package: "com.alhudar.harmonia",
-      versionCode: 7,
+      versionCode: 9,
       intentFilters: [
         {
           action: "VIEW",
@@ -82,6 +82,7 @@ export default {
       permissions: [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.WAKE_LOCK",
       ],
@@ -107,6 +108,7 @@ export default {
       "expo-status-bar",
       "./plugins/withNativeAbiFilters",
       "./plugins/withNewPipe",
+      "./plugins/withMediaWorker",
       "./plugins/withReleaseSigning",
       "expo-asset",
       "expo-font",

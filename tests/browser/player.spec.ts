@@ -39,6 +39,9 @@ for (const [file, type] of [
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
       .toBeGreaterThan(1);
+    await expect(page.getByLabel(/^Playback position /)).toHaveAttribute(
+      "aria-label", /^Playback position 0:(0[1-9]|1[0-5])$/,
+    );
     await page.getByLabel("Back to browsing", { exact: true }).click();
     const mini = await page
       .getByLabel("Expand player", { exact: true })
@@ -265,7 +268,7 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
     "Coded By AlHuDaR",
   );
   await expect(
-    page.getByText("2.0.0-preview.1", { exact: false }),
+    page.getByText("2.0.0-preview.3", { exact: false }),
   ).toBeVisible();
   await page.setViewportSize({ width: 240, height: 640 });
   const credit = page.getByTestId("developer-credit");
@@ -494,16 +497,16 @@ for (const language of ["en", "ar"]) {
     ).toBeVisible();
     await expect(
       page.getByRole("button", {
-        name: language === "en" ? "Download" : "تنزيل",
+        name: language === "en" ? "Download Video" : "تنزيل الفيديو",
         exact: true,
       }),
-    ).toHaveCount(0);
+    ).toBeDisabled();
     await expect(
       page.getByRole("button", {
-        name: language === "en" ? "Play" : "تشغيل",
+        name: language === "en" ? "Play Video" : "تشغيل الفيديو",
         exact: true,
       }),
-    ).toHaveCount(0);
+    ).toBeDisabled();
     await page.screenshot({
       path: `artifacts/screenshots/saved-link-${language}.png`,
       fullPage: true,

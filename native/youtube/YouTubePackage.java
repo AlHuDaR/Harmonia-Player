@@ -10,7 +10,7 @@ import java.util.List;
 
 public final class YouTubePackage implements ReactPackage {
     @Override public List<NativeModule> createNativeModules(ReactApplicationContext context) {
-        return java.util.Arrays.asList(new YouTubeModule(context), new IntentModule(context));
+        return java.util.Arrays.asList(new YouTubeModule(context), new IntentModule(context), new MediaModule(context));
     }
     @Override public List<ViewManager> createViewManagers(ReactApplicationContext context) {
         return Collections.emptyList();

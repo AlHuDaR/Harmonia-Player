@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-preview.3 — public Instagram embed videos
+
+- Replace the unconditional Instagram exclusion with bounded public-embed metadata discovery and actual MP4 response/container verification. Match the requested shortcode; reject private markers, missing media, photos/carousels and unsupported link shapes without assuming every failure means a private account.
+- Enable Play Video/Download Video only after successful discovery. Isolated audio remains unavailable; no credentials, private GraphQL calls, script execution, authentication workaround or new extraction runtime.
+- Add parser/security/capability regressions and optional live Android share/play/download/restart/offline testing. The supplied public Reel's H.264/AAC file was downloaded and fully decoded; hosted Android outcomes are recorded in PR checks.
+- Increase versionCode to 9; retain package and production signing configuration.
+
 ## 2.0.0-preview.1 — sharing foundation
 
 - Audit baseline v1.5.0 and define separate, gated PRs for the full 2.0 roadmap.
@@ -10,3 +17,12 @@
 - Preserve package ID and existing signing configuration; increase Android versionCode from 6 to 7. This preview is not a completed 2.0 release.
 
 Social extraction, durable downloads, advanced player/library/studio, new icon/branding and optional features remain scheduled follow-ups. Existing launcher/splash assets are unchanged.
+
+## 2.0.0-preview.2 — discovered capabilities and native transfers
+
+- Inspect PR #27 and separate recognized URLs from discovered playable/downloadable formats.
+- Add bounded public Vimeo/Reddit discovery adapters, encrypted-media rejection, public HTTPS/DNS/redirect validation, and explicit unavailable explanations for platforms without a validated authorized interface.
+- Retain NewPipe and select only actually returned audio/video formats; never synthesize audio from a video-only fallback.
+- Add persistent WorkManager transfers, notifications, cancellation, retry policy, integrity/decoder checks, process-restart reconciliation and cleanup. Preserve existing library data and package/signing identity.
+- Align six Expo SDK-57 patches, remove unused direct query-string, and add native PowerShell builds plus Android/JVM/emulator and Windows CI.
+- Increase versionCode to 8. Social-source and device verification limits are documented; no universal extraction or production-readiness claim.

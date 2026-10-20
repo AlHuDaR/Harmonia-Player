@@ -13,6 +13,8 @@ export interface Track {
   description?: string;
   related?: Track[];
   uri?: string;
+  sourcePage?: string;
+  provider?: string;
   youtubeId?: string;
   kind: "audio" | "video";
   localUri?: string;
@@ -26,7 +28,10 @@ export interface Playlist {
 }
 export interface Download {
   track: Track;
-  status: "downloading" | "complete" | "failed";
+  status:
+    "queued" | "downloading" | "retrying" | "complete" | "failed" | "cancelled";
+  nativeId?: string;
+  createdAt?: number;
   progress: number;
   error?: string;
 }
