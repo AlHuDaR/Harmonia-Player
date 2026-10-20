@@ -1,3 +1,4 @@
+import { publicWebUrl } from "../utils/linkProviders";
 export interface Track {
   id: string;
   title: string;
@@ -31,7 +32,7 @@ export interface Download {
 }
 
 export function directTrack(input: string, title?: string): Track {
-  const url = new URL(input.trim());
+  const url = publicWebUrl(input.trim());
   if (url.protocol !== "https:")
     throw new Error("Enter a direct HTTPS audio or video URL.");
   if (url.username || url.password)

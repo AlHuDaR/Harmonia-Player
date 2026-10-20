@@ -1,10 +1,20 @@
+import { classifyLink } from "@/utils/linkProviders";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { normalizePreset, type ThemePreset } from "@/constants/themes";
 import type { Track, Playlist, Download } from "@/types/media";
 
+export interface SavedLink {
+  url: string;
+  provider: string;
+  savedAt: number;
+}
+
 interface PlayerStore {
+  savedLinks: SavedLink[];
+  saveLink: (link: Omit<SavedLink, "savedAt">) => void;
+  removeSavedLink: (url: string) => void;
   currentTrack: Track | null;
   language: "en" | "ar";
   playbackList: Track[];
@@ -56,6 +66,22 @@ export const useLibraryStatus = create<{ hydrated: boolean; error: boolean }>(
 export const usePlayerStore = create<PlayerStore>()(
   persist(
     (set) => ({
+      savedLinks: [],
+      saveLink: (link) => {
+        const checked = classifyLink(link.url);
+        set((s) => ({
+          savedLinks: [
+            {
+              url: checked.url,
+              provider: checked.provider,
+              savedAt: Date.now(),
+            },
+            ...s.savedLinks.filter((l) => l.url !== checked.url),
+          ],
+        }));
+      },
+      removeSavedLink: (url) =>
+        set((s) => ({ savedLinks: s.savedLinks.filter((l) => l.url !== url) })),
       currentTrack: null,
       language: "en",
       playbackList: [],
@@ -269,6 +295,24 @@ export const usePlayerStore = create<PlayerStore>()(
       onRehydrateStorage: () => (state, error) => {
         useLibraryStatus.setState({ hydrated: !error, error: !!error });
         if (state) {
+          // Additive v1 migration: preserve the original storage key and all media.
+          // Revalidate saved URLs before rendering or passing them to Android.
+          state.savedLinks = (
+            Array.isArray(state.savedLinks) ? state.savedLinks : []
+          ).flatMap((link) => {
+            try {
+              const checked = classifyLink(link.url);
+              return [
+                {
+                  url: checked.url,
+                  provider: checked.provider,
+                  savedAt: Number.isFinite(link.savedAt) ? link.savedAt : 0,
+                },
+              ];
+            } catch {
+              return [];
+            }
+          });
           state.language = state.language === "ar" ? "ar" : "en";
           // Drop obsolete resolver/API credentials from existing installations.
           state.settings = {

@@ -2,14 +2,14 @@ export default {
   expo: {
     name: "Harmonia Player",
     slug: "harmonia-player",
-    version: "1.5.0",
+    version: "2.0.0-preview.1",
     orientation: "default",
     icon: "./assets/images/icon.png",
     scheme: "harmonia",
     userInterfaceStyle: "automatic",
     android: {
       package: "com.alhudar.harmonia",
-      versionCode: 6,
+      versionCode: 7,
       intentFilters: [
         {
           action: "VIEW",
@@ -37,6 +37,40 @@ export default {
           data: [
             { scheme: "https", host: "youtu.be" },
             { scheme: "http", host: "youtu.be" },
+          ],
+        },
+        {
+          action: "VIEW",
+          autoVerify: false,
+          category: ["BROWSABLE", "DEFAULT"],
+          data: [
+            "instagram.com",
+            "www.instagram.com",
+            "facebook.com",
+            "www.facebook.com",
+            "fb.watch",
+            "tiktok.com",
+            "www.tiktok.com",
+            "vm.tiktok.com",
+            "vt.tiktok.com",
+            "x.com",
+            "www.x.com",
+            "twitter.com",
+            "www.twitter.com",
+            "t.co",
+            "reddit.com",
+            "www.reddit.com",
+            "redd.it",
+            "vimeo.com",
+            "www.vimeo.com",
+          ].map((host) => ({ scheme: "https", host })),
+        },
+        {
+          action: "VIEW",
+          category: ["BROWSABLE", "DEFAULT"],
+          data: [
+            { scheme: "https", mimeType: "video/*" },
+            { scheme: "https", mimeType: "audio/*" },
           ],
         },
         {

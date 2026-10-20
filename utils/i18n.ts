@@ -1,5 +1,18 @@
 import { usePlayerStore } from "@/store/playerStore";
 export const ar: Record<string, string> = {
+  "Saved links": "الروابط المحفوظة",
+  "Save Link": "حفظ الرابط",
+  "Link saved": "تم حفظ الرابط",
+  "Open in Browser": "فتح في المتصفح",
+  "Audio Only": "صوت فقط",
+  "Remove saved link": "إزالة الرابط المحفوظ",
+  "Working…": "جارٍ العمل…",
+  "No safe web link was found in the shared text.": "لم يتم العثور على رابط ويب آمن في النص المشارك.",
+  "Could not read the shared link. Please share it again.": "تعذرت قراءة الرابط المشارك. يرجى مشاركته مجدداً.",
+  "Could not open the browser.": "تعذر فتح المتصفح.",
+  "Playback and download are not supported for this page. Save the link or open the original source.": "لا تدعم هذه الصفحة التشغيل والتنزيل. احفظ الرابط أو افتح المصدر الأصلي.",
+  "Media availability and download formats depend on the source. Only use media you are authorized to access.": "يعتمد توفر الوسائط وصيغ التنزيل على المصدر. استخدم فقط الوسائط المصرح لك بالوصول إليها.",
+  "Share a web link to Harmonia, then choose Save Link.": "شارك رابط ويب مع هارمونيا، ثم اختر حفظ الرابط.",
   Home: "الرئيسية",
   Search: "البحث",
   Downloads: "التنزيلات",

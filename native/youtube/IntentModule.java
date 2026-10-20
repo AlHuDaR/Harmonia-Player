@@ -7,9 +7,10 @@ import android.provider.Settings;
 import com.facebook.react.bridge.*;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import java.util.UUID;
+import java.util.ArrayDeque;
 
 public final class IntentModule extends ReactContextBaseJavaModule implements ActivityEventListener {
-    private WritableMap pending;
+    private final ArrayDeque<WritableMap> pending = new ArrayDeque<>();
     private boolean initialRead;
     IntentModule(ReactApplicationContext context) { super(context); context.addActivityEventListener(this); }
     @Override public String getName() { return "HarmoniaIntents"; }
@@ -26,13 +27,29 @@ public final class IntentModule extends ReactContextBaseJavaModule implements Ac
     }
     @Override public synchronized void onNewIntent(Intent intent) {
         initialRead=true;
-        pending=capture(intent);
-        if(pending!=null && getReactApplicationContext().hasActiveReactInstance())
-            getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("HarmoniaLink",Arguments.makeNativeMap(pending.toHashMap()));
+        WritableMap value=capture(intent);
+        if(value==null) return;
+        // Bounded retention while JS starts; do not overwrite the previous share.
+        if(pending.size()>=32) pending.removeFirst();
+        pending.addLast(value);
+        if(getReactApplicationContext().hasActiveReactInstance())
+            getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("HarmoniaLink",Arguments.makeNativeMap(value.toHashMap()));
     }
     @ReactMethod public synchronized void getPending(Promise promise) {
-        if(!initialRead) {initialRead=true;Activity activity=getCurrentActivity();pending=capture(activity==null?null:activity.getIntent());}
-        WritableMap value=pending;pending=null;promise.resolve(value);
+        if(!initialRead) {initialRead=true;Activity activity=getCurrentActivity();WritableMap initial=capture(activity==null?null:activity.getIntent());if(initial!=null) pending.addLast(initial);}
+        promise.resolve(pending.pollFirst());
+    }
+    @ReactMethod public void openBrowser(String url, Promise promise) {
+        try {
+            Uri uri=Uri.parse(url);
+            if(!("https".equals(uri.getScheme()) || "http".equals(uri.getScheme())) || uri.getUserInfo()!=null)
+                throw new IllegalArgumentException();
+            Intent intent=new Intent(Intent.ACTION_VIEW,uri);
+            // Select a browser instead of re-entering our own YouTube VIEW filter.
+            intent.setSelector(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getReactApplicationContext().startActivity(intent);promise.resolve(null);
+        } catch(Exception e) {promise.reject("E_BROWSER","Could not open the browser.");}
     }
     @ReactMethod public void openSettings(Promise promise) {
         try {

@@ -1,3 +1,5 @@
+import SharedLinkCard from "@/components/SharedLinkCard";
+import { classifyLink } from "@/utils/linkProviders";
 import { router } from "expo-router";
 import { Text } from "@/components/LocalizedText";
 import OpenMedia from "@/components/OpenMedia";
@@ -16,6 +18,7 @@ import {
 } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 const collections = [
+  "Saved links",
   "Favorites",
   "Playlists",
   "Local media",
@@ -23,9 +26,11 @@ const collections = [
 ] as const;
 export default function LibraryScreen() {
   const styles = useMediaStyles();
-  const { tracks, favorites, playlists, downloads } = usePlayerStore();
+  const { tracks, favorites, playlists, downloads, savedLinks } =
+    usePlayerStore();
   const [collection, setCollection] =
     useState<(typeof collections)[number]>("Favorites");
+  const [selectedLink, setSelectedLink] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [openPlaylist, setOpenPlaylist] = useState<string | null>(null);
   const downloadedIds = new Set(downloads.map((d) => d.track.id));
@@ -62,7 +67,37 @@ export default function LibraryScreen() {
         ))}
       </View>
       <SectionHeader title={collection} />
-      {collection === "Playlists" ? (
+      {collection === "Saved links" ? (
+        <>
+          {!savedLinks.length && (
+            <Text style={styles.text}>
+              Share a web link to Harmonia, then choose Save Link.
+            </Text>
+          )}
+          {savedLinks.map((link) => (
+            <SurfaceCard key={link.url}>
+              <Button
+                raw
+                title={link.url}
+                onPress={() => setSelectedLink(link.url)}
+              />
+              {selectedLink === link.url && (
+                <SharedLinkCard
+                  key={link.url}
+                  link={classifyLink(link.url)}
+                  onClose={() => setSelectedLink(null)}
+                />
+              )}
+              <Button
+                title="Remove saved link"
+                onPress={() =>
+                  usePlayerStore.getState().removeSavedLink(link.url)
+                }
+              />
+            </SurfaceCard>
+          ))}
+        </>
+      ) : collection === "Playlists" ? (
         <>
           <SurfaceCard>
             <Input

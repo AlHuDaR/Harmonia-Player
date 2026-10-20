@@ -1,4 +1,4 @@
-// Android's native intent module validates and opens external YouTube links.
+// Android's native intent module validates and opens external web links.
 // Route external URLs to the home shell, never to an arbitrary Expo Router path.
 export function redirectSystemPath({
   path,

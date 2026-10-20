@@ -9,7 +9,7 @@ for (const [file, type] of [
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     const bytes = readFileSync(resolve("tests/fixtures", file));
-    await page.route(`https://media.test/${file}`, (r) => {
+    await page.route(`https://media.example.com/${file}`, (r) => {
       const range = r
         .request()
         .headers()
@@ -33,7 +33,7 @@ for (const [file, type] of [
     await page.getByRole("button", { name: "Open link", exact: true }).click();
     await page
       .getByLabel("Media URL", { exact: true })
-      .fill(`https://media.test/${file}`);
+      .fill(`https://media.example.com/${file}`);
     await page.getByRole("button", { name: "Open URL", exact: true }).click();
     const video = page.locator("video");
     await expect
@@ -264,7 +264,9 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
   await expect(page.getByTestId("developer-credit")).toHaveText(
     "Coded By AlHuDaR",
   );
-  await expect(page.getByText("1.5.0", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("2.0.0-preview.1", { exact: false }),
+  ).toBeVisible();
   await page.setViewportSize({ width: 240, height: 640 });
   const credit = page.getByTestId("developer-credit");
   expect(
@@ -300,7 +302,7 @@ test("Home uses at most nine real recently played tracks in a three-column grid"
       title: `Real ${index}`,
       artist: "Saved",
       kind: "audio",
-      uri: `https://media.test/${index}.mp3`,
+      uri: `https://media.example.com/${index}.mp3`,
     }));
     localStorage.setItem(
       "harmonia-library-v1",
@@ -341,7 +343,7 @@ test("Recent uses listening order, excludes unplayed saved items and honors hist
       title,
       artist: "Library",
       kind: "audio",
-      uri: `https://media.test/${title}.mp3`,
+      uri: `https://media.example.com/${title}.mp3`,
     }));
     localStorage.setItem(
       "harmonia-library-v1",
@@ -439,3 +441,92 @@ test("theme presets persist, AMOLED stays black, and Arabic choices fit narrow a
     fullPage: true,
   });
 });
+
+for (const language of ["en", "ar"]) {
+  test(`saved social links remain browser-only and removable (${language})`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.addInitScript((language) => {
+      if (!localStorage.getItem("harmonia-library-v1"))
+        localStorage.setItem(
+          "harmonia-library-v1",
+          JSON.stringify({
+            version: 0,
+            state: {
+              language,
+              tracks: [],
+              history: [],
+              favorites: [],
+              playlists: [],
+              downloads: [],
+              settings: { theme: "light" },
+              savedLinks: [
+                {
+                  url: "https://instagram.com/reel/123",
+                  provider: "Instagram",
+                  savedAt: 123,
+                },
+              ],
+            },
+          }),
+        );
+    }, language);
+    await page.goto("/library");
+    await page
+      .getByRole("radio", {
+        name: language === "en" ? "Saved links" : "الروابط المحفوظة",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "https://instagram.com/reel/123",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: language === "en" ? "Open in Browser" : "فتح في المتصفح",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: language === "en" ? "Download" : "تنزيل",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: language === "en" ? "Play" : "تشغيل",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await page.screenshot({
+      path: `artifacts/screenshots/saved-link-${language}.png`,
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", {
+        name: language === "en" ? "Remove saved link" : "إزالة الرابط المحفوظ",
+        exact: true,
+      })
+      .click();
+    await page.reload();
+    await page
+      .getByRole("radio", {
+        name: language === "en" ? "Saved links" : "الروابط المحفوظة",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "https://instagram.com/reel/123",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
