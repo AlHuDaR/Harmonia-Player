@@ -82,7 +82,9 @@ click(wait(lambda r: has(r, 'Downloads'), 'Downloads navigation'), 'Downloads')
 # never mistake its existing Ready offline label for this download's completion.
 def downloaded(root):
     rows = [n for n in root.iter('node') if n.get('content-desc', '').startswith('Play ') and n.get('content-desc') not in ('Play all', 'Play Direct media', 'Play Video')]
-    return rows and any(has(parent, 'Ready offline') and any(child is rows[0] for child in parent.iter('node')) for parent in root.iter('node') if parent.get('class') == 'android.view.ViewGroup' and len(list(parent)) > 1 and not has(parent, 'Play Direct media'))
+    # This marker is rendered only when that provider's track has a local URI.
+    # It avoids relying on Android's optional/flattened ViewGroup hierarchy.
+    return rows and has(root, 'Instagram · Offline')
 
 wait(downloaded, 'Instagram downloaded row marked Ready offline', 180)
 adb('shell', 'am', 'force-stop', PACKAGE)
