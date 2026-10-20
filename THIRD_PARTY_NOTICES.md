@@ -20,3 +20,20 @@ https://github.com/AlHuDaR/Harmonia-Player
 The APK workflow checks out the matching commit. For a distributed APK, publish
 the exact source revision/PR link with it, including the native bridge and build
 scripts. No proprietary extractor or hidden server component is required.
+
+## Background media work (preview 2)
+
+AndroidX WorkManager 2.10.1 — Apache-2.0, Android Open Source Project.
+Source/license: https://android.googlesource.com/platform/frameworks/support/+/androidx-work-release/work/
+
+Guava 33.4.8-android — Apache-2.0, Google and contributors. Required for the
+ListenableFuture API shared by WorkManager and the existing Media3 dependency
+resolution (which selects the empty listenablefuture compatibility artifact).
+Source/license: https://github.com/google/guava/tree/v33.4.8
+These permissive licenses are compatible with GPL-3.0 distribution; retain their
+notices and corresponding project source/build instructions with distributions.
+
+JUnit 4.13.2 (EPL-1.0) and JSON-java 20250517 are test-only dependencies and are
+not bundled into the release APK. No Python, yt-dlp Android wrapper, FFmpeg,
+aria2 or third-party social extraction binary is added by this increment.
+See docs/MULTIPLATFORM_PROVIDER_REVIEW.md for evaluated alternatives and limits.
