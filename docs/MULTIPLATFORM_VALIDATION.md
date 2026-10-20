@@ -1,5 +1,7 @@
 # Multi-platform increment validation
 
+This records preview 2 validation. Preview 3 adds the [public Instagram embed fix](INSTAGRAM_PUBLIC_EMBED.md); its executed results and artifacts are recorded separately in the draft PR.
+
 Scope: feature branch `feat/harmonia-multiplatform-discovery`, based on PR #27 (`9401790`). Preview `2.0.0-preview.2`, package `com.alhudar.harmonia`, Android versionCode **8**. No merge, store upload or production key change is authorized/performed by this increment.
 
 ## Results and evidence boundaries

@@ -155,9 +155,9 @@ Adds saved Arabic/English selection, RTL layout, compact action sheets, audio/vi
 
 Fresh production baseline with compact navigation, a mini player above the four tabs, real-media Home grid, persistent Light/Dark/System themes, and separate Settings/About/Support/Licenses screens. Package ID stays `com.alhudar.harmonia`; Android versionCode is `6`. See [permanent signing, production build, storage and device checks](docs/release-1.5.md). PR/CI artifacts remain test-signed until the permanent production key is supplied explicitly.
 
-## 2.0 preview: universal sharing foundation
+## Preview 1: universal sharing foundation (historical)
 
-This branch starts the 2.0 roadmap in the existing app. It is **2.0.0-preview.1**, Android versionCode **7**, not the full 2.0 release. Read the [audit and ordered PR gates](docs/HARMONIA_V2_AUDIT.md), [sharing architecture](docs/HARMONIA_V2_ARCHITECTURE.md), and [implementation/validation report](docs/HARMONIA_V2_IMPLEMENTATION.md).
+Preview 1 started the 2.0 roadmap in the existing app as **2.0.0-preview.1**, Android versionCode **7**. Later increments below supersede its capability limitations. Read the [audit and ordered PR gates](docs/HARMONIA_V2_AUDIT.md), [sharing architecture](docs/HARMONIA_V2_ARCHITECTURE.md), and [implementation/validation report](docs/HARMONIA_V2_IMPLEMENTATION.md).
 
 Share a text link from another Android app and choose Harmonia. The sheet offers Play, Audio Only and available Download formats for recognized YouTube videos. Direct HTTPS media-file candidates offer playback/download; HLS/DASH candidates offer playback only. Actual availability depends on the source and codecs. Instagram, Facebook, TikTok, X/Twitter, Reddit, Vimeo and other web pages offer **Save Link** and **Open in Browser**; social media extraction is not claimed. Saved links appear in Library → Saved links and can be removed without deleting media. Unknown extensionless streams can still be opened manually through the existing Open link workflow.
 
@@ -172,3 +172,7 @@ Preview `2.0.0-preview.2` / Android versionCode **8** separates URL recognition 
 Android downloads now use persistent **WorkManager** jobs, foreground dataSync notifications, cancellation, bounded exponential retries, storage/length/media-track/DRM validation and final-file commit. Separate compatible MP4/AAC files retain the existing native mux. Retried transfers restart cleanly; HTTP Range resume, MP3 transcoding and HLS offline export are not included. Failed/expired sources stay failed and can be retried to resolve fresh formats. Existing library/playlists/settings and package identity are preserved.
 
 For Windows without WSL: [PowerShell build instructions](docs/WINDOWS_BUILD.md). The standalone test APK includes its JavaScript bundle. See [validation and remaining acceptance gates](docs/MULTIPLATFORM_VALIDATION.md); do not interpret a hostname match or mocked test as verified social extraction support.
+
+## Current preview 3: public Instagram embed videos
+
+`2.0.0-preview.3`, Android versionCode **9**, adds a bounded public Instagram post/Reel embed adapter. When Instagram actually delivers matching public video metadata and a verified MP4 response, the shared-link sheet enables **Play Video** and **Download Video**. It no longer rejects every Instagram link before checking. Audio extraction, Stories, photos/carousels and authenticated/private content are not provided. Facebook/TikTok/X extraction remains unavailable. See the [Instagram implementation, source evidence and Android Studio instructions](docs/INSTAGRAM_PUBLIC_EMBED.md) and updated [provider matrix](docs/MULTIPLATFORM_PROVIDER_REVIEW.md). Live Android outcomes and APK links are recorded in the draft PR.

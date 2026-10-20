@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-preview.3 — public Instagram embed videos
+
+- Replace the unconditional Instagram exclusion with bounded public-embed metadata discovery and actual MP4 response/container verification. Match the requested shortcode; reject private markers, missing media, photos/carousels and unsupported link shapes without assuming every failure means a private account.
+- Enable Play Video/Download Video only after successful discovery. Isolated audio remains unavailable; no credentials, private GraphQL calls, script execution, authentication workaround or new extraction runtime.
+- Add parser/security/capability regressions and optional live Android share/play/download/restart/offline testing. The supplied public Reel's H.264/AAC file was downloaded and fully decoded; hosted Android outcomes are recorded in PR checks.
+- Increase versionCode to 9; retain package and production signing configuration.
+
 ## 2.0.0-preview.1 — sharing foundation
 
 - Audit baseline v1.5.0 and define separate, gated PRs for the full 2.0 roadmap.
