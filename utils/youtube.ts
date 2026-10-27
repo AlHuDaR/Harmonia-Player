@@ -1,3 +1,4 @@
+import { discoverRemote } from "./providerBridge";
 import { NativeModules, Platform } from "react-native";
 import type { Track } from "@/types/media";
 
@@ -85,6 +86,20 @@ export async function resolveSource(
   download = false,
 ): Promise<MediaSource> {
   if (track.localUri) return { uri: track.localUri };
+  if (track.sourcePage && !track.youtubeId) {
+    const media = await discoverRemote(track.sourcePage, signal);
+    const format = media.formats.find(
+      (f) =>
+        f.id === track.formatId &&
+        f.kind === track.kind &&
+        (!download || f.downloadable),
+    );
+    if (!format)
+      throw new Error(
+        "The selected source format is no longer available. Rediscover the shared link.",
+      );
+    return { uri: format.uri, extension: format.extension, kind: format.kind };
+  }
   if (track.uri && !track.youtubeId) return { uri: track.uri };
   if (!track.youtubeId)
     throw new Error("This track has no playable media source.");

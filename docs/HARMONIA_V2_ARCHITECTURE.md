@@ -1,0 +1,18 @@
+# Sharing foundation architecture
+
+The existing Expo Router app and single expo-video engine remain in place.
+
+1. Android `IntentModule` captures bounded text/plain SEND and VIEW payloads. Each real delivery receives a UUID. The launch share is captured before an early warm intent when the Activity still retains it. Up to 32 pending payloads are retained FIFO until JS drains them. At capacity, the oldest retained payload is evicted; this is not a durable inbox across process death.
+2. `IncomingLinks` subscribes before draining, and drains again when active. `intentInbox` reconciles event/pending duplicates by UUID with a 64-token bounded cache. A fresh share of the same URL is a new action. Valid multiple links enter the sheet in order; malformed text receives a separate error. No URL automatically starts playback.
+3. `linkProviders` performs offline classification only. Platform hosts have explicit names, never generic extractors. Exact supported YouTube video routes use the existing NewPipe bridge; other YouTube pages and social sites remain browser/save-only. Unknown HTTPS media suffixes are candidates, subject to the existing decoder/download validation. HLS/DASH candidates are playback-only. Unknown pages and HTTP links remain browser/save-only to preserve HTTPS playback policy. MIME-typed HTTPS VIEW intents are declared in addition to explicit platform hosts; arbitrary HTTP(S) navigation is not intercepted globally. Android verified-link defaults may still route to the original app/browser.
+4. `SharedLinkCard` resolves metadata/formats using the current YouTube module only on user action. Download requires choosing an actual available format for YouTube. Direct files keep their existing download flow. Restricted/network/extractor failures retain an error and browser fallback, never downgrade to a fake completed transfer. Async operations ignore results after dismissal. Already-started downloads remain owned by the existing global download implementation.
+5. Browser opening uses the existing intent bridge with a browser selector, avoiding recursive dispatch through Harmonia's own YouTube VIEW filter. Browser availability and OEM handling require device tests.
+6. Saved links are separate from playable Tracks, downloads and history. `harmonia-library-v1` keeps its key and version-zero envelope; additive default/rehydration migration supplies `savedLinks: []` for old data and revalidates link entries without rewriting playlists, history, favorites or downloaded file paths. Duplicate URLs replace their saved-link entry. Removing a saved link does not remove media.
+
+## Security boundary
+
+Only HTTP(S), no credentials, standard ports, and public-looking multi-label DNS hostnames enter the share sheet. IP literals (including numeric-normalized IPv4), IPv6 and local/internal namespaces are denied. All IP literals are conservatively rejected, including public ones. This hardens input but cannot validate DNS results or downstream redirects. Native transport/DNS enforcement is explicitly deferred. Known platform pages with media-like suffixes remain pages. Provider recognition is not proof of download permission or extraction support. No passwords, authentication flows, new permissions, SDKs or cloud services were added.
+
+## Persistence constraints
+
+This PR changes only additive saved-link state. It does not promise resumable or restart-safe downloads. Existing restart cleanup still removes `.part` files; the download follow-up must replace that behavior atomically with a durable native job store before enabling job resume UI. See the audit for prerequisites and test gates.

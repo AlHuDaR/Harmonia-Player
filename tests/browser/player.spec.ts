@@ -1,6 +1,37 @@
 import { test, expect } from "@playwright/test";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
+import packageInfo from "../../package.json";
+
+for (const language of ["en", "ar"] as const) {
+  test(`download search and status filters preserve stored records (${language})`, async ({page}) => {
+    await page.addInitScript((language) => {
+      const track=(id:string,title:string,artist:string)=>({id,title,artist,provider:artist,kind:"video"});
+      localStorage.setItem("harmonia-library-v1",JSON.stringify({version:0,state:{
+        language, settings:{theme:"light"},tracks:[],history:[],favorites:[],playlists:[],savedLinks:[],
+        downloads:[
+          {track:{...track("offline","Offline clip","Instagram"),localUri:"file:///saved.mp4"},status:"complete",progress:1},
+          {track:track("queued","Queued clip","YouTube"),nativeId:"queued-job",status:"queued",progress:0},
+          {track:track("failed","Failed clip","Library"),status:"failed",progress:0},
+        ],
+      }}));
+    },language);
+    await page.goto("/downloads");
+    await page.getByRole("radio",{name:language==="en"?"Active":"نشطة",exact:true}).click();
+    await expect(page.getByText("Queued clip",{exact:true})).toBeVisible();
+    await expect(page.getByText("Offline clip",{exact:true})).toHaveCount(0);
+    await page.getByRole("radio",{name:language==="en"?"Offline":"دون إنترنت",exact:true}).click();
+    const search=page.getByLabel(language==="en"?"Search downloads":"البحث في التنزيلات",{exact:true});
+    await search.fill("INSTAGRAM");
+    await expect(page.getByText("Offline clip",{exact:true})).toBeVisible();
+    await search.fill("nothing matches");
+    await expect(page.getByText(language==="en"?"No matching downloads.":"لا توجد تنزيلات مطابقة.",{exact:true})).toBeVisible();
+    await search.fill("");
+    await page.getByRole("radio",{name:language==="en"?"Needs attention":"تحتاج إلى مراجعة",exact:true}).click();
+    await expect(page.getByText("Failed clip",{exact:true})).toBeVisible();
+    expect(await page.evaluate(()=>JSON.parse(localStorage.getItem("harmonia-library-v1")!).state.downloads.length)).toBe(3);
+  });
+}
 for (const [file, type] of [
   ["tone.mp3", "audio/mpeg"],
   ["video.mp4", "video/mp4"],
@@ -9,7 +40,7 @@ for (const [file, type] of [
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     const bytes = readFileSync(resolve("tests/fixtures", file));
-    await page.route(`https://media.test/${file}`, (r) => {
+    await page.route(`https://media.example.com/${file}`, (r) => {
       const range = r
         .request()
         .headers()
@@ -33,12 +64,15 @@ for (const [file, type] of [
     await page.getByRole("button", { name: "Open link", exact: true }).click();
     await page
       .getByLabel("Media URL", { exact: true })
-      .fill(`https://media.test/${file}`);
+      .fill(`https://media.example.com/${file}`);
     await page.getByRole("button", { name: "Open URL", exact: true }).click();
     const video = page.locator("video");
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
       .toBeGreaterThan(1);
+    await expect(page.getByLabel(/^Playback position /)).toHaveAttribute(
+      "aria-label", /^Playback position 0:(0[1-9]|1[0-5])$/,
+    );
     await page.getByLabel("Back to browsing", { exact: true }).click();
     const mini = await page
       .getByLabel("Expand player", { exact: true })
@@ -264,7 +298,9 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
   await expect(page.getByTestId("developer-credit")).toHaveText(
     "Coded By AlHuDaR",
   );
-  await expect(page.getByText("1.5.0", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText(packageInfo.version, { exact: false }),
+  ).toBeVisible();
   await page.setViewportSize({ width: 240, height: 640 });
   const credit = page.getByTestId("developer-credit");
   expect(
@@ -300,7 +336,7 @@ test("Home uses at most nine real recently played tracks in a three-column grid"
       title: `Real ${index}`,
       artist: "Saved",
       kind: "audio",
-      uri: `https://media.test/${index}.mp3`,
+      uri: `https://media.example.com/${index}.mp3`,
     }));
     localStorage.setItem(
       "harmonia-library-v1",
@@ -341,7 +377,7 @@ test("Recent uses listening order, excludes unplayed saved items and honors hist
       title,
       artist: "Library",
       kind: "audio",
-      uri: `https://media.test/${title}.mp3`,
+      uri: `https://media.example.com/${title}.mp3`,
     }));
     localStorage.setItem(
       "harmonia-library-v1",
@@ -439,3 +475,92 @@ test("theme presets persist, AMOLED stays black, and Arabic choices fit narrow a
     fullPage: true,
   });
 });
+
+for (const language of ["en", "ar"]) {
+  test(`saved social links remain browser-only and removable (${language})`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.addInitScript((language) => {
+      if (!localStorage.getItem("harmonia-library-v1"))
+        localStorage.setItem(
+          "harmonia-library-v1",
+          JSON.stringify({
+            version: 0,
+            state: {
+              language,
+              tracks: [],
+              history: [],
+              favorites: [],
+              playlists: [],
+              downloads: [],
+              settings: { theme: "light" },
+              savedLinks: [
+                {
+                  url: "https://instagram.com/reel/123",
+                  provider: "Instagram",
+                  savedAt: 123,
+                },
+              ],
+            },
+          }),
+        );
+    }, language);
+    await page.goto("/library");
+    await page
+      .getByRole("radio", {
+        name: language === "en" ? "Saved links" : "الروابط المحفوظة",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "https://instagram.com/reel/123",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: language === "en" ? "Open in Browser" : "فتح في المتصفح",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: language === "en" ? "Download Video" : "تنزيل الفيديو",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", {
+        name: language === "en" ? "Play Video" : "تشغيل الفيديو",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await page.screenshot({
+      path: `artifacts/screenshots/saved-link-${language}.png`,
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", {
+        name: language === "en" ? "Remove saved link" : "إزالة الرابط المحفوظ",
+        exact: true,
+      })
+      .click();
+    await page.reload();
+    await page
+      .getByRole("radio", {
+        name: language === "en" ? "Saved links" : "الروابط المحفوظة",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "https://instagram.com/reel/123",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}

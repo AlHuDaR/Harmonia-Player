@@ -1,3 +1,4 @@
+import { publicWebUrl } from "../utils/linkProviders";
 export interface Track {
   id: string;
   title: string;
@@ -12,6 +13,8 @@ export interface Track {
   description?: string;
   related?: Track[];
   uri?: string;
+  sourcePage?: string;
+  provider?: string;
   youtubeId?: string;
   kind: "audio" | "video";
   localUri?: string;
@@ -25,13 +28,16 @@ export interface Playlist {
 }
 export interface Download {
   track: Track;
-  status: "downloading" | "complete" | "failed";
+  status:
+    "queued" | "downloading" | "retrying" | "complete" | "failed" | "cancelled";
+  nativeId?: string;
+  createdAt?: number;
   progress: number;
   error?: string;
 }
 
 export function directTrack(input: string, title?: string): Track {
-  const url = new URL(input.trim());
+  const url = publicWebUrl(input.trim());
   if (url.protocol !== "https:")
     throw new Error("Enter a direct HTTPS audio or video URL.");
   if (url.username || url.password)

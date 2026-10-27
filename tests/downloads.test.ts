@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("react-native", () => ({ Platform: { OS: "android" } }));
+vi.mock("react-native", () => ({ NativeModules: {}, Platform: { OS: "android" } }));
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
     getItem: async () => null,

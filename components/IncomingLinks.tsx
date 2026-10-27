@@ -1,90 +1,102 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   NativeModules,
   NativeEventEmitter,
   Platform,
   View,
   AppState,
+  ScrollView,
+  Modal,
 } from "react-native";
-import { incomingVideo } from "@/utils/incomingLinks";
-import { youtubeTrack } from "@/utils/youtube";
-import { message } from "@/types/media";
-import { usePlayerStore } from "@/store/playerStore";
+import { intentInbox } from "@/utils/incomingLinks";
+import { sharedLinks, type SharedLink } from "@/utils/linkProviders";
 import { Button, useMediaStyles } from "./MediaUI";
 import { Text } from "./LocalizedText";
+import SharedLinkCard from "./SharedLinkCard";
+// Keep token deduplication across component remounts; repeated shares get new tokens.
+const accept = intentInbox();
 export default function IncomingLinks() {
   const styles = useMediaStyles();
-  const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
-  const controller = useRef<AbortController | null>(null);
+  const [links, setLinks] = useState<{ link: SharedLink; key: string }[]>([]);
+  const [error, setError] = useState("");
   useEffect(() => {
     const module = NativeModules.HarmoniaIntents;
     if (Platform.OS !== "android" || !module) return;
     let mounted = true;
-    const seen = new Set<string>();
-    async function receive(value: { text: string; token: string } | null) {
-      if (!mounted || !value || seen.has(value.token)) return;
-      seen.add(value.token);
-      if (seen.size > 30) seen.delete(seen.values().next().value!);
-      // Ignore our own launcher/scheme links. Shared external text must contain a valid YouTube video.
-      if (value.text.startsWith("harmonia:")) return;
-      controller.current?.abort();
-      const current = new AbortController();
-      controller.current = current;
-      const url = incomingVideo(value.text);
-      if (!url) {
-        setBusy(false);
-        setError("No supported YouTube video link was found.");
+    function receive(value: unknown) {
+      if (!mounted) return;
+      const text = accept(value);
+      if (text !== undefined)
+        module.acknowledge?.((value as { token: string }).token);
+      if (text === undefined || text.startsWith("harmonia:")) return;
+      const found = sharedLinks(text);
+      if (!found.length) {
+        setError("No safe web link was found in the shared text.");
         return;
       }
-      setBusy(true);
       setError("");
-      try {
-        const track = await youtubeTrack(url, current.signal);
-        if (mounted && !current.signal.aborted && track)
-          usePlayerStore.getState().setCurrentTrack(track);
-      } catch (e) {
-        if (mounted && !current.signal.aborted) setError(message(e));
-      } finally {
-        if (mounted && !current.signal.aborted) setBusy(false);
-      }
+      const token = (value as { token: string }).token;
+      setLinks((current) => [
+        ...current,
+        ...found.map((link, i) => ({ link, key: `${token}:${i}` })),
+      ]);
     }
     const listener = new NativeEventEmitter(module).addListener(
       "HarmoniaLink",
       receive,
     );
-    const pending = () =>
-      module
-        .getPending()
-        .then(receive)
-        .catch(() => {});
+    const pending = async () => {
+      // Drain the existing native module's pending queue, including cold starts.
+      try {
+        for (let i = 0; i < 32 && mounted; i++) {
+          const value = await module.getPending();
+          if (!value) break;
+          receive(value);
+        }
+      } catch {
+        if (mounted)
+          setError("Could not read the shared link. Please share it again.");
+      }
+    };
     pending();
     const active = AppState.addEventListener("change", (s) => {
       if (s === "active") pending();
     });
     return () => {
       mounted = false;
-      controller.current?.abort();
       listener.remove();
       active.remove();
     };
   }, []);
-  return busy || error ? (
-    <View style={{ ...styles.page, flex: undefined, padding: 12 }}>
-      <Text
-        accessibilityRole="alert"
-        style={error ? styles.error : styles.text}
-      >
-        {busy ? "Opening…" : error}
-      </Text>
-      <Button
-        title="Close"
-        onPress={() => {
-          controller.current?.abort();
-          setBusy(false);
-          setError("");
-        }}
-      />
-    </View>
+  const current = links[0];
+  return current || error ? (
+    <Modal
+      visible
+      animationType="slide"
+      onRequestClose={() => {
+        setError("");
+        setLinks((items) => items.slice(1));
+      }}
+    >
+      <View style={[styles.page, { padding: 16 }]}>
+        <ScrollView contentContainerStyle={{ gap: 12 }}>
+          {!!error && (
+            <>
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+              <Button title="Close" onPress={() => setError("")} />
+            </>
+          )}
+          {current && (
+            <SharedLinkCard
+              key={current.key}
+              link={current.link}
+              onClose={() => setLinks((items) => items.slice(1))}
+            />
+          )}
+        </ScrollView>
+      </View>
+    </Modal>
   ) : null;
 }

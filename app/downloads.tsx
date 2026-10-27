@@ -8,21 +8,41 @@ import {
   EmptyState,
   SurfaceCard,
   useMediaStyles,
+  Input,
+  ChoiceChip,
 } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
-import { deleteDownload, downloadTrack } from "@/utils/downloads";
+import {
+  deleteDownload,
+  downloadTrack,
+  cancelDownload,
+} from "@/utils/downloads";
 import { message } from "@/types/media";
 import { useTheme } from "@/utils/theme";
+import { filterDownloads, type DownloadFilter } from "@/utils/downloadFilters";
+import { useLocale } from "@/utils/i18n";
 export default function DownloadsScreen() {
   const styles = useMediaStyles();
   const theme = useTheme();
+  const { t } = useLocale();
   const downloads = usePlayerStore((s) => s.downloads);
-  const offline = downloads
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<DownloadFilter>("all");
+  const visible = filterDownloads(downloads, query, filter);
+  const offline = visible
     .filter((d) => d.status === "complete" && d.track.localUri)
     .map((d) => d.track);
   const [error, setError] = useState("");
   return (
     <Page title="Downloads">
+      {!!downloads.length && <>
+        <Input accessibilityLabel="Search downloads" placeholder="Search downloads" value={query} onChangeText={setQuery} />
+        <View style={[styles.row, { flexWrap: "wrap" }]} accessibilityRole="radiogroup" accessibilityLabel={t("Download status")}>
+          {([ ["all", "All"], ["active", "Active"], ["offline", "Offline"], ["attention", "Needs attention"] ] as const).map(([value, label]) =>
+            <ChoiceChip key={value} label={label} selected={filter === value} onPress={() => setFilter(value)} />)}
+        </View>
+        {!visible.length && <Text style={styles.text}>No matching downloads.</Text>}
+      </>}
       {!!offline.length && (
         <Button
           title="Play all"
@@ -40,7 +60,7 @@ export default function DownloadsScreen() {
         />
       )}
       {!!error && <Text style={styles.error}>{error}</Text>}
-      {downloads.map((d) => (
+      {visible.map((d) => (
         <SurfaceCard key={d.track.id}>
           <Text
             style={{ color: d.status === "failed" ? theme.error : theme.muted }}
@@ -49,9 +69,15 @@ export default function DownloadsScreen() {
               ? "Ready offline"
               : d.status === "failed"
                 ? "Download failed"
-                : "Downloading"}
+                : d.status === "cancelled"
+                  ? "Download cancelled."
+                  : d.status === "queued"
+                    ? "Queued"
+                    : d.status === "retrying"
+                      ? "Waiting to retry"
+                      : "Downloading"}
           </Text>
-          {d.status === "downloading" && (
+          {["queued", "downloading", "retrying"].includes(d.status) && (
             <>
               <View
                 accessibilityRole="progressbar"
@@ -86,7 +112,7 @@ export default function DownloadsScreen() {
             track={d.track}
             list={d.status === "complete" ? offline : undefined}
           />
-          {d.status === "failed" && (
+          {["failed", "cancelled"].includes(d.status) && (
             <Button
               title="Retry download"
               onPress={() =>
@@ -94,7 +120,16 @@ export default function DownloadsScreen() {
               }
             />
           )}
-          {d.status !== "downloading" && (
+          {d.nativeId &&
+            ["queued", "downloading", "retrying"].includes(d.status) && (
+              <Button
+                title="Cancel download"
+                onPress={() =>
+                  cancelDownload(d.track.id).catch((e) => setError(message(e)))
+                }
+              />
+            )}
+          {!["queued", "downloading", "retrying"].includes(d.status) && (
             <Button
               title="Delete download"
               onPress={() =>
