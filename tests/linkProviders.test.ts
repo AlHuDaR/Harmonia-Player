@@ -6,6 +6,16 @@ import {
 } from "../utils/linkProviders";
 import { intentInbox } from "../utils/incomingLinks";
 describe("provider capabilities", () => {
+  it("normalizes Instagram share tracking without assuming media availability", () => {
+    const plain = "https://www.instagram.com/reel/DerYMOFsvXQ/";
+    expect(classifyLink("https://m.instagram.com/reel/DerYMOFsvXQ?igsh=abc#fragment"))
+      .toMatchObject({url: plain, actions:["save","browser"]});
+    expect(sharedLinks(plain+"?dlrf=one "+plain+"?igsh=two")).toHaveLength(1);
+    const signed="https://cdn.example.com/movie.mp4?token=required#part";
+    expect(classifyLink(signed).url).toBe(signed);
+    expect(classifyLink("https://notinstagram.com/reel/DerYMOFsvXQ/?token=keep").url)
+      .toBe("https://notinstagram.com/reel/DerYMOFsvXQ/?token=keep");
+  });
   it.each([
     ["https://instagram.com/reel/123", "Instagram"],
     ["https://facebook.com/reel/123", "Facebook"],

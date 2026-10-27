@@ -1,5 +1,11 @@
 import { usePlayerStore } from "@/store/playerStore";
 export const ar: Record<string, string> = {
+  "Search downloads": "البحث في التنزيلات",
+  "Download status": "حالة التنزيل",
+  "All": "الكل",
+  "Active": "نشطة",
+  "Needs attention": "تحتاج إلى مراجعة",
+  "No matching downloads.": "لا توجد تنزيلات مطابقة.",
   "Playback position": "موضع التشغيل",
   "Media duration": "مدة الوسائط",
   "No playable media source is available.": "لا يتوفر مصدر وسائط قابل للتشغيل.",

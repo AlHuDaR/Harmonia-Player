@@ -76,7 +76,10 @@ export const usePlayerStore = create<PlayerStore>()(
               provider: checked.provider,
               savedAt: Date.now(),
             },
-            ...s.savedLinks.filter((l) => l.url !== checked.url),
+            ...s.savedLinks.filter((l) => {
+              try { return classifyLink(l.url).url !== checked.url; }
+              catch { return true; }
+            }),
           ],
         }));
       },
@@ -297,11 +300,14 @@ export const usePlayerStore = create<PlayerStore>()(
         if (state) {
           // Additive v1 migration: preserve the original storage key and all media.
           // Revalidate saved URLs before rendering or passing them to Android.
+          const savedUrls = new Set<string>();
           state.savedLinks = (
             Array.isArray(state.savedLinks) ? state.savedLinks : []
           ).flatMap((link) => {
             try {
               const checked = classifyLink(link.url);
+              if (savedUrls.has(checked.url)) return [];
+              savedUrls.add(checked.url);
               return [
                 {
                   url: checked.url,

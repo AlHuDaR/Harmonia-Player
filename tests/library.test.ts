@@ -16,6 +16,7 @@ import { directTrack } from "../types/media";
 beforeEach(() => {
   storage.clear();
   usePlayerStore.setState({
+    savedLinks: [],
     tracks: [],
     history: [],
     favorites: [],
@@ -25,6 +26,20 @@ beforeEach(() => {
   });
 });
 describe("persistent library", () => {
+  it("deduplicates legacy Instagram saved links without changing media or playlist identities", async () => {
+    const legacy="https://instagram.com/reel/DerYMOFsvXQ/?igsh=old";
+    const canonical="https://www.instagram.com/reel/DerYMOFsvXQ/";
+    const media={...directTrack("https://example.com/a.mp3"),id:"legacy-track"};
+    usePlayerStore.setState({savedLinks:[{url:legacy,provider:"Instagram",savedAt:1}],
+      tracks:[media],history:[media.id],favorites:[media.id],playlists:[{id:"p",name:"Saved",trackIds:[media.id]}]});
+    usePlayerStore.getState().saveLink({url:canonical+"?dlrf=new",provider:"Instagram"});
+    expect(usePlayerStore.getState().savedLinks).toHaveLength(1);
+    expect(usePlayerStore.getState().savedLinks[0].url).toBe(canonical);
+    usePlayerStore.setState({savedLinks:[{url:legacy,provider:"Instagram",savedAt:2},{url:canonical,provider:"Instagram",savedAt:1}]});
+    await usePlayerStore.persist.rehydrate();
+    expect(usePlayerStore.getState().savedLinks).toEqual([{url:canonical,provider:"Instagram",savedAt:2}]);
+    expect(usePlayerStore.getState()).toMatchObject({history:[media.id],favorites:[media.id],playlists:[{id:"p",trackIds:[media.id]}],tracks:[media]});
+  });
   it("deduplicates history and tracks while maintaining recency", () => {
     const a = directTrack("https://example.com/a.mp3"),
       b = directTrack("https://example.com/b.mp3");

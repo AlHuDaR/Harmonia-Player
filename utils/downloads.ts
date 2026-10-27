@@ -9,10 +9,13 @@ export async function downloadTrack(track: Track): Promise<void> {
   if (Platform.OS === "web")
     throw new Error("Offline downloads are available in the Android app.");
   if (active.has(track.id)) return;
+  const store = usePlayerStore.getState();
+  const pending = store.downloads.find((d) => d.track.id === track.id);
+  if (pending?.nativeId && ["queued", "downloading", "retrying"].includes(pending.status))
+    return;
   if (!FileSystem.documentDirectory)
     throw new Error("App storage is unavailable.");
   active.add(track.id);
-  const store = usePlayerStore.getState();
   // Reserve before resolving so rapid taps cannot start duplicate jobs.
   const dir = `${FileSystem.documentDirectory}downloads/`;
   let path = "";
@@ -26,7 +29,7 @@ export async function downloadTrack(track: Track): Promise<void> {
       (await FileSystem.getInfoAsync(existing.track.localUri)).exists
     )
       return;
-    store.setDownload({ track, status: "downloading", progress: 0 });
+    store.setDownload({ track, status: "downloading", progress: 0, createdAt: Date.now() });
     await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
     const source = await resolveSource(track, undefined, true);
     const uri = source.uri;
@@ -150,8 +153,9 @@ export async function deleteDownload(track: Track): Promise<void> {
     .downloads.find((d) => d.track.id === track.id);
   if (job?.nativeId && NativeModules?.HarmoniaMedia)
     await NativeModules.HarmoniaMedia.forgetDownload(job.nativeId);
-  if (track.localUri)
-    await FileSystem.deleteAsync(track.localUri, { idempotent: true });
+  const localUri = job?.track.localUri || track.localUri;
+  if (localUri)
+    await FileSystem.deleteAsync(localUri, { idempotent: true });
   usePlayerStore.getState().removeDownload(track.id);
 }
 export async function importMedia(): Promise<void> {
@@ -209,6 +213,7 @@ export async function syncNativeDownloads(): Promise<void> {
   const records = JSON.parse(await NativeModules.HarmoniaMedia.downloads());
   if (!Array.isArray(records)) throw new Error("Invalid download records.");
   for (const record of records) {
+    if (active.has(record?.track?.id)) continue;
     if (
       record &&
       typeof record.nativeId === "string" &&
