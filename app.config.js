@@ -49,6 +49,8 @@ export default {
             "facebook.com",
             "www.facebook.com",
             "fb.watch",
+            "snapchat.com",
+            "www.snapchat.com",
             "tiktok.com",
             "www.tiktok.com",
             "vm.tiktok.com",
@@ -76,7 +78,12 @@ export default {
         {
           action: "SEND",
           category: ["DEFAULT"],
-          data: [{ mimeType: "text/plain" }],
+          data: [{ mimeType: "text/plain" }, { mimeType: "audio/*" }, { mimeType: "video/*" }],
+        },
+        {
+          action: "SEND_MULTIPLE",
+          category: ["DEFAULT"],
+          data: [{ mimeType: "audio/*" }, { mimeType: "video/*" }, { mimeType: "*/*" }],
         },
       ],
       permissions: [

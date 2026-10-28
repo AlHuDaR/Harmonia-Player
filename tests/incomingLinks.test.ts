@@ -1,9 +1,10 @@
+import { sharedLinks } from "../utils/linkProviders";
 import { describe, it, expect, vi } from "vitest";
 vi.mock("react-native", () => ({
   NativeModules: {},
   Platform: { OS: "android" },
 }));
-import { incomingVideo } from "../utils/incomingLinks";
+import { incomingVideo, intentInbox } from "../utils/incomingLinks";
 describe("external YouTube links", () => {
   it.each([
     "https://youtu.be/abcdefghijk?si=123",
@@ -30,4 +31,12 @@ describe("external YouTube links", () => {
   ])("rejects unsupported or deceptive input", (value) =>
     expect(incomingVideo(value)).toBeUndefined(),
   );
+});
+
+it("accepts a file-share envelope once without interpreting content URIs as links", () => {
+  const accept = intentInbox();
+  const value = { text: "", token: "files", files: ["content://provider/video"] };
+  expect(accept(value)).toBe("");
+  expect(accept(value)).toBeUndefined();
+  expect(sharedLinks("content://provider/video")).toEqual([]);
 });
