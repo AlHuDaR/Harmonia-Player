@@ -8,7 +8,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 import java.util.UUID;
 
 public final class IntentModule extends ReactContextBaseJavaModule {
-    private static final java.util.Set<String> SHARED=java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+    private static final java.util.Map<String,Integer> SHARED=java.util.Collections.synchronizedMap(new java.util.HashMap<>());
     private final java.util.concurrent.ExecutorService imports=new java.util.concurrent.ThreadPoolExecutor(1,1,0,java.util.concurrent.TimeUnit.SECONDS,new java.util.concurrent.ArrayBlockingQueue<>(10));
     private static final IntentInbox INBOX=new IntentInbox();
     private static volatile java.lang.ref.WeakReference<IntentModule> active=new java.lang.ref.WeakReference<>(null);
@@ -40,7 +40,7 @@ public final class IntentModule extends ReactContextBaseJavaModule {
         } catch(RuntimeException malformed) {return;}
         // Bound grant references; actual data is read only after an explicit Import action.
         if(SHARED.size()+files.size()>320)files.clear();
-        SHARED.addAll(files);
+        for(String file:files)SHARED.merge(file,1,(count,one)->Math.min(320,count+one));
         IntentInbox.Entry value=files.isEmpty()?INBOX.offer(text,UUID.randomUUID().toString()):INBOX.offerFiles(files,UUID.randomUUID().toString());
         IntentModule module=active.get();
         if(value!=null && module!=null && module.getReactApplicationContext().hasActiveReactInstance()) {
@@ -56,7 +56,7 @@ public final class IntentModule extends ReactContextBaseJavaModule {
     @ReactMethod public void getPending(Promise promise) {promise.resolve(map(INBOX.poll()));}
     @ReactMethod public void acknowledge(String token) {INBOX.acknowledge(token);}
     @ReactMethod public void importShared(String value,Promise promise) {
-        if(!SHARED.contains(value)){promise.reject("E_IMPORT","Shared file permission is unavailable. Share the file again.");return;}
+        if(!SHARED.containsKey(value)){promise.reject("E_IMPORT","Shared file permission is unavailable. Share the file again.");return;}
         try {imports.execute(()->{
             java.io.File target=null;boolean success=false;
             try {
@@ -80,12 +80,12 @@ public final class IntentModule extends ReactContextBaseJavaModule {
                 }
                 MediaDownloadWorker.inspect(target,kind,false);
                 WritableMap track=Arguments.createMap();track.putString("id","local:"+id);track.putString("title","Shared media");track.putString("artist","Local media");track.putString("kind",kind);track.putString("localUri",Uri.fromFile(target).toString());
-                success=true;SHARED.remove(value);promise.resolve(track);
+                success=true;releaseShared(value);promise.resolve(track);
             }catch(Exception e){promise.reject("E_IMPORT",e instanceof java.io.IOException?e.getMessage():"Shared media could not be imported. Share the file again.");}
             finally{if(!success && target!=null)target.delete();}
         });}catch(java.util.concurrent.RejectedExecutionException e){promise.reject("E_IMPORT","Import is unavailable.");}
     }
-    @ReactMethod public void releaseShared(String value){SHARED.remove(value);}
+    @ReactMethod public void releaseShared(String value){SHARED.computeIfPresent(value,(uri,count)->count<=1?null:count-1);}
     @ReactMethod public void openBrowser(String url, Promise promise) {
         try {
             Uri uri=Uri.parse(url);
