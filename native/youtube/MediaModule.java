@@ -17,7 +17,14 @@ public final class MediaModule extends ReactContextBaseJavaModule {
     @ReactMethod public void discover(String url,Promise p){
         try {executor.execute(()->{
             try{p.resolve(MediaDiscovery.discover(url).toString());}
-            catch(Exception e){p.reject("E_DISCOVERY",e instanceof java.io.IOException?e.getMessage():"The source returned an incompatible media response.");}
+            catch(Exception e){
+                String code="E_DISCOVERY";
+                if(e instanceof SafeHttp.HttpFailure) {
+                    int status=((SafeHttp.HttpFailure)e).code;
+                    code=status==401||status==403?"E_ACCESS":status==404||status==410?"E_NOT_FOUND":status==429?"E_RATE_LIMIT":"E_NETWORK";
+                } else if(e instanceof java.net.SocketTimeoutException || e instanceof java.net.UnknownHostException || e instanceof java.net.ConnectException)code="E_NETWORK";
+                p.reject(code,e instanceof java.io.IOException?e.getMessage():"The source returned an incompatible media response.");
+            }
         });}catch(RejectedExecutionException e){p.reject("E_BUSY","Too many source requests. Retry shortly.");}
     }
     @ReactMethod public synchronized void enqueueDownload(String trackJson,String sourceJson,Promise p){

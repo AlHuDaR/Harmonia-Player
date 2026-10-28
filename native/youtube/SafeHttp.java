@@ -23,6 +23,8 @@ final class SafeHttp {
         return (b[0]&0xe0)==0x20 && !((b[0]&255)==0x20 && (b[1]&255)==1 && (b[2]&255)==0x0d && (b[3]&255)==0xb8);
     }
     static HttpUrl url(String value) throws IOException {
+        if(value==null || value.length()>4096 || value.matches("(?s).*[\\x00-\\x20\\x7f\\\\].*"))
+            throw new IOException("Invalid web link.");
         HttpUrl u=HttpUrl.parse(value);
         if(u==null || !u.isHttps() || !u.username().isEmpty() || !u.password().isEmpty() || u.port()!=443)
             throw new IOException("Only public HTTPS media links are supported.");
