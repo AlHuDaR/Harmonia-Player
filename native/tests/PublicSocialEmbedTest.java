@@ -14,6 +14,10 @@ public class PublicSocialEmbedTest {
             try{PublicSocialEmbed.parse(html);fail("accepted inactive metadata");}catch(java.io.IOException expected){}
         }
     }
+    @Test public void prefersExplicitSecureVideoOverPlayerMetadata() throws Exception {
+        String html="<meta property='og:video' content='http://player.example.com/embed'><meta property='og:video:secure_url' content='https://cdn.example.com/a.mp4'>";
+        assertEquals("https://cdn.example.com/a.mp4",PublicSocialEmbed.parse(html).getString("uri"));
+    }
     @Test public void recognizesOnlyVideoPaths() throws Exception {
         assertTrue(PublicSocialEmbed.supported(SafeHttp.url("https://www.snapchat.com/spotlight/Abc_123")));
         assertTrue(PublicSocialEmbed.supported(SafeHttp.url("https://www.facebook.com/watch/?v=123")));

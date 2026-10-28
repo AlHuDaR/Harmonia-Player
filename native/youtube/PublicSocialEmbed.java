@@ -58,8 +58,8 @@ final class PublicSocialEmbed {
             String key=attrs.get("property"), value=attrs.get("content");
             if(key==null || value==null)continue;
             if(key.equals("og:title")) title=value.replaceAll("\\s+"," ").trim();
-            if(media==null && (key.equals("og:video") || key.equals("og:video:url") || key.equals("og:video:secure_url"))) {
-                SafeHttp.url(value);media=value;
+            if((media==null || key.equals("og:video:secure_url")) && (key.equals("og:video") || key.equals("og:video:url") || key.equals("og:video:secure_url"))) {
+                try {SafeHttp.url(value);media=value;}catch(IOException unsafe) { /* Never fetch unsafe candidates. */ }
             }
         }
         if(media==null)throw new IOException("No public video stream is exposed by this page. It may require login, be restricted or provide browser-only playback. Open in Browser to check.");

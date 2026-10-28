@@ -15,6 +15,7 @@ public final class IntentModule extends ReactContextBaseJavaModule {
     IntentModule(ReactApplicationContext context) {super(context);active=new java.lang.ref.WeakReference<>(this);}
     @Override public String getName() {return "HarmoniaIntents";}
     // Called by the existing MainActivity hooks BEFORE React can replace the launch Intent.
+    @SuppressWarnings("deprecation") // Legacy overloads are required below Android 13.
     public static synchronized void captureIncoming(Intent intent) {
         if(intent==null)return;
         String text=null;
@@ -25,9 +26,9 @@ public final class IntentModule extends ReactContextBaseJavaModule {
             if(media && (Intent.ACTION_SEND.equals(intent.getAction()) || Intent.ACTION_SEND_MULTIPLE.equals(intent.getAction()))) {
                 java.util.ArrayList<Uri> uris=new java.util.ArrayList<>();
                 if(Intent.ACTION_SEND_MULTIPLE.equals(intent.getAction())) {
-                    java.util.ArrayList<Uri> many=intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+                    java.util.ArrayList<Uri> many=android.os.Build.VERSION.SDK_INT>=33?intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM,Uri.class):intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
                     if(many!=null)for(int i=0;i<Math.min(10,many.size());i++)if(many.get(i)!=null)uris.add(many.get(i));
-                } else {Uri uri=intent.getParcelableExtra(Intent.EXTRA_STREAM);if(uri!=null)uris.add(uri);}
+                } else {Uri uri=android.os.Build.VERSION.SDK_INT>=33?intent.getParcelableExtra(Intent.EXTRA_STREAM,Uri.class):intent.getParcelableExtra(Intent.EXTRA_STREAM);if(uri!=null)uris.add(uri);}
                 if(intent.getClipData()!=null)for(int i=0;i<Math.min(10,intent.getClipData().getItemCount());i++) {
                     Uri uri=intent.getClipData().getItemAt(i).getUri();if(uri!=null)uris.add(uri);
                 }
