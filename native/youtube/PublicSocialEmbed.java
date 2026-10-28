@@ -22,10 +22,30 @@ final class PublicSocialEmbed {
         return s.replace("&amp;","&").replace("&#38;","&").replace("&quot;","\"")
             .replace("&#39;","'").replace("&lt;","<").replace("&gt;",">");
     }
+    private static String metadataMarkup(String html) {
+        StringBuilder visible=new StringBuilder();
+        for(int i=0;i<html.length();) {
+            if(html.startsWith("<!--",i)) {
+                int end=html.indexOf("-->",i+4);if(end<0)break;i=end+3;continue;
+            }
+            String raw=null;
+            for(String tag:new String[]{"script","style","template"}) {
+                int end=i+tag.length()+1;
+                if(html.regionMatches(true,i,"<"+tag,0,tag.length()+1) && end<html.length() &&
+                    (Character.isWhitespace(html.charAt(end)) || html.charAt(end)=='>' || html.charAt(end)=='/')) {raw=tag;break;}
+            }
+            if(raw!=null) {
+                Matcher close=Pattern.compile("(?i)</"+raw+"\\s*>").matcher(html);
+                if(!close.find(i+raw.length()+1))break;i=close.end();continue;
+            }
+            visible.append(html.charAt(i++));
+        }
+        return visible.toString();
+    }
     static JSONObject parse(String html) throws Exception {
         if(html.length()>2*1024*1024)throw new IOException("Public metadata response is too large.");
         // Parse attributes independently: providers may put content before property.
-        Matcher tags=Pattern.compile("(?is)<meta\\b[^>]{0,8192}>").matcher(html);
+        Matcher tags=Pattern.compile("(?is)<meta\\b[^>]{0,8192}>").matcher(metadataMarkup(html));
         String title="Public video", media=null;int count=0;
         while(tags.find() && count++<512) {
             Map<String,String> attrs=new HashMap<>();

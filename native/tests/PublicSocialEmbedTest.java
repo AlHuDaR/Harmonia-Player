@@ -7,6 +7,13 @@ public class PublicSocialEmbedTest {
         assertEquals("A & B",PublicSocialEmbed.parse(html).getString("title"));
         assertEquals("https://cdn.example.com/v.mp4?a=1&b=2",PublicSocialEmbed.parse(html).getString("uri"));
     }
+    @Test public void ignoresMetadataStringsInScriptsCommentsAndTemplates() throws Exception {
+        for(String html:new String[]{"<script><meta property='og:video' content='https://cdn.example.com/a.mp4'></script>",
+            "<!-- <meta property='og:video' content='https://cdn.example.com/a.mp4'> -->",
+            "<template><meta property='og:video' content='https://cdn.example.com/a.mp4'></template>"}) {
+            try{PublicSocialEmbed.parse(html);fail("accepted inactive metadata");}catch(java.io.IOException expected){}
+        }
+    }
     @Test public void recognizesOnlyVideoPaths() throws Exception {
         assertTrue(PublicSocialEmbed.supported(SafeHttp.url("https://www.snapchat.com/spotlight/Abc_123")));
         assertTrue(PublicSocialEmbed.supported(SafeHttp.url("https://www.facebook.com/watch/?v=123")));
