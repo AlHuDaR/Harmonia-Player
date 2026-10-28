@@ -22,21 +22,25 @@ final class PublicSocialEmbed {
         return s.replace("&amp;","&").replace("&#38;","&").replace("&quot;","\"")
             .replace("&#39;","'").replace("&lt;","<").replace("&gt;",">");
     }
+    private static final String[] RAW_TAGS={"script","style","template","textarea","title","noscript"};
     private static String metadataMarkup(String html) {
         StringBuilder visible=new StringBuilder();
         for(int i=0;i<html.length();) {
+            if(html.charAt(i)!='<') {visible.append(html.charAt(i++));continue;}
             if(html.startsWith("<!--",i)) {
                 int end=html.indexOf("-->",i+4);if(end<0)break;i=end+3;continue;
             }
             String raw=null;
-            for(String tag:new String[]{"script","style","template"}) {
+            for(String tag:RAW_TAGS) {
                 int end=i+tag.length()+1;
-                if(html.regionMatches(true,i,"<"+tag,0,tag.length()+1) && end<html.length() &&
+                if(html.regionMatches(true,i+1,tag,0,tag.length()) && end<html.length() &&
                     (Character.isWhitespace(html.charAt(end)) || html.charAt(end)=='>' || html.charAt(end)=='/')) {raw=tag;break;}
             }
             if(raw!=null) {
                 Matcher close=Pattern.compile("(?i)</"+raw+"\\s*>").matcher(html);
-                if(!close.find(i+raw.length()+1))break;i=close.end();continue;
+                if(!close.find(i+raw.length()+1))break;i=close.end();
+                if(raw.equals("template"))while(close.find())i=close.end();
+                continue;
             }
             visible.append(html.charAt(i++));
         }
