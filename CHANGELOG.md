@@ -1,3 +1,11 @@
+## Unreleased — media repair review
+
+- Recognize Snapchat Spotlight and canonical Facebook video/Reel IDs; attempt only explicit public video metadata and verify compatible media before offering actions. Browser/save fallback remains available; live provider success is unverified.
+- Introduce provider adapter contracts and typed discovery failures while retaining YouTube/NewPipe, Instagram, Vimeo, Reddit and direct source paths.
+- Separate granted Android audio/video file shares from text links; add bounded private-storage imports and multiple-share intake.
+- Add native transfer size/time limits, byte/speed reporting, playback speed and bilingual explanations for unavailable format actions.
+- Record baseline, PR merge status, dependency findings, regression matrix and remaining device/security gates. Update Windows PowerShell/Android Studio instructions.
+
 # Changelog
 
 ## 2.0.0-preview.4 — download/library reliability
