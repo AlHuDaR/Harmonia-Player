@@ -30,6 +30,9 @@ export interface Download {
   track: Track;
   status:
     "queued" | "downloading" | "retrying" | "complete" | "failed" | "cancelled";
+  bytesDownloaded?: number;
+  bytesTotal?: number;
+  bytesPerSecond?: number;
   nativeId?: string;
   createdAt?: number;
   progress: number;

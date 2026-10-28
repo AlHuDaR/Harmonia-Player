@@ -241,6 +241,8 @@ export async function syncNativeDownloads(): Promise<void> {
         previous.status === record.status &&
         previous.progress === record.progress &&
         previous.error === record.error &&
+        previous.bytesDownloaded === record.bytesDownloaded &&
+        previous.bytesPerSecond === record.bytesPerSecond &&
         previous.track.localUri === record.track.localUri
       )
         continue;

@@ -21,6 +21,11 @@ public class TransferPolicyTest {
     assertFalse(TransferPolicy.canTransition("cancelled","complete"));
     assertTrue(TransferPolicy.canTransition("complete","failed"));
   }
+  @Test public void boundsKnownAndUnknownLengthTransfers() throws Exception {
+    TransferPolicy.verifyBudget(-1,0);TransferPolicy.verifyBudget(TransferPolicy.MAX_BYTES,1000);
+    try{TransferPolicy.verifyBudget(TransferPolicy.MAX_BYTES+1,0);fail();}catch(TransferPolicy.PermanentFailure expected){}
+    try{TransferPolicy.verifyBudget(10,TransferPolicy.MAX_DURATION_MS+1);fail();}catch(TransferPolicy.PermanentFailure expected){}
+  }
   @Test public void neverAcceptsEmptyOrTruncatedTransfers() throws Exception {
     TransferPolicy.verifyLength(100,100);TransferPolicy.verifyLength(-1,42);
     for(long actual:new long[]{0,99,101}) {

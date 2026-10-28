@@ -67,6 +67,8 @@ for (const [file, type] of [
       .fill(`https://media.example.com/${file}`);
     await page.getByRole("button", { name: "Open URL", exact: true }).click();
     const video = page.locator("video");
+    await page.getByRole("button", { name: "Playback speed 1×", exact: true }).click();
+    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.playbackRate)).toBe(1.25);
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
       .toBeGreaterThan(1);
