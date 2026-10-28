@@ -104,17 +104,17 @@ public final class MediaDownloadWorker extends Worker {
             long length=body.contentLength();
             if(length>0 && length>new StatFs(target.getParent()).getAvailableBytes()-32L*1024*1024)throw new PermanentFailure("Not enough free storage.");
             TransferPolicy.verifyBudget(length,0);
-            long count=0,last=0,started=SystemClock.elapsedRealtime();
+            long count=0,last=0,started=android.os.SystemClock.elapsedRealtime();
             try(InputStream in=body.byteStream();OutputStream out=new FileOutputStream(target,false)) {
                 byte[] buffer=new byte[64*1024];int n;
                 while((n=in.read(buffer))!=-1) {
-                    checkStopped();count+=n;TransferPolicy.verifyBudget(count,SystemClock.elapsedRealtime()-started);out.write(buffer,0,n);
+                    checkStopped();count+=n;TransferPolicy.verifyBudget(count,android.os.SystemClock.elapsedRealtime()-started);out.write(buffer,0,n);
                     if(System.currentTimeMillis()-last>750) {
                         last=System.currentTimeMillis();
                         if(new StatFs(target.getParent()).getAvailableBytes()<16L*1024*1024)throw new PermanentFailure("Not enough free storage.");
                         double p=offset+(length>0?Math.min(1,(double)count/length)*weight:0);
                         DownloadRecords.update(context,id,"downloading",p,null,null);
-                        DownloadRecords.transfer(context,id,count,length,count*1000/Math.max(1,SystemClock.elapsedRealtime()-started));
+                        DownloadRecords.transfer(context,id,count,length,count*1000/Math.max(1,android.os.SystemClock.elapsedRealtime()-started));
                         setForegroundAsync(notification(title,(int)(p*100)));
                     }
                 }
