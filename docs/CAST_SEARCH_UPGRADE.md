@@ -79,3 +79,7 @@ The earlier Windows [job 122719344540](https://github.com/AlHuDaR/Harmonia-Playe
 ### Native follow-up
 
 Initial hosted Linux and Windows builds at `40e5d73` passed all applicable JS checks but failed Android resource linking on `android:windowDimAmount` in the new picker theme. That invalid attribute is corrected to Android's `android:backgroundDimAmount`; builds are being rerun. This is distinct from the earlier PR's Maven download timeout. The follow-up also preserves receiver position zero exactly, bounds unknown remote times at zero, catches unavailable Play-services initialization, disables inaccessible receiver seeking and aborts an unmounted player's pending mode request.
+
+The native helper is named `ensureCastInitialized`, avoiding React Native's public `initialize()` lifecycle method. Media3's primary controller row hosts the fullscreen Cast button; AndroidX MediaRouter 1.8.1 source confirms `performClick()` always invokes `showDialog()`, even after an OnClickListener. The native button therefore delegates **showDialog itself** to the dedicated FragmentActivity, and selects the standard SDK chooser/controller rather than the optional system output switcher. This prevents a plain-Activity FragmentManager failure and an invisible system-panel host. Real-device acceptance is still pending.
+
+Google's binary SDK has separate terms, recorded in [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md). Redistribution compatibility with Harmonia/NewPipe GPL-3.0-or-later remains unverified and is an owner license-review item.

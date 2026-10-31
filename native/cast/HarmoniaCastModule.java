@@ -64,6 +64,8 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         try {
             if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) != ConnectionResult.SUCCESS) return;
             cast = CastContext.getSharedInstance(context);
+            // The dedicated FragmentActivity hosts the standard SDK dialog.
+            cast.setShowSystemOutputSwitcherOnCastIconClick(false);
             cast.getSessionManager().addSessionManagerListener(sessions, CastSession.class);
             ((Application) context.getApplicationContext()).registerActivityLifecycleCallbacks(this);
             CastSession session = session();
@@ -215,16 +217,30 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         View existing = activity.findViewById(android.R.id.content).findViewWithTag("harmonia-cast");
         if (existing != null) { existing.setContentDescription(label); return; }
         try {
-            MediaRouteButton button = new MediaRouteButton(activity);
+            // MediaRouteButton.performClick always calls showDialog(), even with an
+            // OnClickListener. Delegate that method because Expo's Activity is not a
+            // FragmentActivity; the SDK chooser/controller lives in CastPickerActivity.
+            MediaRouteButton button = new MediaRouteButton(activity) {
+                @Override public boolean showDialog() {
+                    if (!isAttachedToWindow()) return false;
+                    if (!eligible && !"connected".equals(connection)) {
+                        Toast.makeText(activity, mediaReason, Toast.LENGTH_LONG).show();
+                        return false;
+                    }
+                    try { openPicker(activity, eligible); return true; }
+                    catch (RuntimeException failure) {
+                        HarmoniaCastModule.this.error(unavailable);
+                        Toast.makeText(activity, unavailable, Toast.LENGTH_LONG).show();
+                        return false;
+                    }
+                }
+            };
             CastButtonFactory.setUpMediaRouteButton(activity, button);
             button.setAlwaysVisible(true);
             button.setTag("harmonia-cast"); button.setContentDescription(label); button.setFocusable(true);
             int size = (int) (48 * activity.getResources().getDisplayMetrics().density);
             controls.addView(button, Math.max(0, controls.getChildCount() - 1), new ViewGroup.LayoutParams(size, size));
-            button.setOnClickListener(v -> {
-                if (eligible || "connected".equals(connection)) openPicker(activity, eligible);
-                else Toast.makeText(activity, mediaReason, Toast.LENGTH_LONG).show();
-            });
+            button.setOnClickListener(null);
         } catch (RuntimeException ignored) { error(unavailable); }
     }
     @Override public void invalidate() {
