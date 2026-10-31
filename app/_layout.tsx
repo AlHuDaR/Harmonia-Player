@@ -1,9 +1,10 @@
+import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import IncomingLinks from "@/components/IncomingLinks";
 import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, Pressable, AppState } from "react-native";
+import { View, AppState } from "react-native";
 import { useEffect, useState } from "react";
 import { usePlayerStore, useLibraryStatus } from "@/store/playerStore";
 import {

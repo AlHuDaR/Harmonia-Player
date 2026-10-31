@@ -1,8 +1,9 @@
+import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/utils/theme";
 import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
-import { View, Image, Pressable } from "react-native";
+import { View, Image } from "react-native";
 import { usePlayerStore } from "@/store/playerStore";
 import type { Track } from "@/types/media";
 export const count = (n?: number) =>
