@@ -1,3 +1,10 @@
+## 2.0.0-preview.5 — automatic streaming and Android TV review
+
+- Add an eligible multi-representation AVC/AAC DASH ladder for automatic YouTube playback, retaining HLS/fixed fallback and manual quality/download selection. Automatic video is capped at 1080p; source availability determines whether adaptation is possible.
+- Add combined phone/Android TV launch, optional-touch manifest features, a television banner, directional focus feedback and a larger TV video pane.
+- Package Android versionCode 11 with the existing application identity/signing configuration; universal builds include both ARM32 and ARM64 for Mi Box userspaces.
+- Record fixture/build evidence separately from blocked live YouTube and unavailable physical-device acceptance. See docs/TV_STREAMING_PREVIEW5.md and docs/ANDROID_TV_AR.md.
+
 ## Unreleased — media repair review
 
 - Recognize Snapchat Spotlight and canonical Facebook video/Reel IDs; attempt only explicit public video metadata and verify compatible media before offering actions. Browser/save fallback remains available; live provider success is unverified.
