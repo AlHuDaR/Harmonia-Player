@@ -56,7 +56,7 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     @Override public String getName() { return "HarmoniaCast"; }
     @ReactMethod public void addListener(String name) { listeners++; }
     @ReactMethod public void removeListeners(double count) { listeners = Math.max(0, listeners - (int) count); }
-    private void initialize() {
+    private void ensureCastInitialized() {
         if (initialized) return;
         initialized = true;
         UiModeManager mode = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
@@ -112,14 +112,14 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     private void emit() { event("HarmoniaCastState", snapshot()); }
     private void error(String message) { event("HarmoniaCastError", message); }
     @ReactMethod public void getState(Promise promise) {
-        UiThreadUtil.runOnUiThread(() -> { initialize(); promise.resolve(snapshot()); });
+        UiThreadUtil.runOnUiThread(() -> { ensureCastInitialized(); promise.resolve(snapshot()); });
     }
     @ReactMethod public void configure(boolean canCast, String reason, String castLabel, String unavailableLabel) {
         UiThreadUtil.runOnUiThread(() -> { eligible = canCast; mediaReason = reason; label = castLabel; unavailable = unavailableLabel; });
     }
     @ReactMethod public void showPicker(boolean requestPlayback, Promise promise) {
         UiThreadUtil.runOnUiThread(() -> {
-            initialize();
+            ensureCastInitialized();
             if (cast == null) { promise.reject("CAST_UNAVAILABLE", unavailable); return; }
             Activity activity = getCurrentActivity();
             if (activity == null) { promise.reject("CAST_ACTIVITY", unavailable); return; }
@@ -208,18 +208,19 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     @Override public void onActivityResumed(Activity activity) {
         if (!activity.getClass().getName().equals("expo.modules.video.FullscreenPlayerActivity")) return;
         // Add to Media3's controller, so visibility follows native controls and never covers subtitles.
-        int id = activity.getResources().getIdentifier("exo_extra_controls", "id", activity.getPackageName());
+        int id = activity.getResources().getIdentifier("exo_basic_controls", "id", activity.getPackageName());
         View view = activity.findViewById(id);
         if (!(view instanceof ViewGroup)) return;
         ViewGroup controls = (ViewGroup) view;
-        if (controls.findViewWithTag("harmonia-cast") != null) return;
+        View existing = activity.findViewById(android.R.id.content).findViewWithTag("harmonia-cast");
+        if (existing != null) { existing.setContentDescription(label); return; }
         try {
             MediaRouteButton button = new MediaRouteButton(activity);
             CastButtonFactory.setUpMediaRouteButton(activity, button);
             button.setAlwaysVisible(true);
             button.setTag("harmonia-cast"); button.setContentDescription(label); button.setFocusable(true);
             int size = (int) (48 * activity.getResources().getDisplayMetrics().density);
-            controls.addView(button, 0, new ViewGroup.LayoutParams(size, size));
+            controls.addView(button, Math.max(0, controls.getChildCount() - 1), new ViewGroup.LayoutParams(size, size));
             button.setOnClickListener(v -> {
                 if (eligible || "connected".equals(connection)) openPicker(activity, eligible);
                 else Toast.makeText(activity, mediaReason, Toast.LENGTH_LONG).show();
