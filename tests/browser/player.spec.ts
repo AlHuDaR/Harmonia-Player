@@ -566,3 +566,13 @@ for (const language of ["en", "ar"]) {
     expect(errors).toEqual([]);
   });
 }
+
+test("keyboard and remote-style focus stays visible and activates navigation", async ({page}) => {
+  await page.goto("/");
+  const menu=page.getByRole("button",{name:"Open menu",exact:true});
+  await menu.focus();
+  await expect(menu).toBeFocused();
+  await expect(menu).toHaveCSS("outline-width","3px");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button",{name:"Settings",exact:true})).toBeVisible();
+});

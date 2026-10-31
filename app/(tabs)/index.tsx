@@ -1,5 +1,6 @@
+import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { router } from "expo-router";
-import { Image, Pressable, View, useWindowDimensions } from "react-native";
+import { Image, View, useWindowDimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Text } from "@/components/LocalizedText";
 import {

@@ -1,5 +1,6 @@
+import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { useState } from "react";
-import { Image, Modal, Pressable, View } from "react-native";
+import { Image, Modal, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, usePathname, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

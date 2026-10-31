@@ -1,3 +1,4 @@
+import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/utils/theme";
 import { IconButton } from "./MediaUI";
@@ -6,21 +7,19 @@ import SeekBar from "./SeekBar";
 import { Text } from "@/components/LocalizedText";
 import WatchDetails from "./WatchDetails";
 import { useEffect, useRef, useState } from "react";
-import {
-  View,
-  Pressable,
+import { View,
   Platform,
   PermissionsAndroid,
   StyleSheet,
   ScrollView,
   BackHandler,
   useWindowDimensions,
-  Image,
-} from "react-native";
+  Image } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { usePlayerStore } from "@/store/playerStore";
 import {
   resolveSource,
+  playbackContentType,
   videoDetails,
   youtubeFormats,
   formatTrack,
@@ -154,6 +153,7 @@ function MediaEngine({
     {
       uri: uri.uri,
       headers: uri.headers,
+      contentType: playbackContentType(uri),
       metadata: {
         title: track.title,
         artist: track.artist,
@@ -163,6 +163,10 @@ function MediaEngine({
     (p) => {
       p.timeUpdateEventInterval = 1;
       p.audioMixingMode = "doNotMix";
+      if (Platform.OS === "android") p.bufferOptions = {
+        preferredForwardBufferDuration: 20, minBufferForPlayback: 2,
+        maxBufferBytes: 32 * 1024 * 1024, prioritizeTimeOverSizeThreshold: false,
+      };
     },
   );
   useEffect(() => {
@@ -360,7 +364,7 @@ function MediaEngine({
         )}
         <View
           style={{
-            height: expanded ? Math.min((width * 9) / 16, height * 0.25) : 1,
+            height: expanded ? (Platform.isTV ? Math.max(180, height * 0.55) : Math.min((width * 9) / 16, height * 0.25)) : 1,
             backgroundColor: audioMode ? theme.surface : theme.mediaBackground,
           }}
         >
@@ -476,6 +480,7 @@ function MediaEngine({
         </View>
         {expanded && (
           <>
+            {!!uri.label && <Text style={styles.muted}>{uri.label}</Text>}
             <SeekBar
               value={position}
               duration={duration}

@@ -4,6 +4,8 @@ An Expo / React Native audio and video player, with Android as the primary targe
 
 Review the current [media repair scope, test evidence and acceptance gates](docs/MEDIA_REPAIR_2026_10.md). Windows users can follow the [PowerShell and Android Studio build guide](docs/WINDOWS_BUILD.md).
 
+Preview 5 adds source-dependent automatic quality and Android TV launch/focus support. See the [Arabic Mi Box installation guide](docs/ANDROID_TV_AR.md) and [current streaming/TV verification record](docs/TV_STREAMING_PREVIEW5.md). Live YouTube and physical TV acceptance remain unverified.
+
 ## Android release artifacts
 
 Harmonia targets **Android 7.0+ (API 24 minimum)** and Expo SDK 57 / React Native 0.86. Android builds use compile/target SDK **36**, build-tools **36.0.0**, and NDK **27.1.12297006**.

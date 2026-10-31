@@ -20,7 +20,7 @@ Clone/switch to this PR's feature branch, then run:
 ```powershell
 git clone https://github.com/AlHuDaR/Harmonia-Player.git
 cd Harmonia-Player
-git switch feat/harmonia-v2-media-repair
+git switch feat/harmonia-tv-adaptive-preview5
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-android-release.ps1 -Mode arm64
 ```
 
@@ -58,7 +58,7 @@ Commit or stash your own work first. Do not reset the checkout. Use a new local 
 cd C:\src\Harmonia-Player
 git status --short
 git fetch origin
-git switch --create review/harmonia-v2-media-repair --track origin/feat/harmonia-v2-media-repair
+git switch --create review/harmonia-tv-preview5 --track origin/feat/harmonia-tv-adaptive-preview5
 npm.cmd ci
 npm.cmd run typecheck
 npm.cmd test
@@ -96,3 +96,8 @@ adb shell am start -a android.intent.action.SEND -t text/plain --es android.inte
 Use a real authorized public URL in the last command. Test again with the app closed, running and after repeated shares. From Files or a source app, share a real audio/video file (and multiple files), import it, restart Harmonia and play it offline. Also test cancel/retry downloads, English/Arabic, speed/seek, background controls, Bluetooth and PiP. The matrix and unresolved gates are in [the repair record](MEDIA_REPAIR_2026_10.md).
 
 The script copies release results to `artifacts\Harmonia-Player-arm64.apk`, `artifacts\Harmonia-Player-universal.apk` and `artifacts\Harmonia-Player.aab`. Generated originals are under `android\app\build\outputs\apk\release\app-release.apk` and `android\app\build\outputs\bundle\release\app-release.aab`. Default release builds remain test-signed; production requires the existing protected signing configuration. An AAB cannot be installed with `adb install`.
+
+
+## Android TV / Mi Box — preview 5
+
+Use **`-Mode universal`** for Mi Box: some models have 32-bit Android even with a 64-bit CPU. ARM64-only APKs will not cover those devices. Preview 5 is `2.0.0-preview.5` / versionCode `11`, requires Android 7/API 24+, and retains test signing. See the [Arabic TV guide](ANDROID_TV_AR.md) and [current verification record](TV_STREAMING_PREVIEW5.md). The TV launcher/focus changes and adaptive ladder do not substitute for physical-device acceptance or a successful live provider test.

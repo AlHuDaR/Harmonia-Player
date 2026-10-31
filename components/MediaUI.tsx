@@ -1,14 +1,12 @@
+import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { useTheme } from "@/utils/theme";
 import { useState } from "react";
-import {
-  View,
-  Pressable,
+import { View,
   ScrollView,
   TextInput,
   StyleSheet,
   Image,
-  Modal,
-} from "react-native";
+  Modal } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "./LocalizedText";
