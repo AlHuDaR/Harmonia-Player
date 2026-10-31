@@ -1,3 +1,10 @@
+## 2.0.0-preview.7 — YouTube Cast candidate transfer
+
+- Resolve fresh receiver candidates for finite YouTube video/audio after receiver selection, independently of phone-local Auto/DASH. Admit validated progressive MP4/AAC or compatible clear HLS through short-lived native grants.
+- Keep local playback during cancellable preparation; preserve current position/play intent at transfer and adopt matching resumed sessions by stable content identity.
+- Bound receiver loading/recovery and protect pending LOAD ownership before local audio resumes. Distinguish preparing/loading/receiver playback in English and Arabic.
+- Android versionCode 13; package, signing, minSdk and universal ABI support retained. Physical Mi Box/Chromecast and live-source acceptance remain pending. See [source contract and manual checks](docs/YOUTUBE_CAST_PREVIEW7.md).
+
 ## 2.0.0-preview.6 — Cast and bilingual search
 
 - Add official Android Google Cast sender controls and guarded public MP4/HLS handoff, including the native fullscreen control row. Actual receiver/device acceptance is pending.

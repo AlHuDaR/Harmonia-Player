@@ -7,12 +7,78 @@ export const CAST_UNAVAILABLE =
 export const CAST_SOURCE_UNSUPPORTED =
   "Casting isn't supported for this source. You can play it on this device.";
 export const CAST_YOUTUBE_UNSUPPORTED =
-  "YouTube casting isn't supported in this build. You can play it on this device.";
+  "No compatible YouTube stream is available for Cast. You can play it on this device.";
 export interface CastMedia {
   uri: string;
-  contentType: "video/mp4" | "application/x-mpegURL";
+  contentType: "video/mp4" | "audio/mp4" | "application/x-mpegURL";
+  contentId?: string;
+  sourceToken?: string;
   title: string;
   artist: string;
+}
+export function canPrepareYouTubeCast(track: Track) {
+  return (
+    !track.localUri &&
+    (track.kind === "audio" || track.kind === "video") &&
+    /^[A-Za-z0-9_-]{11}$/.test(track.youtubeId || "")
+  );
+}
+export function youtubeCastContentId(track: Track) {
+  return `harmonia:youtube:${track.youtubeId}:${track.kind}`;
+}
+/** A native one-use grant is still required by Android LOAD; this does not admit arbitrary signed URLs. */
+export function youtubeCastMedia(
+  track: Track,
+  candidate: Omit<CastMedia, "title" | "artist"> & { expiresAt: number },
+): CastMedia {
+  try {
+    const url = publicWebUrl(candidate.uri);
+    const type = candidate.contentType;
+    const expiryValues = url.searchParams.getAll("expire");
+    const expiry =
+      Number(
+        expiryValues.length === 1
+          ? expiryValues[0]
+          : expiryValues.length === 0
+            ? url.pathname.match(/\/expire\/(\d+)(?:\/|$)/)?.[1]
+            : NaN,
+      ) * 1000;
+    if (
+      !canPrepareYouTubeCast(track) ||
+      url.protocol !== "https:" ||
+      !url.hostname.endsWith(".googlevideo.com") ||
+      url.username ||
+      url.password ||
+      url.hash ||
+      candidate.contentId !== youtubeCastContentId(track) ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+        candidate.sourceToken || "",
+      ) ||
+      !Number.isFinite(expiry) ||
+      expiry < Date.now() + 120000 ||
+      expiry > Date.now() + 86400000 ||
+      !Number.isFinite(candidate.expiresAt) ||
+      candidate.expiresAt <= Date.now() + 10000 ||
+      candidate.expiresAt > expiry ||
+      (track.kind === "audio"
+        ? type !== "audio/mp4"
+        : type !== "video/mp4" && type !== "application/x-mpegURL") ||
+      (type === "application/x-mpegURL"
+        ? !url.pathname.startsWith("/api/manifest/hls_")
+        : url.pathname !== "/videoplayback")
+    )
+      throw new Error(CAST_YOUTUBE_UNSUPPORTED);
+    return {
+      uri: candidate.uri,
+      contentType: type,
+      contentId: candidate.contentId,
+      sourceToken: candidate.sourceToken,
+      title: track.title,
+      artist: track.artist,
+    };
+  } catch {
+    throw new Error(CAST_YOUTUBE_UNSUPPORTED);
+  }
 }
 export interface CastState {
   revision: number;
@@ -97,6 +163,7 @@ export function castMedia(
   }
 }
 export interface CastTransport {
+  getState?(): Promise<CastState>;
   load(media: CastMedia, position: number, autoplay: boolean): Promise<void>;
   stopOwned(contentId: string): Promise<void>;
 }
@@ -110,22 +177,91 @@ export interface LocalPlayback {
 export interface HandoffState {
   active: boolean;
   loading: boolean;
+  preparing: boolean;
   error: string;
 }
 
 /** A bounded, explicit transfer. Failed or uncertain stops never start a second audio output. */
 export class CastHandoff {
-  private state: HandoffState = { active: false, loading: false, error: "" };
+  private state: HandoffState = {
+    active: false,
+    loading: false,
+    preparing: false,
+    error: "",
+  };
   private listeners = new Set<() => void>();
   private generation = 0;
   private disposed = false;
   private requested = false;
   private lastPosition: number | undefined;
+  private preparation?: AbortController;
+  private receiverWatchdog?: ReturnType<typeof setTimeout>;
+  private automaticRecoveryAttempted = false;
+  private clearReceiverTimeout() {
+    if (this.receiverWatchdog) clearTimeout(this.receiverWatchdog);
+    this.receiverWatchdog = undefined;
+  }
+  private watchReceiver() {
+    if (this.receiverWatchdog || this.automaticRecoveryAttempted) return;
+    const generation = this.generation;
+    this.receiverWatchdog = setTimeout(() => {
+      this.receiverWatchdog = undefined;
+      void this.checkReceiverTimeout(generation);
+    }, 30000);
+  }
+  private async checkReceiverTimeout(generation: number) {
+    if (!this.state.active || this.disposed || generation !== this.generation)
+      return;
+    try {
+      if (this.transport.getState) {
+        const latest = await this.transport.getState();
+        if (
+          !this.state.active ||
+          this.disposed ||
+          generation !== this.generation
+        )
+          return;
+        this.observe(latest);
+        if (
+          latest.connection !== "connected" ||
+          latest.contentId !== this.contentId ||
+          (latest.hasMedia && !latest.buffering) ||
+          latest.idleReason === 1 ||
+          latest.idleReason === 2
+        )
+          return;
+      }
+      if (this.state.active)
+        await this.recover(
+          "Receiver playback timed out. Local playback is available.",
+        );
+    } catch {
+      if (!this.disposed && generation === this.generation) {
+        this.automaticRecoveryAttempted = true;
+        this.update({
+          error:
+            "Receiver status is uncertain. Disconnect Cast before resuming local playback.",
+        });
+      }
+    }
+  }
+  private async recover(error: string) {
+    if (this.automaticRecoveryAttempted) return;
+    this.automaticRecoveryAttempted = true;
+    await this.returnLocal(error);
+  }
   constructor(
     private media: CastMedia | undefined,
     private transport: CastTransport,
     private local: LocalPlayback,
+    private resolver?: {
+      contentId: string;
+      resolve(signal: AbortSignal): Promise<CastMedia>;
+    },
   ) {}
+  get contentId() {
+    return this.resolver?.contentId || this.media?.contentId || this.media?.uri;
+  }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -141,36 +277,73 @@ export class CastHandoff {
     if (
       this.disposed ||
       !state.hasMedia ||
-      !this.media ||
-      state.contentId !== this.media.uri ||
+      this.state.preparing ||
+      !this.contentId ||
+      state.contentId !== this.contentId ||
       state.connection !== "connected"
     )
       return;
     this.requested = true;
+    this.automaticRecoveryAttempted = false;
     this.lastPosition = state.position;
     this.local.pause();
     this.update({ active: true, loading: false, error: "" });
+    this.clearReceiverTimeout();
+    if (state.buffering) this.watchReceiver();
   }
   activate() {
     this.disposed = false;
   }
   async start() {
-    if (!this.media || this.state.active || this.state.loading || this.disposed)
+    if (
+      (!this.media && !this.resolver) ||
+      this.state.active ||
+      this.state.loading ||
+      this.state.preparing ||
+      this.disposed
+    )
       return;
     const generation = ++this.generation;
+    this.automaticRecoveryAttempted = false;
+    this.clearReceiverTimeout();
+    if (this.resolver) {
+      const controller = new AbortController();
+      this.preparation = controller;
+      this.update({ preparing: true, error: "" });
+      try {
+        const media = await this.resolver.resolve(controller.signal);
+        if (this.disposed || generation !== this.generation) return;
+        if (media.contentId !== this.resolver.contentId)
+          throw new Error(CAST_YOUTUBE_UNSUPPORTED);
+        this.media = media;
+      } catch (error) {
+        if (!this.disposed && generation === this.generation)
+          this.update({
+            preparing: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        return;
+      } finally {
+        if (this.preparation === controller) this.preparation = undefined;
+      }
+    }
+    if (!this.media || this.disposed || generation !== this.generation) return;
     const position = this.local.position(),
       playing = this.local.playing();
+    this.lastPosition = position;
     this.requested = true;
     this.local.pause();
-    this.update({ loading: true, error: "" });
+    this.update({ preparing: false, loading: true, error: "" });
     try {
       await this.transport.load(this.media, position, playing);
-      if (!this.disposed && generation === this.generation)
+      if (!this.disposed && generation === this.generation) {
         this.update({ active: true, loading: false });
+        this.watchReceiver();
+      }
     } catch (error) {
       if (this.disposed || generation !== this.generation) return;
       try {
-        await this.transport.stopOwned(this.media.uri);
+        await this.transport.stopOwned(this.contentId!);
         if (this.disposed || generation !== this.generation) return;
         this.requested = false;
         this.local.seek(position);
@@ -192,19 +365,28 @@ export class CastHandoff {
     }
   }
   observe(state: CastState) {
+    if (this.state.preparing && !this.requested) {
+      if (state.connection !== "connected")
+        this.cancelPreparation(
+          "Cast preparation cancelled. Local playback is available.",
+        );
+      return;
+    }
     if (!this.state.active && !this.state.loading) return;
-    if (state.contentId === this.media?.uri) this.lastPosition = state.position;
+    if (state.contentId === this.contentId) this.lastPosition = state.position;
     if (
       state.connection === "suspended" ||
       state.connection === "connecting" ||
       state.connection === "disconnecting"
     ) {
+      this.clearReceiverTimeout();
       this.local.pause();
       this.update({
         error:
           "Cast connection interrupted. Reconnect or disconnect before playing locally.",
       });
     } else if (state.connection === "disconnected") {
+      this.clearReceiverTimeout();
       ++this.generation;
       this.requested = false;
       this.local.pause();
@@ -217,11 +399,17 @@ export class CastHandoff {
     } else if (
       state.connection === "connected" &&
       this.state.active &&
-      state.contentId === this.media?.uri
+      state.contentId === this.contentId
     ) {
       this.local.pause();
+      if (state.hasMedia && !state.buffering && state.idleReason === 0)
+        this.automaticRecoveryAttempted = false;
+      if (state.idleReason === 1 || state.idleReason === 2)
+        this.clearReceiverTimeout();
+      else if (state.buffering || !state.hasMedia) this.watchReceiver();
+      else this.clearReceiverTimeout();
       if (state.idleReason === 4)
-        void this.returnLocal(
+        void this.recover(
           "Receiver playback failed. Local playback is available.",
         );
       else if (this.state.error) this.update({ error: "" });
@@ -229,8 +417,9 @@ export class CastHandoff {
       state.connection === "connected" &&
       this.state.active &&
       state.contentId &&
-      state.contentId !== this.media?.uri
+      state.contentId !== this.contentId
     ) {
+      this.clearReceiverTimeout();
       ++this.generation;
       this.requested = false;
       this.local.pause();
@@ -241,12 +430,24 @@ export class CastHandoff {
       });
     }
   }
+  private cancelPreparation(error = "") {
+    ++this.generation;
+    this.preparation?.abort();
+    this.preparation = undefined;
+    this.update({ preparing: false, error });
+  }
   async returnLocal(error = "") {
-    if (!this.media || this.state.loading || this.disposed) return;
+    this.clearReceiverTimeout();
+    if (this.disposed) return;
+    if (this.state.preparing) {
+      this.cancelPreparation(error);
+      return;
+    }
+    if (!this.contentId || this.state.loading) return;
     const generation = ++this.generation;
     this.update({ loading: true });
     try {
-      await this.transport.stopOwned(this.media.uri);
+      await this.transport.stopOwned(this.contentId);
       if (this.disposed || generation !== this.generation) return;
       this.requested = false;
       this.local.seek(this.lastPosition ?? this.local.position());
@@ -262,9 +463,19 @@ export class CastHandoff {
     }
   }
   dispose = () => {
+    this.clearReceiverTimeout();
     this.disposed = true;
     ++this.generation;
-    if (this.requested && this.media)
-      void this.transport.stopOwned(this.media.uri).catch(() => {});
+    this.preparation?.abort();
+    this.preparation = undefined;
+    if (this.requested && this.contentId)
+      void this.transport.stopOwned(this.contentId).catch(() => {});
+    this.requested = false;
+    this.state = {
+      ...this.state,
+      active: false,
+      loading: false,
+      preparing: false,
+    };
   };
 }

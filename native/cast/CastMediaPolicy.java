@@ -6,6 +6,11 @@ import java.util.Locale;
 
 /** Receiver URLs must not depend on the sender's filesystem, credentials or signed extraction. */
 public final class CastMediaPolicy {
+    /** A pending LOAD can arrive late even while status still describes the previous item. */
+    public static boolean mayStopOwned(String owned, String requested, String pending, String receiverContentId) {
+        return requested != null && !requested.isEmpty() && requested.equals(owned)
+                && (requested.equals(pending) || receiverContentId == null || requested.equals(receiverContentId));
+    }
     public static boolean supports(String input, String contentType) {
         try {
             URI uri = new URI(input);

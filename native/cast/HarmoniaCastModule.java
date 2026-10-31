@@ -20,6 +20,8 @@ import com.google.android.gms.cast.framework.media.RemoteMediaClient;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.PendingResult;
+import com.alhudar.harmonia.youtube.CastSourcePolicy;
+import java.util.concurrent.TimeUnit;
 
 /** All Cast SDK access, including callbacks and disposal, stays on Android's main thread. */
 public final class HarmoniaCastModule extends ReactContextBaseJavaModule implements Application.ActivityLifecycleCallbacks {
@@ -34,6 +36,7 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     private boolean eligible;
     private String ownedContentId = "";
     private String loadingContentId = "";
+    private long loadRevision;
     private int revision;
     private volatile int listeners;
     private final RemoteMediaClient.Callback mediaCallback = new RemoteMediaClient.Callback() {
@@ -82,7 +85,7 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     }
     private void connected() { connection = "connected"; watch(client()); emit(); }
     private void disconnected(int code) {
-        connection = "disconnected"; watch(null); ownedContentId = ""; emit();
+        connection = "disconnected"; watch(null); ownedContentId = ""; loadingContentId = ""; ++loadRevision; emit();
         if (code != 0) error("Cast connection failed. Check the receiver and Wi-Fi, then retry.");
     }
     private WritableMap snapshot() {
@@ -93,6 +96,10 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         CastSession session = session();
         state.putString("deviceName", session != null && session.getCastDevice() != null ? session.getCastDevice().getFriendlyName() : "");
         RemoteMediaClient client = client();
+        // LOAD acknowledgement is not proof that playback/status has switched.
+        // Retain pending ownership until the receiver reports this content, so a
+        // timeout can still STOP a late LOAD before the phone resumes audio.
+        if (client != null && client.getMediaInfo() != null && loadingContentId.equals(client.getMediaInfo().getContentId())) loadingContentId = "";
         state.putString("contentId", client != null && client.getMediaInfo() != null ? client.getMediaInfo().getContentId() : "");
         state.putString("ownedContentId", ownedContentId);
         state.putBoolean("hasMedia", client != null && client.hasMediaSession() && client.getPlayerState() != MediaStatus.PLAYER_STATE_IDLE);
@@ -147,28 +154,33 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         UiThreadUtil.runOnUiThread(() -> {
             try {
                 String uri = media.getString("uri"), type = media.getString("contentType");
-                if (!CastMediaPolicy.supports(uri, type)) { promise.reject("CAST_SOURCE", mediaReason); return; }
+                String contentId = media.hasKey("contentId") ? media.getString("contentId") : uri;
+                boolean youtube = media.hasKey("sourceToken");
+                boolean supported = youtube ? CastSourcePolicy.claim(media.getString("sourceToken"), uri, type, contentId, System.currentTimeMillis())
+                        : uri.equals(contentId) && CastMediaPolicy.supports(uri, type);
+                if (!supported) { promise.reject("CAST_SOURCE", youtube ? CastSourcePolicy.UNAVAILABLE : mediaReason); return; }
                 RemoteMediaClient client = client();
                 if (client == null || session() == null || !session().isConnected()) { promise.reject("CAST_SESSION", "Cast receiver disconnected."); return; }
-                MediaMetadata metadata = new MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE);
+                MediaMetadata metadata = new MediaMetadata("audio/mp4".equals(type) ? MediaMetadata.MEDIA_TYPE_MUSIC_TRACK : MediaMetadata.MEDIA_TYPE_MOVIE);
                 metadata.putString(MediaMetadata.KEY_TITLE, media.getString("title"));
-                metadata.putString(MediaMetadata.KEY_SUBTITLE, media.getString("artist"));
-                MediaInfo info = new MediaInfo.Builder(uri).setContentType(type).setStreamType(MediaInfo.STREAM_TYPE_BUFFERED).setMetadata(metadata).build();
-                ownedContentId = uri; loadingContentId = uri;
+                metadata.putString("audio/mp4".equals(type) ? MediaMetadata.KEY_ARTIST : MediaMetadata.KEY_SUBTITLE, media.getString("artist"));
+                MediaInfo.Builder builder = new MediaInfo.Builder(contentId).setContentUrl(uri).setContentType(type).setStreamType(MediaInfo.STREAM_TYPE_BUFFERED).setMetadata(metadata);
+                if (youtube && "application/x-mpegURL".equals(type)) builder.setHlsSegmentFormat(HlsSegmentFormat.TS).setHlsVideoSegmentFormat(HlsVideoSegmentFormat.MPEG2_TS);
+                MediaInfo info = builder.build();
+                ownedContentId = contentId; loadingContentId = contentId; final long requestRevision = ++loadRevision;
                 MediaLoadRequestData data = new MediaLoadRequestData.Builder().setMediaInfo(info).setAutoplay(autoplay).setCurrentTime(Math.max(0, (long) (position * 1000))).build();
                 client.load(data).setResultCallback(result -> {
-                    if (uri.equals(loadingContentId)) loadingContentId = "";
-                    if (result.getStatus().isSuccess()) { promise.resolve(null); emit(); }
-                    else promise.reject("CAST_RECEIVER", "Cast receiver rejected the request. Try local playback or another public MP4/HLS source.");
-                });
-            } catch (RuntimeException error) { promise.reject("CAST_LOAD", "Cast playback failed. Try local playback or another public MP4/HLS source."); }
+                    if (result.getStatus().isSuccess()) { promise.resolve(null); if (requestRevision == loadRevision) emit(); }
+                    else promise.reject("CAST_RECEIVER", "The receiver couldn't play this stream. You can play it on this device.");
+                }, 30, TimeUnit.SECONDS);
+            } catch (RuntimeException error) { promise.reject("CAST_LOAD", "Cast playback failed. Try again or play on this device."); }
         });
     }
     private void result(PendingResult<RemoteMediaClient.MediaChannelResult> operation, Promise promise) {
         operation.setResultCallback(result -> {
             if (result.getStatus().isSuccess()) { promise.resolve(null); emit(); }
-            else promise.reject("CAST_RECEIVER", "Cast receiver rejected the request. Try local playback or another public MP4/HLS source.");
-        });
+            else promise.reject("CAST_RECEIVER", "Cast control failed. Check the receiver connection.");
+        }, 10, TimeUnit.SECONDS);
     }
     @ReactMethod public void command(String action, double value, Promise promise) {
         UiThreadUtil.runOnUiThread(() -> {
@@ -188,14 +200,15 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     @ReactMethod public void stopOwned(String contentId, Promise promise) {
         UiThreadUtil.runOnUiThread(() -> {
             RemoteMediaClient client = client();
-            if (client != null && contentId.equals(ownedContentId) && (contentId.equals(loadingContentId) || client.getMediaInfo() == null || contentId.equals(client.getMediaInfo().getContentId()))) {
+            if (client != null && CastMediaPolicy.mayStopOwned(ownedContentId, contentId, loadingContentId, client.getMediaInfo() == null ? null : client.getMediaInfo().getContentId())) {
+                ++loadRevision;
                 client.stop().setResultCallback(result -> {
                     if (result.getStatus().isSuccess()) {
                         if (contentId.equals(ownedContentId)) ownedContentId = "";
                         if (contentId.equals(loadingContentId)) loadingContentId = "";
                         promise.resolve(null); emit();
                     } else promise.reject("CAST_STOP", "Could not stop the Cast receiver.");
-                });
+                }, 10, TimeUnit.SECONDS);
             } else promise.resolve(null);
         });
     }

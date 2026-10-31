@@ -8,9 +8,11 @@ import {
 import { NativeEventEmitter, NativeModules, Platform } from "react-native";
 import type { VideoPlayer } from "expo-video";
 import type { Track } from "@/types/media";
-import type { MediaSource } from "@/utils/youtube";
+import { resolveYouTubeCast, type MediaSource } from "@/utils/youtube";
 import {
   castMedia,
+  canPrepareYouTubeCast,
+  youtubeCastContentId,
   CastHandoff,
   CAST_SOURCE_UNSUPPORTED,
   CAST_YOUTUBE_UNSUPPORTED,
@@ -51,6 +53,7 @@ let pendingStop: Promise<void> = Promise.resolve();
 export const waitForCastStop = () => pendingStop;
 const transport: CastTransport = native
   ? {
+      getState: () => native.getState(),
       load: (...args) => native.load(...args),
       stopOwned: (id) => {
         pendingStop = native.stopOwned(id);
@@ -73,21 +76,40 @@ export function useCastPlayback(
   const exit = useRef(exitFullscreen);
   exit.current = exitFullscreen;
   const media = useMemo(() => castMedia(track, source), [track, source]);
+  const resolver = useMemo(
+    () =>
+      canPrepareYouTubeCast(track)
+        ? {
+            contentId: youtubeCastContentId(track),
+            resolve: async (signal: AbortSignal) => {
+              await waitForCastStop();
+              return resolveYouTubeCast(track, signal);
+            },
+          }
+        : undefined,
+    [track],
+  );
+  const eligible = !!media || !!resolver;
   const sourceReason = track.youtubeId
     ? CAST_YOUTUBE_UNSUPPORTED
     : CAST_SOURCE_UNSUPPORTED;
   const handoff = useMemo(
     () =>
-      new CastHandoff(media, transport, {
-        position: () => player.currentTime,
-        playing: () => player.playing,
-        pause: () => player.pause(),
-        play: () => player.play(),
-        seek: (position) => {
-          player.currentTime = position;
+      new CastHandoff(
+        media,
+        transport,
+        {
+          position: () => player.currentTime,
+          playing: () => player.playing,
+          pause: () => player.pause(),
+          play: () => player.play(),
+          seek: (position) => {
+            player.currentTime = position;
+          },
         },
-      }),
-    [media, player],
+        resolver,
+      ),
+    [media, player, resolver],
   );
   const state = useSyncExternalStore(
     handoff.subscribe,
@@ -105,26 +127,31 @@ export function useCastPlayback(
     let alive = true;
     let revision = 0;
     let adopting = false;
+    let readyForAdoption = false;
+    let connection = "disconnected";
     const emitter = new NativeEventEmitter(native);
     const update = (next: CastState) => {
       if (!alive || next.revision <= revision) return;
       revision = next.revision;
+      connection = next.connection;
       setRemote(next);
       if (next.connection === "disconnected") pendingStop = Promise.resolve();
       handoff.observe(next);
       if (
         next.connection === "connected" &&
-        media &&
-        next.contentId === media.uri &&
+        readyForAdoption &&
+        handoff.contentId &&
+        next.contentId === handoff.contentId &&
         next.hasMedia &&
         !wantsCast.current &&
         !adopting &&
         !handoff.getSnapshot().active &&
-        !handoff.getSnapshot().loading
+        !handoff.getSnapshot().loading &&
+        !handoff.getSnapshot().preparing
       ) {
         adopting = true;
         void native
-          .adopt(media.uri)
+          .adopt(handoff.contentId)
           .then(() => {
             if (alive) handoff.adopt(next);
           })
@@ -149,13 +176,22 @@ export function useCastPlayback(
       },
     );
     const picker = emitter.addListener("HarmoniaCastPicker", () => {
-      wantsCast.current = !!media;
+      setError("");
+      wantsCast.current = eligible;
+      if (eligible && connection === "connected") {
+        wantsCast.current = false;
+        exit.current();
+        void handoff.start();
+      }
     });
     const closed = emitter.addListener("HarmoniaCastPickerClosed", () => {
       wantsCast.current = false;
     });
-    native
-      .getState()
+    waitForCastStop()
+      .then(() => {
+        readyForAdoption = true;
+        return native.getState();
+      })
       .then(update)
       .catch(() => {
         if (alive) setError(CAST_UNAVAILABLE);
@@ -170,10 +206,15 @@ export function useCastPlayback(
       closed.remove();
       handoff.dispose();
     };
-  }, [handoff, media]);
+  }, [handoff, eligible]);
   useEffect(() => {
-    native?.configure(!!media, t(sourceReason), t("Cast"), t(CAST_UNAVAILABLE));
-  }, [media, sourceReason, t]);
+    native?.configure(
+      eligible,
+      t(sourceReason),
+      t("Cast"),
+      t(CAST_UNAVAILABLE),
+    );
+  }, [eligible, sourceReason, t]);
   const picker = async () => {
     setError("");
     if (!native || !remote.available) {
@@ -189,16 +230,16 @@ export function useCastPlayback(
       );
       return;
     }
-    if (!media && remote.connection !== "connected") {
+    if (!eligible && remote.connection !== "connected") {
       setError(sourceReason);
       return;
     }
-    if (media && remote.connection === "connected" && !state.active) {
+    if (eligible && remote.connection === "connected" && !state.active) {
       exit.current();
       await handoff.start();
       return;
     }
-    wantsCast.current = !!media && !state.active;
+    wantsCast.current = eligible && !state.active;
     try {
       await native.showPicker(true);
     } catch (error) {
@@ -236,11 +277,11 @@ export function useCastPlayback(
     }
     if (
       current?.connection === "connected" &&
-      media &&
+      handoff.contentId &&
       current.hasMedia &&
-      current.contentId === media.uri
+      current.contentId === handoff.contentId
     ) {
-      await native?.adopt(media.uri);
+      await native?.adopt(handoff.contentId);
       setRemote(current);
       handoff.adopt(current);
       return false;
@@ -265,6 +306,6 @@ export function useCastPlayback(
     command,
     disconnect,
     returnLocal: () => handoff.returnLocal(),
-    eligible: !!media,
+    eligible,
   };
 }
