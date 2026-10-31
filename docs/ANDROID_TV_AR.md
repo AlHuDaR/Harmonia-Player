@@ -1,6 +1,6 @@
 # Android TV وMi Box والجودة التلقائية — preview.5
 
-هذا التحديث يجمع تغييرات طلب الدمج #32 السابق مع دعم تمهيدي للتلفزيون والبث التكيفي. الإصدار `2.0.0-preview.5`، ورقم Android هو `11`. طلب الدمج ما زال مسودة؛ لا يعني تجهيز APK أن التحديث نُشر تلقائياً على أجهزتك أو دُمج في main.
+هذا التحديث يبني على تغييرات طلب الدمج #32 التي دُمجت أثناء العمل، ويضيف دعماً تمهيدياً للتلفزيون والبث التكيفي. الإصدار `2.0.0-preview.5`، ورقم Android هو `11`. تحديث preview.5 في طلب مراجعة مستقل ولم يُدمج؛ لا يعني تجهيز APK أن التحديث نُشر تلقائياً على أجهزتك.
 
 ## ما الذي تغير؟
 
@@ -20,7 +20,7 @@
 cd C:\src\Harmonia-Player
 git status --short
 git fetch origin
-git switch --create review/harmonia-tv-preview5 --track origin/feat/harmonia-v2-media-repair
+git switch --create review/harmonia-tv-preview5 --track origin/feat/harmonia-tv-adaptive-preview5
 npm.cmd ci
 npm.cmd run typecheck
 npm.cmd test

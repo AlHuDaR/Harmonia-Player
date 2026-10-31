@@ -1,6 +1,6 @@
 # Preview 5 — adaptive streaming and Android TV acceptance
 
-Continues PR #32 on `feat/harmonia-v2-media-repair`; all previous repair commits remain ancestors. Main remains at `28f2279`; no merge or publication was performed. Version changes to **2.0.0-preview.5 / Android versionCode 11**, so the updated application can be distinguished from the previous preview. The package, signing configuration, library schema and existing dependencies remain unchanged.
+Follows merged PR #32 on a new branch, `feat/harmonia-tv-adaptive-preview5`, created from verified latest main `bfb8220eae602337a2bf1da8fe1a6fa89c477429`. While this follow-up was in progress, the repository owner merged #32 at its previous head `447fc43` (preview.4). The six follow-up commits were replayed onto that new main without resetting the previous branch. Runtime source equality against the already tested follow-up tree was verified. This preview.5 follow-up has not been merged or published; no automatic merge was performed. Version changes to **2.0.0-preview.5 / Android versionCode 11**, so the updated application can be distinguished from the previous preview. The package, signing configuration, library schema and existing dependencies remain unchanged.
 
 ## Implementation
 

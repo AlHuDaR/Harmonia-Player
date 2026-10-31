@@ -20,7 +20,7 @@ Clone/switch to this PR's feature branch, then run:
 ```powershell
 git clone https://github.com/AlHuDaR/Harmonia-Player.git
 cd Harmonia-Player
-git switch feat/harmonia-v2-media-repair
+git switch feat/harmonia-tv-adaptive-preview5
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-android-release.ps1 -Mode arm64
 ```
 
@@ -58,7 +58,7 @@ Commit or stash your own work first. Do not reset the checkout. Use a new local 
 cd C:\src\Harmonia-Player
 git status --short
 git fetch origin
-git switch --create review/harmonia-v2-media-repair --track origin/feat/harmonia-v2-media-repair
+git switch --create review/harmonia-tv-preview5 --track origin/feat/harmonia-tv-adaptive-preview5
 npm.cmd ci
 npm.cmd run typecheck
 npm.cmd test
