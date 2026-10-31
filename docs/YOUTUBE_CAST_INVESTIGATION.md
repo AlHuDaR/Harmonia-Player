@@ -1,6 +1,6 @@
 # Direct YouTube casting investigation
 
-**Historical scope:** this records the feedback-only change in PR #36. The candidate-resolver experiment below is implemented in [preview.7](YOUTUBE_CAST_PREVIEW7.md); physical receiver playback remains unverified. Use that document for the current runtime contract.
+**Historical scope:** this records the feedback-only change in PR #36. The candidate-resolver experiment below was subsequently implemented in [preview.7](YOUTUBE_CAST_PREVIEW7.md), followed by downloaded-file hosting in [preview.8](DOWNLOADED_CAST_PREVIEW8.md). The owner has confirmed streaming and downloaded-file Cast working on Mi Box. Unimplemented/unverified statements below describe PR #36 at that time, not the current app.
 
 The phone screenshot reports a sender-side source restriction. It does not show a discovery, Wi-Fi or receiver playback failure. The current `castMedia` policy rejects every `youtubeId`, so changing quality or selecting another YouTube video cannot enable casting in this build. This follow-up shortens the warning in English and Arabic and identifies the YouTube limitation in portrait and native fullscreen. It does **not** add YouTube casting.
 

@@ -1,21 +1,24 @@
+# Changelog
+
 ## 2.0.0-preview.8 — downloaded-file Cast
 
 - Cast completed app-owned downloads directly over the local network, independently of YouTube metadata or temporary provider URLs.
 - Add selected-file/receiver grants, real HTTP byte-range seeking, MIME/container inspection, bounded connections and source revocation.
 - Keep serving through app backgrounding/screen-off using a foreground media service with Stop casting and lifecycle-bound wake/Wi-Fi locks.
-- Add native HTTP and Android device tests for MP3/M4A/MP4, foreground/background serving, seek and cleanup. Code 14; physical Mi Box downloaded-file acceptance remains pending. See [contract and manual checks](docs/DOWNLOADED_CAST_PREVIEW8.md).
+- Add native HTTP and Android device tests for MP3/M4A/MP4, foreground/background serving, seek and cleanup. Code 14; hosted Linux, Windows and API 35 emulator checks passed in [CI run 96](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/41234295330).
+- The owner confirms streaming and downloaded-file Cast working on Mi Box. This is owner-reported acceptance, not blanket verification of all receivers/codecs/lifecycle scenarios. See [contract and manual checks](docs/DOWNLOADED_CAST_PREVIEW8.md).
 
 ## 2.0.0-preview.7 — YouTube Cast candidate transfer
 
 - Resolve fresh receiver candidates for finite YouTube video/audio after receiver selection, independently of phone-local Auto/DASH. Admit validated progressive MP4/AAC or compatible clear HLS through short-lived native grants.
 - Keep local playback during cancellable preparation; preserve current position/play intent at transfer and adopt matching resumed sessions by stable content identity.
 - Bound receiver loading/recovery and protect pending LOAD ownership before local audio resumes. Distinguish preparing/loading/receiver playback in English and Arabic.
-- Android versionCode 13; package, signing, minSdk and universal ABI support retained. Physical Mi Box/Chromecast and live-source acceptance remain pending. See [source contract and manual checks](docs/YOUTUBE_CAST_PREVIEW7.md).
+- Android versionCode 13; package, signing, minSdk and universal ABI support retained. The owner subsequently reported streaming Cast working on Mi Box; other receivers and live-source combinations remain device-dependent. See [source contract and manual checks](docs/YOUTUBE_CAST_PREVIEW7.md).
 
 ## 2.0.0-preview.6 — Cast and bilingual search
 
-- Add official Android Google Cast sender controls and guarded public MP4/HLS handoff, including the native fullscreen control row. Actual receiver/device acceptance is pending.
-- Explain YouTube's current Cast limitation with a short English/Arabic warning; document the [direct-casting investigation](docs/YOUTUBE_CAST_INVESTIGATION.md). YouTube casting remains unimplemented.
+- Add official Android Google Cast sender controls and guarded public MP4/HLS handoff, including the native fullscreen control row. Hardware acceptance was pending at this preview; later Mi Box confirmation is recorded above.
+- Explain the then-unsupported YouTube Cast path with a short English/Arabic warning and [direct-casting investigation](docs/YOUTUBE_CAST_INVESTIGATION.md). Preview.7 subsequently implemented compatible YouTube Cast candidates.
 - Add shared clearable first-strong RTL/LTR search, debouncing, obsolete-request protection and actionable search states.
 - Retain speed and bounded long-video bookmarks; preserve position on manual playback retry and ignore obsolete mode changes.
 - Align Router to the existing Expo 57 SDK, eliminating duplicate native modules; preserve application identity, signing, minimum SDK, TV launcher and universal ABI support.
@@ -28,15 +31,13 @@
 - Package Android versionCode 11 with the existing application identity/signing configuration; universal builds include both ARM32 and ARM64 for Mi Box userspaces.
 - Record fixture/build evidence separately from blocked live YouTube and unavailable physical-device acceptance. See docs/TV_STREAMING_PREVIEW5.md and docs/ANDROID_TV_AR.md.
 
-## Unreleased — media repair review
+## Media repair review — included before preview.5
 
 - Recognize Snapchat Spotlight and canonical Facebook video/Reel IDs; attempt only explicit public video metadata and verify compatible media before offering actions. Browser/save fallback remains available; live provider success is unverified.
 - Introduce provider adapter contracts and typed discovery failures while retaining YouTube/NewPipe, Instagram, Vimeo, Reddit and direct source paths.
 - Separate granted Android audio/video file shares from text links; add bounded private-storage imports and multiple-share intake.
 - Add native transfer size/time limits, byte/speed reporting, playback speed and bilingual explanations for unavailable format actions.
 - Record baseline, PR merge status, dependency findings, regression matrix and remaining device/security gates. Update Windows PowerShell/Android Studio instructions.
-
-# Changelog
 
 ## 2.0.0-preview.4 — download/library reliability
 
@@ -52,6 +53,15 @@
 - Add parser/security/capability regressions and optional live Android share/play/download/restart/offline testing. The supplied public Reel's H.264/AAC file was downloaded and fully decoded; hosted Android outcomes are recorded in PR checks.
 - Increase versionCode to 9; retain package and production signing configuration.
 
+## 2.0.0-preview.2 — discovered capabilities and native transfers
+
+- Inspect PR #27 and separate recognized URLs from discovered playable/downloadable formats.
+- Add bounded public Vimeo/Reddit discovery adapters, encrypted-media rejection, public HTTPS/DNS/redirect validation, and explicit unavailable explanations for platforms without a validated authorized interface.
+- Retain NewPipe and select only actually returned audio/video formats; never synthesize audio from a video-only fallback.
+- Add persistent WorkManager transfers, notifications, cancellation, retry policy, integrity/decoder checks, process-restart reconciliation and cleanup. Preserve existing library data and package/signing identity.
+- Align six Expo SDK-57 patches, remove unused direct query-string, and add native PowerShell builds plus Android/JVM/emulator and Windows CI.
+- Increase versionCode to 8. Social-source and device verification limits are documented; no universal extraction or production-readiness claim.
+
 ## 2.0.0-preview.1 — sharing foundation
 
 - Audit baseline v1.5.0 and define separate, gated PRs for the full 2.0 roadmap.
@@ -61,13 +71,4 @@
 - Reject credentials, IP literals, internal/local hosts and nonstandard ports in shared/direct inputs.
 - Preserve package ID and existing signing configuration; increase Android versionCode from 6 to 7. This preview is not a completed 2.0 release.
 
-Social extraction, durable downloads, advanced player/library/studio, new icon/branding and optional features remain scheduled follow-ups. Existing launcher/splash assets are unchanged.
-
-## 2.0.0-preview.2 — discovered capabilities and native transfers
-
-- Inspect PR #27 and separate recognized URLs from discovered playable/downloadable formats.
-- Add bounded public Vimeo/Reddit discovery adapters, encrypted-media rejection, public HTTPS/DNS/redirect validation, and explicit unavailable explanations for platforms without a validated authorized interface.
-- Retain NewPipe and select only actually returned audio/video formats; never synthesize audio from a video-only fallback.
-- Add persistent WorkManager transfers, notifications, cancellation, retry policy, integrity/decoder checks, process-restart reconciliation and cleanup. Preserve existing library data and package/signing identity.
-- Align six Expo SDK-57 patches, remove unused direct query-string, and add native PowerShell builds plus Android/JVM/emulator and Windows CI.
-- Increase versionCode to 8. Social-source and device verification limits are documented; no universal extraction or production-readiness claim.
+At preview.1, broader provider discovery and persistent transfers were follow-ups; later previews above add their documented subsets. Advanced studio, new icon/branding and other roadmap features are not claimed complete.

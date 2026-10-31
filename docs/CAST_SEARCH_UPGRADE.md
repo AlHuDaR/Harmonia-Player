@@ -1,6 +1,6 @@
 # Cast and bilingual search upgrade
 
-This describes preview.6. [Preview.7's YouTube Cast-source contract](YOUTUBE_CAST_PREVIEW7.md) supersedes its blanket YouTube-source exclusion; physical receiver acceptance remains pending.
+Historical preview.6 implementation and validation record. [Preview.7](YOUTUBE_CAST_PREVIEW7.md) supersedes the blanket YouTube-source exclusion, and [preview.8](DOWNLOADED_CAST_PREVIEW8.md) adds downloaded-file Cast. The owner has since confirmed both streaming and downloaded-file casting on Mi Box. Pending status and test counts below describe the original preview.6 review; use the [README](../README.md) for the current feature summary.
 
 ## Inspection and plan
 
@@ -77,7 +77,6 @@ The earlier Windows [job 122719344540](https://github.com/AlHuDaR/Harmonia-Playe
 - Hosted Linux release, Windows PowerShell ARM64 build and Android API 35 emulator sharing checks passed at runtime revision `4c9b275`. No physical Cast/phone/TV or live-provider playback verification is claimed. The local host's `adb devices` attempt could not initialize its default home directory; the emulator evidence comes from hosted CI.
 - `npm audit` exits nonzero for the 17 affected entries described above. This is an outstanding security result, not a passing audit.
 
-
 ### Native follow-up
 
 Initial hosted Linux and Windows builds at `40e5d73` passed all applicable JS checks but failed Android resource linking on `android:windowDimAmount` in the new picker theme. That invalid attribute was corrected to Android's `android:backgroundDimAmount`; final Linux and Windows builds pass. This is distinct from the earlier PR's Maven download timeout. The follow-up also preserves receiver position zero exactly, bounds unknown remote times at zero, catches unavailable Play-services initialization, disables inaccessible receiver seeking and aborts an unmounted player's pending mode request.
@@ -85,7 +84,6 @@ Initial hosted Linux and Windows builds at `40e5d73` passed all applicable JS ch
 The native helper is named `ensureCastInitialized`, avoiding React Native's public `initialize()` lifecycle method. Media3's primary controller row hosts the fullscreen Cast button; AndroidX MediaRouter 1.8.1 source confirms `performClick()` always invokes `showDialog()`, even after an OnClickListener. The native button therefore delegates **showDialog itself** to the dedicated FragmentActivity, and selects the standard SDK chooser/controller rather than the optional system output switcher. This prevents a plain-Activity FragmentManager failure and an invisible system-panel host. Real-device acceptance is still pending.
 
 Google's binary SDK has separate terms, recorded in [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md). Redistribution compatibility with Harmonia/NewPipe GPL-3.0-or-later remains unverified and is an owner license-review item.
-
 
 ## Final build and artifact record
 

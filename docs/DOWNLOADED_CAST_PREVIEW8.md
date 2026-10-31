@@ -2,6 +2,8 @@
 
 Preview **2.0.0-preview.8 / Android versionCode 14** adds an app-owned local-media Cast source. The owner reported preview.7 streaming Cast working on Mi Box; downloaded tracks were still rejected. This change addresses the downloaded-file path instead of changing its warning or resolving another YouTube URL.
 
+**Current acceptance:** after installing the preview.8 APK, the owner confirmed that it is working perfectly in the downloaded-file Cast follow-up. Streaming and downloaded-file casting on Mi Box are therefore recorded as owner-confirmed. The report does not establish every codec, receiver or interruption/reconnect scenario; those remain covered by the checklist below.
+
 ## How it works
 
 When a track has an app-owned `localUri`, Harmonia selects the downloaded-file resolver before the YouTube resolver, even if the track still has YouTube metadata. The existing on-phone playback path stays in place.
@@ -33,7 +35,9 @@ A framework-only Android instrumentation runner (test APK only) uses generated M
 
 Local validation passed TypeScript, **177 unit tests**, **50 Gradle JVM tests in 11 classes**, **19 browser checks** and **21/21 Expo Doctor checks**. The universal release and separate Android test APK assembled. The main APK's v2 signature, code 14, all four ABIs and new local Cast native/JS code were verified; instrumentation classes are excluded from it. This incremental assembly reuses unchanged linked C++ libraries with the same 16 previously completed CMake tasks excluded after disposable object cleanup. Hosted CI performs the normal build independently.
 
-Exact APK provenance and hosted results are recorded in the draft PR. The emulator tests verify the serving/background mechanism, not physical Mi Box decoder/playback behavior. Physical acceptance of downloaded-file Cast remains pending until the owner tests the APK.
+Hosted [CI run 96](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/41234295330) passed the normal Linux release/JVM build, native Windows PowerShell build and API 35 Android emulator checks at runtime revision [`66a9127`](https://github.com/AlHuDaR/Harmonia-Player/commit/66a9127f96691bf0f7cc3f0c1d1196501dc39dc1). Instrumentation reported `HARMONIA_LOCAL_CAST_PASS 3 formats; native grants, seek, CORS, foreground/screen-off and cleanup`. The emulator tests verify the serving/background mechanism, not physical receiver decoding; the owner separately confirmed the Mi Box playback outcome.
+
+[Download the tested universal APK ZIP](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/41234295330/artifacts/13055253869), extract it and install `Harmonia-Player-universal.apk`. GitHub sign-in may be required; artifacts use 14-day retention. The exact build and result record is in [merged PR #39](https://github.com/AlHuDaR/Harmonia-Player/pull/39). This test-signed APK is not a published store release.
 
 ## Mi Box acceptance
 
