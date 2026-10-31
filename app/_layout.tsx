@@ -4,7 +4,7 @@ import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, AppState } from "react-native";
+import { View, AppState, Platform } from "react-native";
 import { useEffect, useState } from "react";
 import { usePlayerStore, useLibraryStatus } from "@/store/playerStore";
 import {
@@ -115,7 +115,7 @@ function Layout() {
       <Header />
       <View style={{ flex: 1, minHeight: 0 }}>
         <View
-          style={{ flex: 1, opacity: expanded ? 0 : 1 }}
+          style={{ flex: 1, opacity: expanded ? 0 : 1, display: Platform.isTV && expanded ? "none" : "flex" }}
           pointerEvents={expanded ? "none" : "auto"}
           accessibilityElementsHidden={expanded}
           importantForAccessibility={expanded ? "no-hide-descendants" : "auto"}
