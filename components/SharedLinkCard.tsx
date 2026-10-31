@@ -1,3 +1,4 @@
+import { useLocale } from "@/utils/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Linking, NativeModules, Platform, View } from "react-native";
 import { Text } from "./LocalizedText";
@@ -28,6 +29,7 @@ export default function SharedLinkCard({
   onClose: () => void;
 }) {
   const styles = useMediaStyles();
+  const { t } = useLocale();
   const [media, setMedia] = useState<Discovery | null>(null);
   const [choices, setChoices] = useState<MediaChoice[]>([]);
   const [action, setAction] = useState<MediaAction>("play-video");
@@ -161,7 +163,7 @@ export default function SharedLinkCard({
         <Button
           raw
           key={choice.id}
-          title={choice.label}
+          title={t(choice.label)}
           disabled={busy}
           onPress={() => select(choice, action)}
         />

@@ -155,6 +155,29 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
         return stream.getAudioTrackType() == AudioTrackType.ORIGINAL ? 2
                 : stream.getAudioTrackType() == null ? 1 : 0;
     }
+    private static AdaptiveDash.Representation adaptiveRepresentation(Stream stream) {
+        if(stream==null)return null;
+        ItagItem i=stream.getItagItem();
+        if(i==null)return null;
+        return new AdaptiveDash.Representation(stream.getId(),stream.getContent(),i.getCodec(),i.getBitrate(),i.getWidth(),i.getHeight(),i.getInitStart(),i.getInitEnd(),i.getIndexStart(),i.getIndexEnd());
+    }
+    private static List<AdaptiveDash.Representation> adaptiveVideo(StreamInfo info) {
+        List<AdaptiveDash.Representation> result=new ArrayList<>();Set<String> ids=new HashSet<>();
+        for(VideoStream v:info.getVideoOnlyStreams()) {
+            AdaptiveDash.Representation r=adaptiveRepresentation(v);
+            if(fileStream(v) && v.getFormat()==MediaFormat.MPEG_4 && AdaptiveDash.eligible(r,true) && ids.add(r.id) && result.size()<16)result.add(r);
+        }
+        return result;
+    }
+    private String adaptiveManifest(StreamInfo info) throws Exception {
+        String body=AdaptiveDash.manifest(info.getDuration()*1000,adaptiveVideo(info),adaptiveRepresentation(audio(info)));
+        File directory=new File(getReactApplicationContext().getCacheDir(),"youtube-manifests");
+        if(!directory.isDirectory() && !directory.mkdirs())throw new IllegalStateException("No cache storage");
+        File file=new File(directory,UUID.randomUUID()+".mpd");
+        try(FileOutputStream output=new FileOutputStream(file)){output.write(body.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+        catch(Exception error){file.delete();throw error;}
+        return Uri.fromFile(file).toString();
+    }
     private static List<Choice> choices(StreamInfo info) {
         List<Choice> result = new ArrayList<>();
         for (AudioStream stream : info.getAudioStreams()) if (fileStream(stream)) {
@@ -176,7 +199,10 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
         if (info.getHlsUrl() != null && info.getHlsUrl().startsWith("https://")) {
             result.add(new Choice("hls", null, null, "video", "Live / adaptive", false));
         }
+        if(info.getDuration()>0 && AdaptiveDash.eligible(adaptiveRepresentation(audio(info)),false) && adaptiveVideo(info).size()>=2)
+            result.add(new Choice("auto",null,null,"video","Auto · adaptive up to 1080p",false));
         result.sort((a, b) -> {
+            if(a.id.equals("auto") || b.id.equals("auto"))return a.id.equals(b.id)?0:a.id.equals("auto")?-1:1;
             if (!a.kind.equals(b.kind)) return a.kind.equals("video") ? -1 : 1;
             if (a.stream instanceof AudioStream && b.stream instanceof AudioStream) {
                 int preference = Integer.compare(audioPriority((AudioStream) b.stream), audioPriority((AudioStream) a.stream));
@@ -207,6 +233,10 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
             Choice choice = null;
             for (Choice c : options) if (c.id.equals(selected) && (!download || c.downloadable)) { choice = c; break; }
             if (choice == null && selected != null && !selected.isEmpty()) throw new IllegalArgumentException("Selected format unavailable");
+            if(choice==null && !download && "video".equals(kind)) {
+                for(Choice c:options)if(c.id.equals("auto")){choice=c;break;}
+                if(choice==null)for(Choice c:options)if(c.id.equals("hls")){choice=c;break;}
+            }
             if (choice == null) {
                 // Prefer <=1080p over decoding huge streams automatically. User can select higher qualities.
                 for (Choice c : options) if (c.kind.equals(kind) && (!download || c.downloadable)) {
@@ -220,7 +250,9 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
             source.putMap("headers", headers);
             source.putString("kind", choice.kind);
             source.putString("label", choice.label);
-            if (choice.stream == null) {
+            if(choice.id.equals("auto")) {
+                source.putString("uri",adaptiveManifest(info));source.putString("extension","mpd");
+            } else if (choice.stream == null) {
                 source.putString("uri", info.getHlsUrl());
                 source.putString("extension", "m3u8");
             } else {

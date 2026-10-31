@@ -1,5 +1,6 @@
 import { usePlayerStore } from "@/store/playerStore";
 export const ar: Record<string, string> = {
+  "Auto · adaptive up to 1080p": "تلقائي · جودة تكيفية حتى 1080p",
   "Instagram share did not resolve to an Instagram post. Open in Browser.": "لم تؤدِ مشاركة إنستغرام إلى منشور إنستغرام. افتح الرابط في المتصفح.",
   "Facebook share did not resolve to a supported public video. Open in Browser.": "لم تؤدِ مشاركة فيسبوك إلى فيديو عام مدعوم. افتح الرابط في المتصفح.",
   "Playback speed": "سرعة التشغيل",
