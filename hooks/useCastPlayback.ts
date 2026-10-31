@@ -13,6 +13,7 @@ import {
   castMedia,
   CastHandoff,
   CAST_SOURCE_UNSUPPORTED,
+  CAST_YOUTUBE_UNSUPPORTED,
   CAST_UNAVAILABLE,
   EMPTY_CAST_STATE,
   type CastState,
@@ -72,6 +73,9 @@ export function useCastPlayback(
   const exit = useRef(exitFullscreen);
   exit.current = exitFullscreen;
   const media = useMemo(() => castMedia(track, source), [track, source]);
+  const sourceReason = track.youtubeId
+    ? CAST_YOUTUBE_UNSUPPORTED
+    : CAST_SOURCE_UNSUPPORTED;
   const handoff = useMemo(
     () =>
       new CastHandoff(media, transport, {
@@ -168,13 +172,8 @@ export function useCastPlayback(
     };
   }, [handoff, media]);
   useEffect(() => {
-    native?.configure(
-      !!media,
-      t(CAST_SOURCE_UNSUPPORTED),
-      t("Cast"),
-      t(CAST_UNAVAILABLE),
-    );
-  }, [media, t]);
+    native?.configure(!!media, t(sourceReason), t("Cast"), t(CAST_UNAVAILABLE));
+  }, [media, sourceReason, t]);
   const picker = async () => {
     setError("");
     if (!native || !remote.available) {
@@ -191,7 +190,7 @@ export function useCastPlayback(
       return;
     }
     if (!media && remote.connection !== "connected") {
-      setError(CAST_SOURCE_UNSUPPORTED);
+      setError(sourceReason);
       return;
     }
     if (media && remote.connection === "connected" && !state.active) {

@@ -1,6 +1,7 @@
 ## 2.0.0-preview.6 — Cast and bilingual search
 
 - Add official Android Google Cast sender controls and guarded public MP4/HLS handoff, including the native fullscreen control row. Actual receiver/device acceptance is pending.
+- Explain YouTube's current Cast limitation with a short English/Arabic warning; document the [direct-casting investigation](docs/YOUTUBE_CAST_INVESTIGATION.md). YouTube casting remains unimplemented.
 - Add shared clearable first-strong RTL/LTR search, debouncing, obsolete-request protection and actionable search states.
 - Retain speed and bounded long-video bookmarks; preserve position on manual playback retry and ignore obsolete mode changes.
 - Align Router to the existing Expo 57 SDK, eliminating duplicate native modules; preserve application identity, signing, minimum SDK, TV launcher and universal ABI support.
