@@ -16,6 +16,12 @@ export interface MediaSource {
   kind?: "audio" | "video";
   label?: string;
 }
+/** Signed/provider URLs need not end with a media suffix. Route adaptive sources explicitly. */
+export function playbackContentType(source: MediaSource): "dash" | "hls" | undefined {
+  if (/\.mpd(?:[?#]|$)/i.test(source.uri) || source.extension?.toLowerCase() === "mpd") return "dash";
+  if (/\.m3u8(?:[?#]|$)/i.test(source.uri) || source.extension?.toLowerCase() === "m3u8") return "hls";
+  return undefined;
+}
 export interface SearchPage {
   tracks: Track[];
   nextPage?: string;

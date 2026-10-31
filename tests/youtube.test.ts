@@ -13,6 +13,7 @@ vi.mock("react-native", () => ({
 import {
   searchYouTube,
   resolveSource,
+  playbackContentType,
   youtubeId,
   youtubeTrack,
   formatTrack,
@@ -130,4 +131,11 @@ it("keeps automatic streaming separate from progressive downloads", async () => 
   expect(native.resolve).toHaveBeenCalledWith("abcdefghijk",null,"video",true);
   await resolveSource({...track,formatId:"auto"});
   expect(native.resolve).toHaveBeenLastCalledWith("abcdefghijk","auto","video",false);
+});
+
+it("routes signed HLS and generated DASH to their adaptive media engines", () => {
+  expect(playbackContentType({uri:"https://cdn.example.com/stream?signature=abc",extension:"m3u8"})).toBe("hls");
+  expect(playbackContentType({uri:"file:///cache/video.mpd",extension:"mp4"})).toBe("dash");
+  expect(playbackContentType({uri:"https://cdn.example.com/master.m3u8?token=abc"})).toBe("hls");
+  expect(playbackContentType({uri:"https://cdn.example.com/video.mp4"})).toBeUndefined();
 });

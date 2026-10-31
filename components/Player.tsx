@@ -19,6 +19,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { usePlayerStore } from "@/store/playerStore";
 import {
   resolveSource,
+  playbackContentType,
   videoDetails,
   youtubeFormats,
   formatTrack,
@@ -152,6 +153,7 @@ function MediaEngine({
     {
       uri: uri.uri,
       headers: uri.headers,
+      contentType: playbackContentType(uri),
       metadata: {
         title: track.title,
         artist: track.artist,
