@@ -123,3 +123,11 @@ describe("on-device YouTube", () => {
     expect(audio.kind).toBe("audio");
   });
 });
+
+it("keeps automatic streaming separate from progressive downloads", async () => {
+  native.resolve.mockResolvedValue({uri:"https://cdn.example.com/video.mp4"});
+  await resolveSource({...track,formatId:"auto"},undefined,true);
+  expect(native.resolve).toHaveBeenCalledWith("abcdefghijk",null,"video",true);
+  await resolveSource({...track,formatId:"auto"});
+  expect(native.resolve).toHaveBeenLastCalledWith("abcdefghijk","auto","video",false);
+});

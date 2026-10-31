@@ -162,7 +162,7 @@ export default function WatchDetails({
             formats.map((f) => (
               <Button
                 key={f.id}
-                title={`${t(f.kind)} · ${f.label}`}
+                title={`${t(f.kind)} · ${t(f.label)}`}
                 onPress={() => {
                   const t = formatTrack(track, f);
                   setAction(null);

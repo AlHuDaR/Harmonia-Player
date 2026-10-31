@@ -107,7 +107,7 @@ export async function resolveSource(
     () =>
       extractor().resolve(
         track.youtubeId!,
-        track.formatId || null,
+        download && track.formatId === "auto" ? null : track.formatId || null,
         track.kind,
         download,
       ),
