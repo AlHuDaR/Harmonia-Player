@@ -7,14 +7,16 @@ import SeekBar from "./SeekBar";
 import { Text } from "@/components/LocalizedText";
 import WatchDetails from "./WatchDetails";
 import { useEffect, useRef, useState } from "react";
-import { View,
+import {
+  View,
   Platform,
   PermissionsAndroid,
   StyleSheet,
   ScrollView,
   BackHandler,
   useWindowDimensions,
-  Image } from "react-native";
+  Image,
+} from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { usePlayerStore } from "@/store/playerStore";
 import {
@@ -26,6 +28,8 @@ import {
   type MediaSource,
 } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";
+import { useCastPlayback } from "@/hooks/useCastPlayback";
+import { Button } from "./MediaUI";
 
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60)
@@ -119,7 +123,7 @@ function MediaEngine({
   const [actionError, setActionError] = useState("");
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  const speed = settings.playbackSpeed;
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const expanded = usePlayerStore((s) => s.expanded);
@@ -163,16 +167,62 @@ function MediaEngine({
     (p) => {
       p.timeUpdateEventInterval = 1;
       p.audioMixingMode = "doNotMix";
-      if (Platform.OS === "android") p.bufferOptions = {
-        preferredForwardBufferDuration: 20, minBufferForPlayback: 2,
-        maxBufferBytes: 32 * 1024 * 1024, prioritizeTimeOverSizeThreshold: false,
-      };
+      if (Platform.OS === "android")
+        p.bufferOptions = {
+          preferredForwardBufferDuration: 20,
+          minBufferForPlayback: 2,
+          maxBufferBytes: 32 * 1024 * 1024,
+          prioritizeTimeOverSizeThreshold: false,
+        };
     },
   );
+  const cast = useCastPlayback(track, uri, player, () => {
+    view.current?.exitFullscreen().catch(() => {});
+  });
+  const remoteActive = cast.active || cast.loading;
+  const currentPosition = remoteActive ? cast.remote.position : position;
+  const currentDuration = remoteActive ? cast.remote.duration : duration;
+  const isPlaying = remoteActive ? cast.remote.playing : playing;
+  const isLoading = remoteActive
+    ? cast.loading || cast.remote.buffering
+    : loading;
+  const togglePlayback = () => {
+    if (remoteActive) void cast.command(cast.remote.playing ? "pause" : "play");
+    else if (player.playing) player.pause();
+    else
+      cast
+        .prepareLocal()
+        .then((allowed) => {
+          if (allowed) player.play();
+        })
+        .catch(() =>
+          setActionError(
+            "Receiver status is uncertain. Disconnect Cast before resuming local playback.",
+          ),
+        );
+  };
   useEffect(() => {
-    player.staysActiveInBackground = settings.background;
-    player.showNowPlayingNotification = settings.background;
-  }, [player, settings.background]);
+    player.playbackRate = settings.playbackSpeed;
+    player.staysActiveInBackground = settings.background && !remoteActive;
+    player.showNowPlayingNotification = settings.background && !remoteActive;
+  }, [player, settings.background, settings.playbackSpeed, remoteActive]);
+  const bookmark = useRef({ position: 0, duration: 0 });
+  bookmark.current = { position: currentPosition, duration: currentDuration };
+  useEffect(() => {
+    const remember = () =>
+      usePlayerStore
+        .getState()
+        .rememberPosition(
+          track,
+          bookmark.current.position,
+          bookmark.current.duration,
+        );
+    const timer = setInterval(remember, 10000);
+    return () => {
+      clearInterval(timer);
+      remember();
+    };
+  }, [track]);
   useEffect(() => {
     if (
       Platform.OS === "android" &&
@@ -204,7 +254,10 @@ function MediaEngine({
         setError(
           e.error?.message || "Playback failed. Retry or check the media URL.",
         );
-      if (e.status === "readyToPlay") setDuration(player.duration);
+      if (e.status === "readyToPlay") {
+        setDuration(player.duration);
+        setError("");
+      }
     });
     const playback = player.addListener("playingChange", (e) =>
       setPlaying(e.isPlaying),
@@ -233,8 +286,20 @@ function MediaEngine({
   useEffect(() => {
     // Initialize the view from the source rather than replacing it after mount.
     // On web, an imperative replace races React's src update and aborts play().
-    player.play();
+    let alive = true;
+    cast
+      .prepareLocal()
+      .then((allowed) => {
+        if (alive && allowed) player.play();
+      })
+      .catch(() => {
+        if (alive)
+          setActionError(
+            "Receiver status is uncertain. Disconnect Cast before resuming local playback.",
+          );
+      });
     return () => {
+      alive = false;
       if (Platform.OS === "web") {
         player.pause();
         player.timeUpdateEventInterval = 0;
@@ -242,6 +307,10 @@ function MediaEngine({
     };
   }, [player]);
   function seek(delta: number) {
+    if (remoteActive) {
+      void cast.command("seek", Math.max(0, cast.remote.position + delta));
+      return;
+    }
     player.currentTime = Math.max(
       0,
       Math.min(
@@ -251,7 +320,7 @@ function MediaEngine({
     );
   }
   async function changeMode(audio: boolean) {
-    if (switching) return;
+    if (switching || remoteActive) return;
     if (!track.youtubeId || track.localUri) {
       setAudioMode(audio);
       return;
@@ -263,6 +332,7 @@ function MediaEngine({
       const kind = audio ? "audio" : "video";
       const format = formats.find((f) => f.kind === kind);
       if (!format) throw new Error("No compatible formats available.");
+      if (usePlayerStore.getState().currentTrack?.id !== track.id) return;
       usePlayerStore
         .getState()
         .switchFormat(formatTrack(track, format), player.currentTime);
@@ -272,6 +342,19 @@ function MediaEngine({
       setSwitching(false);
     }
   }
+  const finishedCast = useRef(false);
+  useEffect(() => {
+    if (!cast.active || cast.remote.idleReason !== 1) {
+      finishedCast.current = false;
+      return;
+    }
+    if (finishedCast.current) return;
+    finishedCast.current = true;
+    const store = usePlayerStore.getState();
+    if (store.repeat === "one")
+      void cast.command("seek", 0).then(() => cast.command("play"));
+    else store.advance(related.current);
+  }, [cast.active, cast.remote.idleReason]);
   const canPrevious =
     transport.previousTracks.length > 0 || transport.playbackIndex > 0;
   const canNext =
@@ -326,34 +409,36 @@ function MediaEngine({
                 name="headphones"
                 label="Audio"
                 active={audioMode}
-                disabled={switching}
+                disabled={switching || remoteActive}
                 onPress={() => changeMode(true)}
               />
               <IconButton
                 name="smart-display"
                 label="Video"
                 active={!audioMode}
-                disabled={switching}
+                disabled={switching || remoteActive}
                 onPress={() => changeMode(false)}
               />
             </View>
             <IconButton
               name="fullscreen"
               label="Fullscreen"
-              onPress={() =>
+              disabled={remoteActive}
+              onPress={() => {
                 view.current
                   ?.enterFullscreen()
-                  .catch((e) => setActionError(message(e)))
-              }
+                  .catch((e) => setActionError(message(e)));
+              }}
             />
             <IconButton
               name="picture-in-picture-alt"
               label="Popup"
-              onPress={() =>
+              disabled={remoteActive}
+              onPress={() => {
                 view.current
                   ?.startPictureInPicture()
-                  .catch((e) => setActionError(message(e)))
-              }
+                  .catch((e) => setActionError(message(e)));
+              }}
             />
             <IconButton
               name="close"
@@ -364,7 +449,11 @@ function MediaEngine({
         )}
         <View
           style={{
-            height: expanded ? (Platform.isTV ? Math.max(180, height * 0.55) : Math.min((width * 9) / 16, height * 0.25)) : 1,
+            height: expanded
+              ? Platform.isTV
+                ? Math.max(180, height * 0.55)
+                : Math.min((width * 9) / 16, height * 0.25)
+              : 1,
             backgroundColor: audioMode ? theme.surface : theme.mediaBackground,
           }}
         >
@@ -376,11 +465,11 @@ function MediaEngine({
               height: "100%",
               opacity: audioMode ? 0 : 1,
             }}
-            nativeControls={expanded && !audioMode}
+            nativeControls={expanded && !audioMode && !remoteActive}
             fullscreenOptions={{ enable: true }}
             allowsPictureInPicture
             startsPictureInPictureAutomatically={
-              expanded && !audioMode && settings.autoPip
+              expanded && !audioMode && !remoteActive && settings.autoPip
             }
             contentFit="contain"
           />
@@ -454,6 +543,20 @@ function MediaEngine({
               </Text>
             )}
           </Pressable>
+          {!Platform.isTV && (
+            <IconButton
+              name={
+                cast.remote.connection === "connected"
+                  ? "cast-connected"
+                  : "cast"
+              }
+              label="Cast"
+              active={remoteActive}
+              onPress={() => {
+                void cast.picker();
+              }}
+            />
+          )}
           {expanded ? (
             <IconButton
               name={favorite ? "favorite" : "favorite-border"}
@@ -464,10 +567,10 @@ function MediaEngine({
           ) : (
             <>
               <IconButton
-                name={playing ? "pause" : "play-arrow"}
-                label={playing ? "Pause" : "Play"}
-                disabled={loading}
-                onPress={() => (playing ? player.pause() : player.play())}
+                name={isPlaying ? "pause" : "play-arrow"}
+                label={isPlaying ? "Pause" : "Play"}
+                disabled={isLoading || (remoteActive && !cast.remote.canPause)}
+                onPress={togglePlayback}
               />
               <IconButton
                 name="skip-next"
@@ -482,10 +585,12 @@ function MediaEngine({
           <>
             {!!uri.label && <Text style={styles.muted}>{uri.label}</Text>}
             <SeekBar
-              value={position}
-              duration={duration}
+              value={currentPosition}
+              duration={currentDuration}
               onSeek={(value) => {
-                player.currentTime = value;
+                if (remoteActive) {
+                  if (cast.remote.canSeek) void cast.command("seek", value);
+                } else player.currentTime = value;
               }}
             />
             <View
@@ -499,13 +604,17 @@ function MediaEngine({
               ]}
             >
               <Text
-                accessibilityLabel={`${t("Playback position")} ${clock(position)}`}
+                accessibilityLabel={`${t("Playback position")} ${clock(currentPosition)}`}
                 style={styles.muted}
-              >{clock(position)}</Text>
+              >
+                {clock(currentPosition)}
+              </Text>
               <Text
-                accessibilityLabel={`${t("Media duration")} ${clock(duration)}`}
+                accessibilityLabel={`${t("Media duration")} ${clock(currentDuration)}`}
                 style={styles.muted}
-              >{clock(duration)}</Text>
+              >
+                {clock(currentDuration)}
+              </Text>
             </View>
             <View
               style={[
@@ -534,9 +643,9 @@ function MediaEngine({
               />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t(playing ? "Pause" : "Play")}
-                disabled={loading}
-                onPress={() => (playing ? player.pause() : player.play())}
+                accessibilityLabel={t(isPlaying ? "Pause" : "Play")}
+                disabled={isLoading || (remoteActive && !cast.remote.canPause)}
+                onPress={togglePlayback}
                 style={{
                   width: 56,
                   height: 56,
@@ -548,9 +657,9 @@ function MediaEngine({
               >
                 <MaterialIcons
                   name={
-                    loading
+                    isLoading
                       ? "hourglass-empty"
-                      : playing
+                      : isPlaying
                         ? "pause"
                         : "play-arrow"
                   }
@@ -593,21 +702,30 @@ function MediaEngine({
                 { direction: "ltr", justifyContent: "center" },
               ]}
             >
-              <Pressable accessibilityRole="button" accessibilityLabel={`${t("Playback speed")} ${speed}×`} onPress={() => {
-                const rates = [0.75, 1, 1.25, 1.5, 2];
-                const next = rates[(rates.indexOf(speed) + 1) % rates.length];
-                player.playbackRate = next;setSpeed(next);
-              }}>
-                <Text raw style={styles.button}>{speed}×</Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={remoteActive}
+                accessibilityLabel={`${t("Playback speed")} ${speed}×`}
+                onPress={() => {
+                  const rates = [0.75, 1, 1.25, 1.5, 2];
+                  const next = rates[(rates.indexOf(speed) + 1) % rates.length];
+                  transport.updateSettings({ playbackSpeed: next });
+                }}
+              >
+                <Text raw style={styles.button}>
+                  {speed}×
+                </Text>
               </Pressable>
               <IconButton
                 name="replay-10"
                 label="Seek back 10 seconds"
+                disabled={remoteActive && !cast.remote.canSeek}
                 onPress={() => seek(-10)}
               />
               <IconButton
                 name="forward-10"
                 label="Seek forward 10 seconds"
+                disabled={remoteActive && !cast.remote.canSeek}
                 onPress={() => seek(10)}
               />
             </View>
@@ -621,8 +739,73 @@ function MediaEngine({
             >
               {error}
             </Text>
-            <IconButton name="refresh" label="Retry" onPress={onRetry} />
+            <IconButton
+              name="refresh"
+              label="Retry"
+              onPress={() => {
+                usePlayerStore.setState({ position: player.currentTime });
+                onRetry();
+              }}
+            />
           </View>
+        )}
+        {!Platform.isTV &&
+          cast.remote.connection !== "disconnected" &&
+          expanded && (
+            <View style={{ padding: 12, gap: 8 }}>
+              <Text raw style={styles.muted}>
+                {t(remoteActive ? "Playing on receiver" : "Cast connected")} ·{" "}
+                {cast.remote.deviceName}
+              </Text>
+              <View style={[styles.row, { flexWrap: "wrap" }]}>
+                {remoteActive && (
+                  <Button
+                    title="Play locally"
+                    onPress={() => {
+                      void cast.returnLocal();
+                    }}
+                  />
+                )}
+                <Button
+                  title="Cast devices"
+                  onPress={() => {
+                    void cast.showDevices();
+                  }}
+                />
+                <Button
+                  title="Disconnect Cast"
+                  onPress={() => {
+                    void cast.disconnect();
+                  }}
+                />
+                {remoteActive && cast.remote.canVolume && (
+                  <>
+                    <IconButton
+                      name="volume-down"
+                      label="Lower receiver volume"
+                      onPress={() => {
+                        void cast.command("volume", cast.remote.volume - 0.1);
+                      }}
+                    />
+                    <IconButton
+                      name="volume-up"
+                      label="Raise receiver volume"
+                      onPress={() => {
+                        void cast.command("volume", cast.remote.volume + 0.1);
+                      }}
+                    />
+                  </>
+                )}
+              </View>
+            </View>
+          )}
+        {!!cast.error && (
+          <Text
+            accessibilityRole="alert"
+            style={{ color: theme.error, paddingHorizontal: 12 }}
+          >
+            {cast.error}
+          </Text>
         )}
         {!!actionError && (
           <Text accessibilityRole="alert" style={{ color: theme.error }}>
@@ -633,16 +816,22 @@ function MediaEngine({
           <View>
             <WatchDetails
               track={{ ...details, kind: track.kind, localUri: track.localUri }}
-              position={() => player.currentTime}
+              position={() => currentPosition}
               background={() => {
                 transport.updateSettings({ background: true });
                 setExpanded(false);
               }}
-              popup={() =>
+              popup={() => {
+                if (remoteActive) {
+                  setActionError(
+                    "Return to local playback to use this control.",
+                  );
+                  return;
+                }
                 view.current
                   ?.startPictureInPicture()
-                  .catch((e) => setActionError(message(e)))
-              }
+                  .catch((e) => setActionError(message(e)));
+              }}
             />
           </View>
         )}

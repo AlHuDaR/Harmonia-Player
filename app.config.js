@@ -2,14 +2,14 @@ export default {
   expo: {
     name: "Harmonia Player",
     slug: "harmonia-player",
-    version: "2.0.0-preview.5",
+    version: "2.0.0-preview.6",
     orientation: "default",
     icon: "./assets/images/icon.png",
     scheme: "harmonia",
     userInterfaceStyle: "automatic",
     android: {
       package: "com.alhudar.harmonia",
-      versionCode: 11,
+      versionCode: 12,
       intentFilters: [
         {
           action: "VIEW",
@@ -116,6 +116,7 @@ export default {
       "./plugins/withNativeAbiFilters",
       "./plugins/withNewPipe",
       "./plugins/withMediaWorker",
+      "./plugins/withGoogleCast",
       "./plugins/withAndroidTV",
       "./plugins/withReleaseSigning",
       "expo-asset",

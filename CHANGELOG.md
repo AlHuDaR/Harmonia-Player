@@ -48,3 +48,11 @@ Social extraction, durable downloads, advanced player/library/studio, new icon/b
 - Add persistent WorkManager transfers, notifications, cancellation, retry policy, integrity/decoder checks, process-restart reconciliation and cleanup. Preserve existing library data and package/signing identity.
 - Align six Expo SDK-57 patches, remove unused direct query-string, and add native PowerShell builds plus Android/JVM/emulator and Windows CI.
 - Increase versionCode to 8. Social-source and device verification limits are documented; no universal extraction or production-readiness claim.
+
+## 2.0.0-preview.6 — Cast and bilingual search
+
+- Add official Android Google Cast sender controls and guarded public MP4/HLS handoff, including the native fullscreen control row. Actual receiver/device acceptance is pending.
+- Add shared clearable first-strong RTL/LTR search, debouncing, obsolete-request protection and actionable search states.
+- Retain speed and bounded long-video bookmarks; preserve position on manual playback retry and ignore obsolete mode changes.
+- Align Router to the existing Expo 57 SDK, eliminating duplicate native modules; preserve application identity, signing, minimum SDK, TV launcher and universal ABI support.
+- See [verification, limits, security advisories and manual acceptance](docs/CAST_SEARCH_UPGRADE.md).

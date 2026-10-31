@@ -52,7 +52,13 @@ export default function VideoRow({ track }: { track: Track }) {
           justifyContent: "center",
         }}
       >
-        {!track.cover && <MaterialIcons name={track.kind === "audio" ? "music-note" : "smart-display"} size={28} color={theme.muted} />}
+        {!track.cover && (
+          <MaterialIcons
+            name={track.kind === "audio" ? "music-note" : "smart-display"}
+            size={28}
+            color={theme.muted}
+          />
+        )}
         {!!track.cover && (
           <Image
             source={{ uri: track.cover }}
@@ -64,7 +70,7 @@ export default function VideoRow({ track }: { track: Track }) {
             style={{
               position: "absolute",
               bottom: 3,
-              right: 3,
+              end: 3,
               color: theme.mediaText,
               backgroundColor: theme.scrim,
               paddingHorizontal: 4,

@@ -16,7 +16,7 @@ try {
     elseif ($env:LOCALAPPDATA -and (Test-Path "$env:LOCALAPPDATA\Android\Sdk")) { $env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk" }
     else { throw 'Set ANDROID_HOME to the Android SDK directory.' }
   }
-  foreach ($item in @('platforms\android-36','build-tools\36.0.0','ndk\27.1.12297006')) {
+  foreach ($item in @('platforms\android-36','build-tools\36.0.0','ndk\27.1.12297006','cmake\3.22.1')) {
     if (-not (Test-Path (Join-Path $env:ANDROID_HOME $item))) { throw "Missing Android SDK component: $item. Install it with Android Studio SDK Manager." }
   }
   if ($env:HARMONIA_PRODUCTION -eq '1') {
