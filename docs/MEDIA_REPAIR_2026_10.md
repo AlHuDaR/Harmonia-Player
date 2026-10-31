@@ -1,5 +1,7 @@
 # Harmonia 2.0 media repair — review and acceptance record
 
+Historical preview.4 evidence below. For the newer preview.5/code 11 TV and adaptive-streaming work, see [the current verification record](TV_STREAMING_PREVIEW5.md).
+
 ## Scope and baseline
 
 Based on verified `origin/main` **28f227930e35d0f43d022507a713c231ccf12e5a**, fetched 2026-10-28. Feature branch: `feat/harmonia-v2-media-repair`. Existing local `work` branch was clean and retained; no resets or overwrites of user work.
