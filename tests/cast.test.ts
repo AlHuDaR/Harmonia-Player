@@ -186,3 +186,16 @@ describe("receiver and local audio ownership", () => {
     expect(transport.load).not.toHaveBeenCalled();
   });
 });
+
+it("restores a receiver seek to zero exactly", async () => {
+  const { handoff, local } = setup();
+  await handoff.start();
+  handoff.observe({
+    ...EMPTY_CAST_STATE,
+    connection: "connected",
+    contentId: media.uri,
+    position: 0,
+  });
+  await handoff.returnLocal();
+  expect(local.seek).toHaveBeenLastCalledWith(0);
+});

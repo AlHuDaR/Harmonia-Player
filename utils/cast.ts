@@ -118,7 +118,7 @@ export class CastHandoff {
   private generation = 0;
   private disposed = false;
   private requested = false;
-  private lastPosition = 0;
+  private lastPosition: number | undefined;
   constructor(
     private media: CastMedia | undefined,
     private transport: CastTransport,
@@ -206,7 +206,7 @@ export class CastHandoff {
       ++this.generation;
       this.requested = false;
       this.local.pause();
-      this.local.seek(this.lastPosition || this.local.position());
+      this.local.seek(this.lastPosition ?? this.local.position());
       this.update({
         active: false,
         loading: false,
@@ -247,7 +247,7 @@ export class CastHandoff {
       await this.transport.stopOwned(this.media.uri);
       if (this.disposed || generation !== this.generation) return;
       this.requested = false;
-      this.local.seek(this.lastPosition || this.local.position());
+      this.local.seek(this.lastPosition ?? this.local.position());
       this.local.pause();
       this.update({ active: false, loading: false, error });
     } catch {

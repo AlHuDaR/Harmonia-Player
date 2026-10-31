@@ -67,10 +67,15 @@ The earlier Windows [job 122719344540](https://github.com/AlHuDaR/Harmonia-Playe
 ## Executed validation — October 31, 2026
 
 - `npm run typecheck` and `npm run lint`: passed. The repository's lint command is `tsc --noEmit`; it has no independent ESLint configuration.
-- `npm test -- --maxWorkers=2`: **153 tests in 16 files passed**, including the existing media/social/download/library/TV tests and new search, Cast handoff/policy/plugin and resume tests.
+- `npm test -- --maxWorkers=2`: **154 tests in 16 files passed**, including the existing media/social/download/library/TV tests and new search, Cast handoff/policy/plugin and resume tests.
 - `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium npm run test:web`: **19 tests passed**. These include real fixture MP3/MP4 playback/seek/speed, library/queue/theme/keyboard regressions and five added bilingual-search/Cast-unavailable scenarios. This is browser/component behavior, not native receiver testing.
 - Web export passed from the final runtime source; Expo Doctor **21/21 passed** after Router compatibility correction. Prettier check on modified UI/new TS/JS sources and `git diff --check` passed.
 - The first browser run hit Metro cold-start navigation timeouts; readiness now waits for the actual app bundle instead of HTML. The final full run passes. The added seek fixture was corrected to serve real HTTP byte ranges; a full-body-only mock cannot validate seeking.
 - Native prebuild passed with the Cast package, options-provider metadata, non-exported picker, Wi-Fi/network permissions, preserved TV launcher/banner and API/identity settings. **Universal release assembly and the Gradle JVM suite are still running when this initial draft is opened. No successful APK build or native test count is claimed yet; the final result will be recorded below.**
 - Native hardware, physical Cast, live-provider success and Windows execution remain unverified. The Linux host's `adb devices` attempt could not initialize its default home directory; no connected-device result is claimed. No device/emulator was supplied to this task.
 - `npm audit` exits nonzero for the 17 affected entries described above. This is an outstanding security result, not a passing audit.
+
+
+### Native follow-up
+
+Initial hosted Linux and Windows builds at `40e5d73` passed all applicable JS checks but failed Android resource linking on `android:windowDimAmount` in the new picker theme. That invalid attribute is corrected to Android's `android:backgroundDimAmount`; builds are being rerun. This is distinct from the earlier PR's Maven download timeout. The follow-up also preserves receiver position zero exactly, bounds unknown remote times at zero, catches unavailable Play-services initialization, disables inaccessible receiver seeking and aborts an unmounted player's pending mode request.

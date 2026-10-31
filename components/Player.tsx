@@ -117,6 +117,8 @@ function MediaEngine({
   const transport = usePlayerStore();
   const [audioMode, setAudioMode] = useState(track.kind === "audio");
   const [switching, setSwitching] = useState(false);
+  const modeRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => modeRequest.current?.abort(), []);
   const settings = usePlayerStore((s) => s.settings);
   const favorite = usePlayerStore((s) => s.favorites.includes(track.id));
   const [error, setError] = useState("");
@@ -327,19 +329,25 @@ function MediaEngine({
     }
     setSwitching(true);
     setActionError("");
+    const controller = new AbortController();
+    modeRequest.current = controller;
     try {
-      const formats = await youtubeFormats(track);
+      const formats = await youtubeFormats(track, controller.signal);
       const kind = audio ? "audio" : "video";
       const format = formats.find((f) => f.kind === kind);
       if (!format) throw new Error("No compatible formats available.");
-      if (usePlayerStore.getState().currentTrack?.id !== track.id) return;
+      if (
+        controller.signal.aborted ||
+        usePlayerStore.getState().currentTrack?.id !== track.id
+      )
+        return;
       usePlayerStore
         .getState()
         .switchFormat(formatTrack(track, format), player.currentTime);
     } catch (e) {
-      setActionError(message(e));
+      if (!controller.signal.aborted) setActionError(message(e));
     } finally {
-      setSwitching(false);
+      if (!controller.signal.aborted) setSwitching(false);
     }
   }
   const finishedCast = useRef(false);
@@ -587,6 +595,7 @@ function MediaEngine({
             <SeekBar
               value={currentPosition}
               duration={currentDuration}
+              disabled={remoteActive && !cast.remote.canSeek}
               onSeek={(value) => {
                 if (remoteActive) {
                   if (cast.remote.canSeek) void cast.command("seek", value);

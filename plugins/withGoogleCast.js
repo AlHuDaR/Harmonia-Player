@@ -96,7 +96,7 @@ module.exports = function withGoogleCast(config) {
       fs.mkdirSync(values, { recursive: true });
       fs.writeFileSync(
         path.join(values, "harmonia_cast.xml"),
-        `<resources><style name="HarmoniaCastPicker" parent="Theme.AppCompat.DayNight.NoActionBar"><item name="android:windowIsTranslucent">true</item><item name="android:windowBackground">@android:color/transparent</item><item name="android:windowDimAmount">0</item><item name="android:windowIsFloating">false</item></style></resources>`,
+        `<resources><style name="HarmoniaCastPicker" parent="Theme.AppCompat.DayNight.NoActionBar"><item name="android:windowIsTranslucent">true</item><item name="android:windowBackground">@android:color/transparent</item><item name="android:backgroundDimAmount">0</item><item name="android:windowIsFloating">false</item></style></resources>`,
       );
       return mod;
     },

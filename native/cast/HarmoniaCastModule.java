@@ -60,9 +60,9 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         if (initialized) return;
         initialized = true;
         UiModeManager mode = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
-        if ((mode != null && mode.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) ||
-            GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) != ConnectionResult.SUCCESS) return;
+        if (mode != null && mode.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) return;
         try {
+            if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) != ConnectionResult.SUCCESS) return;
             cast = CastContext.getSharedInstance(context);
             cast.getSessionManager().addSessionManagerListener(sessions, CastSession.class);
             ((Application) context.getApplicationContext()).registerActivityLifecycleCallbacks(this);
@@ -94,8 +94,8 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         state.putString("contentId", client != null && client.getMediaInfo() != null ? client.getMediaInfo().getContentId() : "");
         state.putString("ownedContentId", ownedContentId);
         state.putBoolean("hasMedia", client != null && client.hasMediaSession() && client.getPlayerState() != MediaStatus.PLAYER_STATE_IDLE);
-        state.putDouble("position", client == null ? 0 : client.getApproximateStreamPosition() / 1000.0);
-        state.putDouble("duration", client == null ? 0 : client.getStreamDuration() / 1000.0);
+        state.putDouble("position", client == null ? 0 : Math.max(0, client.getApproximateStreamPosition() / 1000.0));
+        state.putDouble("duration", client == null ? 0 : Math.max(0, client.getStreamDuration() / 1000.0));
         state.putBoolean("playing", client != null && client.isPlaying());
         state.putBoolean("buffering", client != null && client.isBuffering());
         MediaStatus status = client == null ? null : client.getMediaStatus();
