@@ -9,7 +9,7 @@ public class SafeHttpTest {
     assertTrue(SafeHttp.publicAddress(InetAddress.getByName("2606:4700:4700::1111")));
   }
   @Test public void rejectsCredentialsSchemesPortsAndInternalHosts() throws Exception {
-    for(String s:new String[]{"http://example.com/a","file:///tmp/a","https://u:p@example.com/a","https://example.com:8443/a","https://router.home.arpa/a","https://host.internal/a"}) {
+    for(String s:new String[]{"https://example.com/a\nb","https://example.com/a b","https://example.com/a\\b",new String(new char[4097]),"http://example.com/a","file:///tmp/a","https://u:p@example.com/a","https://example.com:8443/a","https://router.home.arpa/a","https://host.internal/a"}) {
       try{SafeHttp.url(s);fail(s);}catch(java.io.IOException expected){}
     }
     assertEquals("example.com",SafeHttp.url("https://example.com/a.mp4").host());

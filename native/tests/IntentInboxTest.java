@@ -9,6 +9,12 @@ public class IntentInboxTest {
     box.offer("https://instagram.com/reel/123","repeat");
     assertEquals("cold",box.poll().token);assertEquals("warm",box.poll().token);assertEquals("repeat",box.poll().token);assertNull(box.poll());
   }
+  @Test public void keepsFileUrisSeparateFromTextAndCopiesTheIncomingList() {
+    IntentInbox box=new IntentInbox();java.util.List<String> uris=new java.util.ArrayList<>();uris.add("content://provider/item");
+    box.offerFiles(uris,"files");uris.clear();IntentInbox.Entry entry=box.poll();
+    assertEquals("",entry.text);assertEquals("content://provider/item",entry.files.get(0));
+    assertNull(box.offerFiles(uris,"empty"));
+  }
   @Test public void acknowledgmentRemovesEventFromPendingDelivery() {
     IntentInbox box=new IntentInbox();box.offer("https://example.com/a.mp4","event");box.acknowledge("event");assertNull(box.poll());
   }

@@ -9,6 +9,7 @@ export interface SharedLink {
 export const providers = [
   { name: "YouTube", hosts: ["youtube.com", "youtu.be"] },
   { name: "Instagram", hosts: ["instagram.com"] },
+  { name: "Snapchat", hosts: ["snapchat.com"] },
   { name: "Facebook", hosts: ["facebook.com", "fb.watch"] },
   { name: "TikTok", hosts: ["tiktok.com"] },
   { name: "X / Twitter", hosts: ["x.com", "twitter.com", "t.co"] },
@@ -36,7 +37,8 @@ export function publicWebUrl(input: string): URL {
     !host.includes(".") ||
     /[:\[\]]/.test(host) ||
     /^[\d.]+$/.test(host) ||
-    /(^|\.)(localhost|local|internal|lan|home|test|invalid)$/.test(host) ||
+    /(^|\.)(localhost|local|internal|lan|home|test|invalid|localdomain|corp)$/.test(host) ||
+    host.endsWith(".home.arpa") ||
     host === "metadata.google.internal" ||
     (url.port && !["80", "443"].includes(url.port))
   )
@@ -48,6 +50,17 @@ export function publicWebUrl(input: string): URL {
 export function classifyLink(input: string): SharedLink {
   const url = publicWebUrl(input);
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  // Unwrap only known outbound link wrappers, once; never follow arbitrary query URLs.
+  if (((host === "l.facebook.com" || host === "lm.facebook.com" || host === "www.facebook.com") && url.pathname === "/l.php") ||
+      (host === "l.instagram.com" && url.pathname === "/")) {
+    const target = url.searchParams.get("u");
+    if (target) {
+      const checked = publicWebUrl(target);
+      const nested = checked.hostname.toLowerCase();
+      if (!/^(l|lm)\.(facebook|instagram)\.com$/.test(nested) &&
+          !(nested === "www.facebook.com" && checked.pathname === "/l.php")) return classifyLink(checked.href);
+    }
+  }
   const provider = providers.find((p) =>
     p.hosts.some((h) => host === h || host.endsWith(`.${h}`)),
   );
@@ -76,6 +89,21 @@ export function classifyLink(input: string): SharedLink {
       url: `https://www.instagram.com${url.pathname.replace(/\/+$/, "")}/`,
       provider: "Instagram", kind: "web", actions: ["save", "browser"],
     };
+  if (url.protocol === "https:" && /^(www\.|m\.|web\.)?facebook\.com$/.test(host)) {
+    const reel = url.pathname.match(/^\/reel\/([0-9]+)\/?$/);
+    const video = url.pathname.match(/^\/(?:[^/]+\/)?videos\/(?:[^/]+\/)?([0-9]+)\/?$/);
+    const watch = /^\/watch\/?$/.test(url.pathname) ? url.searchParams.get("v") : null;
+    const videoId = video?.[1] || (watch && /^[0-9]+$/.test(watch) ? watch : null);
+    if (reel || videoId) return {
+      url: reel ? `https://www.facebook.com/reel/${reel[1]}/` : `https://www.facebook.com/watch/?v=${videoId}`,
+      provider: "Facebook", kind: "web", actions: ["save", "browser"],
+    };
+  }
+  if (url.protocol === "https:" && /^(www\.)?snapchat\.com$/.test(host) &&
+      /^\/spotlight\/[A-Za-z0-9_-]{5,256}\/?$/.test(url.pathname)) return {
+    url: `https://www.snapchat.com${url.pathname.replace(/\/+$/, "")}`,
+    provider: "Snapchat", kind: "web", actions: ["save", "browser"],
+  };
   // Known platform page URLs are never treated as files, even with an .mp4 suffix.
   const direct =
     !provider &&

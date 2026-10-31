@@ -121,3 +121,19 @@ describe("intent event/pending reconciliation", () => {
     expect(receive({ text: "a", token: "a" })).toBe("a");
   });
 });
+
+it("recognizes Spotlight and preserves its opaque identifier while removing tracking", () => {
+  expect(classifyLink("https://snapchat.com/spotlight/AbC-_123?share_id=tracking")).toMatchObject({
+    provider: "Snapchat", url: "https://www.snapchat.com/spotlight/AbC-_123", kind: "web",
+  });
+  expect(classifyLink("https://snapchat.com.evil.example/spotlight/AbC-_123").provider).not.toBe("Snapchat");
+});
+it("normalizes Facebook video identity without losing watch IDs", () => {
+  expect(classifyLink("https://m.facebook.com/watch/?v=123456&fbclid=tracking").url).toBe("https://www.facebook.com/watch/?v=123456");
+  expect(classifyLink("https://facebook.com/person/videos/123456/?mibextid=tracking").url).toBe("https://www.facebook.com/watch/?v=123456");
+});
+it("unwraps known outbound tracking links but rejects unsafe wrapped destinations", () => {
+  expect(classifyLink("https://l.facebook.com/l.php?u=https%3A%2F%2Ffacebook.com%2Freel%2F123456%2F").url).toBe("https://www.facebook.com/reel/123456/");
+  expect(() => classifyLink("https://l.instagram.com/?u=http%3A%2F%2F127.0.0.1%2F")).toThrow();
+  expect(classifyLink("https://example.com/redirect?u=https%3A%2F%2Ffacebook.com%2Freel%2F123456").provider).toBe("example.com");
+});

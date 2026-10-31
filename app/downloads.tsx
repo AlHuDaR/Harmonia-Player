@@ -103,6 +103,8 @@ export default function DownloadsScreen() {
               </View>
               <Text raw style={styles.text}>
                 {Math.round(d.progress * 100)}%
+                {typeof d.bytesDownloaded === "number" ? ` · ${(d.bytesDownloaded / 1048576).toFixed(1)} MB` : ""}
+                {d.bytesPerSecond ? ` · ${(d.bytesPerSecond / 1024).toFixed(0)} KB/s` : ""}
               </Text>
             </>
           )}

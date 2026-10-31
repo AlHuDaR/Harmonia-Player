@@ -120,6 +120,7 @@ function MediaEngine({
   const [actionError, setActionError] = useState("");
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const expanded = usePlayerStore((s) => s.expanded);
@@ -587,6 +588,13 @@ function MediaEngine({
                 { direction: "ltr", justifyContent: "center" },
               ]}
             >
+              <Pressable accessibilityRole="button" accessibilityLabel={`${t("Playback speed")} ${speed}×`} onPress={() => {
+                const rates = [0.75, 1, 1.25, 1.5, 2];
+                const next = rates[(rates.indexOf(speed) + 1) % rates.length];
+                player.playbackRate = next;setSpeed(next);
+              }}>
+                <Text raw style={styles.button}>{speed}×</Text>
+              </Pressable>
               <IconButton
                 name="replay-10"
                 label="Seek back 10 seconds"

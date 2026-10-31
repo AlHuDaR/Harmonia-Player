@@ -8,6 +8,8 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
+import { usePlayerStore } from "@/store/playerStore";
+import { message } from "@/types/media";
 import { intentInbox } from "@/utils/incomingLinks";
 import { sharedLinks, type SharedLink } from "@/utils/linkProviders";
 import { Button, useMediaStyles } from "./MediaUI";
@@ -18,6 +20,8 @@ const accept = intentInbox();
 export default function IncomingLinks() {
   const styles = useMediaStyles();
   const [links, setLinks] = useState<{ link: SharedLink; key: string }[]>([]);
+  const [files, setFiles] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     const module = NativeModules.HarmoniaIntents;
@@ -29,6 +33,12 @@ export default function IncomingLinks() {
       if (text !== undefined)
         module.acknowledge?.((value as { token: string }).token);
       if (text === undefined || text.startsWith("harmonia:")) return;
+      const shared = (value as { files?: unknown }).files;
+      if (Array.isArray(shared) && shared.length) {
+        setFiles((current) => [...current, ...shared.filter((uri): uri is string => typeof uri === "string" && uri.startsWith("content://")).slice(0, 10)]);
+        setError("");
+        return;
+      }
       const found = sharedLinks(text);
       if (!found.length) {
         setError("No safe web link was found in the shared text.");
@@ -69,13 +79,18 @@ export default function IncomingLinks() {
     };
   }, []);
   const current = links[0];
-  return current || error ? (
+  function dismissFile() {
+    NativeModules.HarmoniaIntents?.releaseShared?.(files[0]);
+    setFiles((items) => items.slice(1));
+  }
+  return current || error || files.length ? (
     <Modal
       visible
       animationType="slide"
       onRequestClose={() => {
         setError("");
-        setLinks((items) => items.slice(1));
+        if (!importing && files.length) dismissFile();
+        else if (!importing) setLinks((items) => items.slice(1));
       }}
     >
       <View style={[styles.page, { padding: 16 }]}>
@@ -88,7 +103,23 @@ export default function IncomingLinks() {
               <Button title="Close" onPress={() => setError("")} />
             </>
           )}
-          {current && (
+          {!!files.length && (
+            <View style={{ gap: 12 }}>
+              <Text style={styles.text}>Shared media file</Text>
+              <Text style={styles.text}>Import this audio or video into your library. Maximum size: 512 MB.</Text>
+              <Button title={importing ? "Working…" : "Import media"} disabled={importing} onPress={async () => {
+                setImporting(true);setError("");
+                try {
+                  const track = await NativeModules.HarmoniaIntents.importShared(files[0]);
+                  usePlayerStore.getState().addTrack(track);
+                  dismissFile();
+                } catch (error) { setError(message(error)); }
+                finally { setImporting(false); }
+              }} />
+              <Button title="Close" disabled={importing} onPress={dismissFile} />
+            </View>
+          )}
+          {current && !files.length && (
             <SharedLinkCard
               key={current.key}
               link={current.link}

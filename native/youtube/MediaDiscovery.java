@@ -16,7 +16,18 @@ final class MediaDiscovery {
     }
     static JSONObject discover(String input) throws Exception {
         HttpUrl url=SafeHttp.url(input);String host=url.host();
-        if(host.matches("(?:www\\.|m\\.)?instagram\\.com"))return InstagramEmbed.discover(input);
+        if(host.matches("(?:www\\.|m\\.)?instagram\\.com")) {
+            if(url.encodedPath().matches("/share/(?:reel|p)/[A-Za-z0-9_-]+/?")) {
+                try(Response response=SafeHttp.open(input,null)) {
+                    if(!response.isSuccessful())throw new SafeHttp.HttpFailure(response.code());
+                    HttpUrl resolved=response.request().url();
+                    if(!resolved.host().matches("(?:www\\.|m\\.)?instagram\\.com"))throw new IOException("Instagram share did not resolve to an Instagram post. Open in Browser.");
+                    return InstagramEmbed.discover(resolved.toString());
+                }
+            }
+            return InstagramEmbed.discover(input);
+        }
+        if(host.equals("fb.watch") || host.matches("(?:www\\.|m\\.|web\\.)?facebook\\.com") || host.matches("(?:www\\.)?snapchat\\.com"))return PublicSocialEmbed.discover(input);
         if(host.equals("vimeo.com") || host.equals("www.vimeo.com") || host.equals("player.vimeo.com")) {
             Matcher m=Pattern.compile("^/(?:video/)?([0-9]+)/*$").matcher(url.encodedPath());
             if(!m.matches()) throw new IOException("Only public Vimeo video links are supported; private/unlisted hashes are not used.");

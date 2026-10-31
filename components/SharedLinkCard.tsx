@@ -43,6 +43,8 @@ export default function SharedLinkCard({
     setMedia(null);
     setChoices([]);
     setError("");
+    setSaved(false);
+    setBusy(false);
     if (p.adapter !== "unavailable") {
       setBusy(true);
       discoverMedia(link, controller.signal)
@@ -99,7 +101,14 @@ export default function SharedLinkCard({
           {media ? "Working…" : "Discovering available media…"}
         </Text>
       )}
+      {media && !media.choices.some((choice) => choice.kind === "audio") && (
+        <Text style={styles.text}>This source provides no separate audio stream.</Text>
+      )}
+      {media && !media.choices.some((choice) => choice.downloadable) && (
+        <Text style={styles.text}>Available streams support playback only. Offline download is unavailable.</Text>
+      )}
       <View style={[styles.row, { flexWrap: "wrap" }]}>
+
         {actions.map(([key, label]) => {
           const options = choicesFor(media, key);
           return (

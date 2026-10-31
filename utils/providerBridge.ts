@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from "react-native";
+import { discoveryError, MediaDiscoveryError } from "./mediaErrors";
 import { publicWebUrl } from "./linkProviders";
 export interface DiscoveredFormat {
   id: string;
@@ -20,11 +21,11 @@ export async function discoverRemote(
   publicWebUrl(page);
   if (Platform.OS !== "android" || !NativeModules.HarmoniaMedia)
     throw new Error("Media discovery requires the standalone Android app.");
-  if (signal?.aborted) throw new Error("Request cancelled.");
-  const raw: unknown = JSON.parse(
-    await NativeModules.HarmoniaMedia.discover(page),
-  );
-  if (signal?.aborted) throw new Error("Request cancelled.");
+  if (signal?.aborted) throw new MediaDiscoveryError("cancelled", "Request cancelled.");
+  let raw: unknown;
+  try { raw = JSON.parse(await NativeModules.HarmoniaMedia.discover(page)); }
+  catch (error) { throw discoveryError(error); }
+  if (signal?.aborted) throw new MediaDiscoveryError("cancelled", "Request cancelled.");
   return validateDiscovery(raw, page);
 }
 export function validateDiscovery(raw: unknown, page: string): DiscoveredMedia {

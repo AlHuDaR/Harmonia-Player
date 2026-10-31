@@ -12,6 +12,12 @@ final class TransferPolicy {
         if(from.equals("complete"))return to.equals("failed"); // missing/corrupt local file
         return !from.equals("failed") && !from.equals("cancelled");
     }
+    static final long MAX_BYTES=2L*1024*1024*1024;
+    static final long MAX_DURATION_MS=30L*60*1000;
+    static void verifyBudget(long bytes,long elapsed) throws PermanentFailure {
+        if(bytes>MAX_BYTES)throw new PermanentFailure("Download exceeds the 2 GB limit.");
+        if(elapsed>MAX_DURATION_MS)throw new PermanentFailure("Download exceeded the 30 minute limit. Retry on a faster connection.");
+    }
     static void verifyLength(long expected,long actual) throws IOException {
         if(actual==0)throw new PermanentFailure("Downloaded media is empty.");
         if(expected>=0 && actual!=expected)throw new IOException("Incomplete transfer.");

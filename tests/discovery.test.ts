@@ -16,7 +16,6 @@ import { validateDiscovery } from "../utils/providerBridge";
 beforeEach(() => vi.clearAllMocks());
 describe("discovered capabilities", () => {
   it.each([
-    "https://facebook.com/reel/123",
     "https://tiktok.com/@x/video/123",
     "https://x.com/user/status/123",
   ])("does not invent streams for %s", async (url) => {
@@ -174,5 +173,22 @@ describe("discovered capabilities", () => {
     await expect(
       discoverMedia(classifyLink("https://vimeo.com/123"), controller.signal),
     ).rejects.toThrow("cancelled");
+  });
+});
+
+it.each(["https://snapchat.com/spotlight/Abc_123", "https://facebook.com/reel/123456"])("offers only verified native formats for %s", async (url) => {
+  native.discover.mockResolvedValue(JSON.stringify({title:"Public video",formats:[{
+    id:"public-progressive",label:"MP4",kind:"video",uri:"https://cdn.example.com/video.mp4",
+    extension:"mp4",downloadable:true,
+  }]}));
+  const result=await discoverMedia(classifyLink(url));
+  expect(choicesFor(result,"download-video")).toHaveLength(1);
+  expect(choicesFor(result,"download-audio")).toHaveLength(0);
+  expect(result.choices[0].track.uri).toBeUndefined();
+});
+it("retains structured access-denied errors and browser fallback", async () => {
+  native.discover.mockRejectedValue({code:"E_ACCESS",message:"Public access denied"});
+  await expect(discoverMedia(classifyLink("https://facebook.com/reel/123456"))).rejects.toMatchObject({
+    code:"access-denied", fallback:["browser","save"], message:"Public access denied",
   });
 });
