@@ -18,7 +18,7 @@ Follows merged PR #32 on a new branch, `feat/harmonia-tv-adaptive-preview5`, cre
 - **14 Chromium browser tests passed**, including real fixture media playback/seek/speed and keyboard focus-ring/menu activation. This is not actual D-pad or Mi Box testing.
 - New native DASH fixtures verify multiple video representations share a video AdaptationSet, separate audio is retained, signed URL query characters survive XML escaping, unsupported codec/4K auto choices are excluded and single-quality/unindexed inputs are not called adaptive. The three new portable JVM tests passed.
 - Android prebuild passed; generated manifest inspected for TV launcher, optional touch features and banner; generated version is preview.5/code 11.
-- Final web export and Expo Doctor **21/21 passed**. Full universal Android release assembly and Gradle JVM suite passed: **33 tests in 8 classes**, no failures/errors/skips. The final incremental build completed in 1m15s after the initial four-ABI build (12m26s); final source includes the HLS/DASH routing and hidden-TV-focus fixes. Configured lint/TypeScript and `git diff --check` also passed.
+- Final web export and Expo Doctor **21/21 passed**. Full universal Android release assembly and Gradle JVM suite passed: **33 tests in 8 classes**, no failures/errors/skips. The initial four-ABI build completed in 12m26s; the final verification after replay onto the newly merged main completed in 44s. Its APK is byte-identical to the inspected follow-up APK. Final source includes the HLS/DASH routing and hidden-TV-focus fixes. Configured lint/TypeScript and `git diff --check` also passed.
 
 ## Live-test blocker and remaining acceptance
 
