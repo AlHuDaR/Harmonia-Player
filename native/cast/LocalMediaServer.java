@@ -35,7 +35,7 @@ public final class LocalMediaServer implements Closeable {
         try { listener.setReuseAddress(false); listener.bind(new InetSocketAddress(bind, 0), 8); }
         catch (IOException error) { listener.close(); workers.shutdownNow(); timer.shutdownNow(); throw error; }
         daemon(this::accept, "Harmonia local Cast listener").start();
-        timer.scheduleAtFixedRate(() -> {
+        timer.scheduleWithFixedDelay(() -> {
             long now = System.nanoTime();
             for (Client client : clients) if (now - client.progress > TimeUnit.SECONDS.toNanos(30)) client.close();
         }, 5, 5, TimeUnit.SECONDS);

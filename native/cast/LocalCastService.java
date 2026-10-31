@@ -177,8 +177,14 @@ public final class LocalCastService extends Service {
         return START_NOT_STICKY;
     }
     private void acquire(boolean useWifi) {
-        if (wake == null) { PowerManager power = (PowerManager) getSystemService(POWER_SERVICE); wake = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Harmonia:localCast"); wake.setReferenceCounted(false); wake.acquire(); }
+        if (wake == null) { PowerManager power = (PowerManager) getSystemService(POWER_SERVICE); wake = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Harmonia:localCast"); wake.setReferenceCounted(false); renewWake(wake); }
         if (useWifi && wifi == null) { WifiManager manager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE); wifi = manager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Harmonia:localCast"); wifi.setReferenceCounted(false); wifi.acquire(); }
+    }
+    private void renewWake(PowerManager.WakeLock held) {
+        if (instance != this || current == null || wake != held) return;
+        // Refresh only while this foreground source exists; a missed cleanup cannot hold the CPU indefinitely.
+        held.acquire(10 * 60 * 1000L);
+        later(() -> renewWake(held), 4 * 60 * 1000L);
     }
     private void monitor(LocalCastNetwork network) {
         connectivity = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
