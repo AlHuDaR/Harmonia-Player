@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
+import { View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Text } from "./LocalizedText";
 import { useLocale } from "@/utils/i18n";
