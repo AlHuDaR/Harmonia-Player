@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { normalizePreset, type ThemePreset } from "@/constants/themes";
 import type { Track, Playlist, Download } from "@/types/media";
+import { resumeKey, resumePosition, saveResume, type ResumePoint } from "@/utils/playbackResume";
 
 export interface SavedLink {
   url: string;
@@ -28,6 +29,8 @@ interface PlayerStore {
   queue: Track[];
   autoQueue: boolean;
   position: number;
+  resumePoints: Record<string, ResumePoint>;
+  rememberPosition: (track: Track, position: number, duration: number) => void;
   setExpanded: (expanded: boolean) => void;
   enqueue: (track: Track) => void;
   removeQueued: (index: number) => void;
@@ -46,6 +49,7 @@ interface PlayerStore {
     preset: ThemePreset;
     transparency: "subtle" | "solid";
     downloadKind: "audio" | "video";
+    playbackSpeed: number;
   };
   setCurrentTrack: (track: Track | null) => void;
   addTrack: (track: Track) => void;
@@ -123,6 +127,8 @@ export const usePlayerStore = create<PlayerStore>()(
       queue: [],
       autoQueue: false,
       position: 0,
+      resumePoints: {},
+      rememberPosition: (track, position, duration) => set((s) => ({ resumePoints: saveResume(s.resumePoints, track, position, duration) })),
       setExpanded: (expanded) => set({ expanded }),
       enqueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
       removeQueued: (index) =>
@@ -185,6 +191,7 @@ export const usePlayerStore = create<PlayerStore>()(
         preset: "harmonia",
         transparency: "subtle",
         downloadKind: "audio",
+        playbackSpeed: 1,
       },
       addTrack: (track) =>
         set((s) => ({
@@ -210,7 +217,7 @@ export const usePlayerStore = create<PlayerStore>()(
             playbackIndex: -1,
             previousTracks: [],
             expanded: true,
-            position: 0,
+            position: resumePosition(s.resumePoints[resumeKey(playable)]),
             tracks: [...s.tracks.filter((t) => t.id !== track.id), playable],
             history: [
               track.id,
@@ -320,6 +327,7 @@ export const usePlayerStore = create<PlayerStore>()(
             }
           });
           state.language = state.language === "ar" ? "ar" : "en";
+          state.resumePoints = Object.fromEntries(Object.entries(state.resumePoints || {}).filter(([, point]) => point && resumePosition(point)).slice(0, 100));
           // Drop obsolete resolver/API credentials from existing installations.
           state.settings = {
             background: state.settings.background ?? true,
@@ -332,6 +340,7 @@ export const usePlayerStore = create<PlayerStore>()(
               state.settings.transparency === "solid" ? "solid" : "subtle",
             downloadKind:
               state.settings.downloadKind === "video" ? "video" : "audio",
+            playbackSpeed: [0.75, 1, 1.25, 1.5, 2].includes(state.settings.playbackSpeed) ? state.settings.playbackSpeed : 1,
           };
           state.downloads = state.downloads.map((d) =>
             d.status === "downloading" && !d.nativeId

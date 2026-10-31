@@ -2,6 +2,15 @@
 
 Harmonia Player is distributed under GPL-3.0-or-later. See LICENSE.
 
+## Google Cast sender
+
+Google Play services Cast Framework 22.3.1 is distributed under Google's Android
+SDK terms: https://developer.android.com/studio/terms.html
+SDK documentation and applicable terms: https://developers.google.com/cast/docs/android_sender
+AndroidX MediaRouter 1.8.1 is Apache-2.0, Android Open Source Project.
+Cast, Chromecast and Google TV are Google trademarks. Harmonia uses the standard
+Cast device picker and Default Media Receiver; it is not endorsed by Google.
+
 ## NewPipe Extractor v0.26.5
 
 Copyright Team NewPipe and its contributors. Licensed GPL-3.0-or-later.

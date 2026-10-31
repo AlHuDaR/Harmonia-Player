@@ -253,6 +253,7 @@ describe("release preference migration", () => {
     await usePlayerStore.persist.rehydrate();
     const state = usePlayerStore.getState();
     expect(state.settings).toEqual({
+      playbackSpeed: 1,
       background: false,
       autoPip: true,
       theme: "system",

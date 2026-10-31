@@ -8,7 +8,6 @@ import {
   EmptyState,
   SurfaceCard,
   useMediaStyles,
-  Input,
   ChoiceChip,
 } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
@@ -21,6 +20,7 @@ import { message } from "@/types/media";
 import { useTheme } from "@/utils/theme";
 import { filterDownloads, type DownloadFilter } from "@/utils/downloadFilters";
 import { useLocale } from "@/utils/i18n";
+import SearchInput from "@/components/SearchInput";
 export default function DownloadsScreen() {
   const styles = useMediaStyles();
   const theme = useTheme();
@@ -35,14 +35,40 @@ export default function DownloadsScreen() {
   const [error, setError] = useState("");
   return (
     <Page title="Downloads">
-      {!!downloads.length && <>
-        <Input accessibilityLabel="Search downloads" placeholder="Search downloads" value={query} onChangeText={setQuery} />
-        <View style={[styles.row, { flexWrap: "wrap" }]} accessibilityRole="radiogroup" accessibilityLabel={t("Download status")}>
-          {([ ["all", "All"], ["active", "Active"], ["offline", "Offline"], ["attention", "Needs attention"] ] as const).map(([value, label]) =>
-            <ChoiceChip key={value} label={label} selected={filter === value} onPress={() => setFilter(value)} />)}
-        </View>
-        {!visible.length && <Text style={styles.text}>No matching downloads.</Text>}
-      </>}
+      {!!downloads.length && (
+        <>
+          <SearchInput
+            accessibilityLabel="Search downloads"
+            placeholder="Search downloads"
+            value={query}
+            onChangeText={setQuery}
+          />
+          <View
+            style={[styles.row, { flexWrap: "wrap" }]}
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t("Download status")}
+          >
+            {(
+              [
+                ["all", "All"],
+                ["active", "Active"],
+                ["offline", "Offline"],
+                ["attention", "Needs attention"],
+              ] as const
+            ).map(([value, label]) => (
+              <ChoiceChip
+                key={value}
+                label={label}
+                selected={filter === value}
+                onPress={() => setFilter(value)}
+              />
+            ))}
+          </View>
+          {!visible.length && (
+            <Text style={styles.text}>No matching downloads.</Text>
+          )}
+        </>
+      )}
       {!!offline.length && (
         <Button
           title="Play all"
@@ -103,8 +129,12 @@ export default function DownloadsScreen() {
               </View>
               <Text raw style={styles.text}>
                 {Math.round(d.progress * 100)}%
-                {typeof d.bytesDownloaded === "number" ? ` · ${(d.bytesDownloaded / 1048576).toFixed(1)} MB` : ""}
-                {d.bytesPerSecond ? ` · ${(d.bytesPerSecond / 1024).toFixed(0)} KB/s` : ""}
+                {typeof d.bytesDownloaded === "number"
+                  ? ` · ${(d.bytesDownloaded / 1048576).toFixed(1)} MB`
+                  : ""}
+                {d.bytesPerSecond
+                  ? ` · ${(d.bytesPerSecond / 1024).toFixed(0)} KB/s`
+                  : ""}
               </Text>
             </>
           )}

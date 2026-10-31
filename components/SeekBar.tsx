@@ -6,25 +6,31 @@ export default function SeekBar({
   value,
   duration,
   onSeek,
+  disabled = false,
 }: {
   value: number;
   duration: number;
   onSeek: (n: number) => void;
+  disabled?: boolean;
 }) {
   const { t } = useLocale();
   const theme = useTheme();
   const [width, setWidth] = useState(1);
-  const valid = Number.isFinite(duration) && duration > 0;
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+  const valid = hasDuration && !disabled;
   return (
     <View
       accessibilityRole="adjustable"
       accessibilityLabel={t("Seek")}
+      accessibilityState={{ disabled: !valid }}
       accessibilityValue={{
         min: 0,
-        max: valid ? Math.floor(duration) : 0,
+        max: hasDuration ? Math.floor(duration) : 0,
         now: Math.floor(value),
       }}
-      accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+      accessibilityActions={
+        valid ? [{ name: "increment" }, { name: "decrement" }] : []
+      }
       onAccessibilityAction={(e) => {
         if (valid)
           onSeek(
@@ -62,7 +68,7 @@ export default function SeekBar({
         <View
           style={{
             height: 4,
-            width: `${valid ? Math.max(0, Math.min(100, (value / duration) * 100)) : 0}%`,
+            width: `${hasDuration ? Math.max(0, Math.min(100, (value / duration) * 100)) : 0}%`,
             backgroundColor: theme.accent,
             borderRadius: 3,
           }}
