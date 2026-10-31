@@ -14,6 +14,15 @@ import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
 
 public final class ExtractorDownloader extends Downloader {
+    private static final ThreadLocal<Long> DEADLINE = new ThreadLocal<>();
+    static void beginDeadline() { DEADLINE.set(System.nanoTime() + TimeUnit.SECONDS.toNanos(50)); }
+    static void clearDeadline() { DEADLINE.remove(); }
+    static long remainingMillis() throws IOException {
+        Long deadline = DEADLINE.get();
+        long remaining = deadline == null ? 40000 : TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+        if (Thread.currentThread().isInterrupted() || remaining <= 0) throw new IOException("Cast preparation cancelled or timed out.");
+        return remaining;
+    }
     public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS).readTimeout(25, TimeUnit.SECONDS)
@@ -32,7 +41,9 @@ public final class ExtractorDownloader extends Downloader {
             body = RequestBody.create(null, new byte[0]);
         }
         builder.method(request.httpMethod(), body);
-        try (okhttp3.Response result = client.newCall(builder.build()).execute()) {
+        okhttp3.Call call = client.newCall(builder.build());
+        if (DEADLINE.get() != null) call.timeout().timeout(remainingMillis(), TimeUnit.MILLISECONDS);
+        try (okhttp3.Response result = call.execute()) {
             if (result.code() == 429) throw new ReCaptchaException("YouTube is rate limiting this connection. Retry later or change network.", request.url());
             ResponseBody responseBody = result.body();
             return new Response(result.code(), result.message(), result.headers().toMultimap(),

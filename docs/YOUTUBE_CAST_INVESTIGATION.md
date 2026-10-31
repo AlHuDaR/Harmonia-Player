@@ -1,5 +1,7 @@
 # Direct YouTube casting investigation
 
+**Historical scope:** this records the feedback-only change in PR #36. The candidate-resolver experiment below is implemented in [preview.7](YOUTUBE_CAST_PREVIEW7.md); physical receiver playback remains unverified. Use that document for the current runtime contract.
+
 The phone screenshot reports a sender-side source restriction. It does not show a discovery, Wi-Fi or receiver playback failure. The current `castMedia` policy rejects every `youtubeId`, so changing quality or selecting another YouTube video cannot enable casting in this build. This follow-up shortens the warning in English and Arabic and identifies the YouTube limitation in portrait and native fullscreen. It does **not** add YouTube casting.
 
 ## What the current source resolver provides

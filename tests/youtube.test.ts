@@ -5,6 +5,8 @@ const native = vi.hoisted(() => ({
   formats: vi.fn(),
   resolve: vi.fn(),
   mux: vi.fn(),
+  resolveCast: vi.fn(),
+  cancelCast: vi.fn(),
 }));
 vi.mock("react-native", () => ({
   Platform: { OS: "android" },
@@ -17,6 +19,7 @@ import {
   youtubeId,
   youtubeTrack,
   formatTrack,
+  resolveYouTubeCast,
 } from "../utils/youtube";
 const track = {
   id: "youtube:abcdefghijk",
@@ -125,17 +128,103 @@ describe("on-device YouTube", () => {
   });
 });
 
+describe("native Cast resolver lifecycle", () => {
+  const candidate = () => ({
+    uri: `https://rr1.googlevideo.com/videoplayback?expire=${Math.floor(Date.now() / 1000) + 3600}&signature=test`,
+    contentType: "video/mp4",
+    contentId: "harmonia:youtube:abcdefghijk:video",
+    sourceToken: "9e93b9dc-3255-41fa-ac75-e8e07f270c37",
+    expiresAt: Date.now() + 300000,
+  });
+  it("uses the separate resolver without forwarding Auto quality, playback headers or metadata URLs", async () => {
+    native.resolveCast.mockResolvedValue(candidate());
+    const media = await resolveYouTubeCast(
+      { ...track, formatId: "auto" },
+      new AbortController().signal,
+    );
+    expect(native.resolveCast).toHaveBeenCalledWith(
+      track.youtubeId,
+      "video",
+      expect.any(String),
+    );
+    expect(native.resolve).not.toHaveBeenCalled();
+    expect(media).not.toHaveProperty("headers");
+    expect(media.title).toBe(track.title);
+  });
+  it("cancels the matching native request and ignores late grants", async () => {
+    let finish!: (value: unknown) => void;
+    native.resolveCast.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const abort = new AbortController();
+    const request = resolveYouTubeCast(track, abort.signal);
+    abort.abort();
+    await expect(request).rejects.toThrow("cancelled");
+    expect(native.cancelCast).toHaveBeenCalledWith(
+      native.resolveCast.mock.calls[0][2],
+    );
+    finish(candidate());
+  });
+  it("bounds the JS wait and sanitizes provider errors", async () => {
+    vi.useFakeTimers();
+    try {
+      native.resolveCast.mockReturnValue(new Promise(() => {}));
+      const request = resolveYouTubeCast(track, new AbortController().signal);
+      const assertion = expect(request).rejects.toThrow("timed out");
+      await vi.advanceTimersByTimeAsync(60000);
+      await assertion;
+      expect(native.cancelCast).toHaveBeenCalled();
+      native.resolveCast.mockRejectedValue(
+        new Error("private signed URL or cookies"),
+      );
+      await expect(
+        resolveYouTubeCast(track, new AbortController().signal),
+      ).rejects.toThrow("No compatible YouTube");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 it("keeps automatic streaming separate from progressive downloads", async () => {
-  native.resolve.mockResolvedValue({uri:"https://cdn.example.com/video.mp4"});
-  await resolveSource({...track,formatId:"auto"},undefined,true);
-  expect(native.resolve).toHaveBeenCalledWith("abcdefghijk",null,"video",true);
-  await resolveSource({...track,formatId:"auto"});
-  expect(native.resolve).toHaveBeenLastCalledWith("abcdefghijk","auto","video",false);
+  native.resolve.mockResolvedValue({
+    uri: "https://cdn.example.com/video.mp4",
+  });
+  await resolveSource({ ...track, formatId: "auto" }, undefined, true);
+  expect(native.resolve).toHaveBeenCalledWith(
+    "abcdefghijk",
+    null,
+    "video",
+    true,
+  );
+  await resolveSource({ ...track, formatId: "auto" });
+  expect(native.resolve).toHaveBeenLastCalledWith(
+    "abcdefghijk",
+    "auto",
+    "video",
+    false,
+  );
 });
 
 it("routes signed HLS and generated DASH to their adaptive media engines", () => {
-  expect(playbackContentType({uri:"https://cdn.example.com/stream?signature=abc",extension:"m3u8"})).toBe("hls");
-  expect(playbackContentType({uri:"file:///cache/video.mpd",extension:"mp4"})).toBe("dash");
-  expect(playbackContentType({uri:"https://cdn.example.com/master.m3u8?token=abc"})).toBe("hls");
-  expect(playbackContentType({uri:"https://cdn.example.com/video.mp4"})).toBeUndefined();
+  expect(
+    playbackContentType({
+      uri: "https://cdn.example.com/stream?signature=abc",
+      extension: "m3u8",
+    }),
+  ).toBe("hls");
+  expect(
+    playbackContentType({ uri: "file:///cache/video.mpd", extension: "mp4" }),
+  ).toBe("dash");
+  expect(
+    playbackContentType({
+      uri: "https://cdn.example.com/master.m3u8?token=abc",
+    }),
+  ).toBe("hls");
+  expect(
+    playbackContentType({ uri: "https://cdn.example.com/video.mp4" }),
+  ).toBeUndefined();
 });

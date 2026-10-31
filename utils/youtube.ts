@@ -1,6 +1,11 @@
 import { discoverRemote } from "./providerBridge";
 import { NativeModules, Platform } from "react-native";
 import type { Track } from "@/types/media";
+import {
+  youtubeCastMedia,
+  CAST_YOUTUBE_UNSUPPORTED,
+  type CastMedia,
+} from "./cast";
 
 export interface StreamFormat {
   id: string;
@@ -17,9 +22,19 @@ export interface MediaSource {
   label?: string;
 }
 /** Signed/provider URLs need not end with a media suffix. Route adaptive sources explicitly. */
-export function playbackContentType(source: MediaSource): "dash" | "hls" | undefined {
-  if (/\.mpd(?:[?#]|$)/i.test(source.uri) || source.extension?.toLowerCase() === "mpd") return "dash";
-  if (/\.m3u8(?:[?#]|$)/i.test(source.uri) || source.extension?.toLowerCase() === "m3u8") return "hls";
+export function playbackContentType(
+  source: MediaSource,
+): "dash" | "hls" | undefined {
+  if (
+    /\.mpd(?:[?#]|$)/i.test(source.uri) ||
+    source.extension?.toLowerCase() === "mpd"
+  )
+    return "dash";
+  if (
+    /\.m3u8(?:[?#]|$)/i.test(source.uri) ||
+    source.extension?.toLowerCase() === "m3u8"
+  )
+    return "hls";
   return undefined;
 }
 export interface SearchPage {
@@ -27,6 +42,12 @@ export interface SearchPage {
   nextPage?: string;
 }
 interface Extractor {
+  resolveCast?(
+    id: string,
+    kind: string,
+    requestId: string,
+  ): Promise<Omit<CastMedia, "title" | "artist"> & { expiresAt: number }>;
+  cancelCast?(requestId: string): void;
   search(query: string, page: string | null): Promise<SearchPage>;
   details(id: string): Promise<Track>;
   formats(id: string): Promise<StreamFormat[]>;
@@ -37,6 +58,80 @@ interface Extractor {
     download: boolean,
   ): Promise<MediaSource>;
   mux(video: string, audio: string, output: string): Promise<string>;
+}
+let castRequest = 0;
+export async function resolveYouTubeCast(
+  track: Track,
+  signal: AbortSignal,
+): Promise<CastMedia> {
+  const bridge = extractor();
+  if (!bridge.resolveCast || !bridge.cancelCast)
+    throw new Error(
+      "Install the updated Android APK to enable YouTube Cast preparation.",
+    );
+  const requestId = `${Date.now()}-${++castRequest}`;
+  return new Promise((resolve, reject) => {
+    let finished = false;
+    const finish = (error?: Error, media?: CastMedia) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+      if (error) reject(error);
+      else resolve(media!);
+    };
+    const cancel = () => {
+      try {
+        bridge.cancelCast!(requestId);
+      } catch {}
+    };
+    const abort = () => {
+      cancel();
+      finish(
+        new Error("Cast preparation cancelled. Local playback is available."),
+      );
+    };
+    const timer = setTimeout(() => {
+      cancel();
+      finish(
+        new Error(
+          "Cast preparation timed out. Keep playing here or try again.",
+        ),
+      );
+    }, 60000);
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    signal.addEventListener("abort", abort, { once: true });
+    const failure = (error?: { code?: string }) =>
+      finish(
+        new Error(
+          error?.code === "CAST_BUSY"
+            ? "Cast preparation is busy. Try again shortly."
+            : error?.code === "CAST_TIMEOUT"
+              ? "Cast preparation timed out. Keep playing here or try again."
+              : error?.code === "CAST_CANCELLED"
+                ? "Cast preparation cancelled. Local playback is available."
+                : CAST_YOUTUBE_UNSUPPORTED,
+        ),
+      );
+    try {
+      bridge.resolveCast!(track.youtubeId!, track.kind, requestId).then(
+        (candidate) => {
+          if (finished) return;
+          try {
+            finish(undefined, youtubeCastMedia(track, candidate));
+          } catch (error) {
+            finish(error as Error);
+          }
+        },
+        failure,
+      );
+    } catch {
+      failure();
+    }
+  });
 }
 function extractor(): Extractor {
   if (Platform.OS !== "android")

@@ -1,5 +1,7 @@
 # Cast and bilingual search upgrade
 
+This describes preview.6. [Preview.7's YouTube Cast-source contract](YOUTUBE_CAST_PREVIEW7.md) supersedes its blanket YouTube-source exclusion; physical receiver acceptance remains pending.
+
 ## Inspection and plan
 
 Freshly fetched `origin/main` is `8754201662f872439217bbba2a7caade4cc83685`, the merge of PR #34. Earlier media repairs and preview.5 adaptive/TV changes are included. PR #34's final review reported no unresolved code findings. Its documented open items include dependency advisories, downstream Media3/NewPipe request policy, range resume and physical device/Windows acceptance.

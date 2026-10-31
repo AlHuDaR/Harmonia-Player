@@ -560,6 +560,7 @@ function MediaEngine({
               }
               label="Cast"
               active={remoteActive}
+              disabled={cast.preparing || cast.loading}
               onPress={() => {
                 void cast.picker();
               }}
@@ -763,8 +764,14 @@ function MediaEngine({
           expanded && (
             <View style={{ padding: 12, gap: 8 }}>
               <Text raw style={styles.muted}>
-                {t(remoteActive ? "Playing on receiver" : "Cast connected")} ·{" "}
-                {cast.remote.deviceName}
+                {t(
+                  cast.loading || (cast.active && cast.remote.buffering)
+                    ? "Loading on receiver…"
+                    : cast.active
+                      ? "Playback on receiver"
+                      : "Cast connected",
+                )}{" "}
+                · {cast.remote.deviceName}
               </Text>
               <View style={[styles.row, { flexWrap: "wrap" }]}>
                 {remoteActive && (
@@ -808,6 +815,19 @@ function MediaEngine({
               </View>
             </View>
           )}
+        {cast.preparing && (
+          <View style={[styles.row, { paddingHorizontal: 12 }]}>
+            <Text accessibilityLiveRegion="polite" style={styles.muted}>
+              Preparing Cast…
+            </Text>
+            <Button
+              title="Cancel"
+              onPress={() => {
+                void cast.returnLocal();
+              }}
+            />
+          </View>
+        )}
         {!!cast.error && (
           <Text
             accessibilityRole="alert"

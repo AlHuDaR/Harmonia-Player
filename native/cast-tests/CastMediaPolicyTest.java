@@ -2,6 +2,16 @@ package com.alhudar.harmonia.cast;
 import org.junit.Test;
 import static org.junit.Assert.*;
 public class CastMediaPolicyTest {
+    @Test public void pendingLoadsMustBeStoppedEvenBeforeReceiverStatusSwitches() {
+        assertTrue(CastMediaPolicy.mayStopOwned("new-video", "new-video", "new-video", "previous-video"));
+        assertTrue(CastMediaPolicy.mayStopOwned("new-video", "new-video", "new-video", null));
+        assertTrue(CastMediaPolicy.mayStopOwned("new-video", "new-video", "", "new-video"));
+    }
+    @Test public void neverStopsAnUnownedOrReplacedReceiverItem() {
+        assertFalse(CastMediaPolicy.mayStopOwned("our-video", "other-video", "", "other-video"));
+        assertFalse(CastMediaPolicy.mayStopOwned("our-video", "our-video", "", "other-video"));
+        assertFalse(CastMediaPolicy.mayStopOwned("", "", "", null));
+    }
     @Test public void acceptsOnlyPublicHttpsMp4AndHls() {
         assertTrue(CastMediaPolicy.supports("https://media.example.com/movie.mp4", "video/mp4"));
         assertTrue(CastMediaPolicy.supports("https://media.example.com/live.m3u8", "application/x-mpegURL"));

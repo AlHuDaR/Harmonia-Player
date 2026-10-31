@@ -2,14 +2,14 @@ export default {
   expo: {
     name: "Harmonia Player",
     slug: "harmonia-player",
-    version: "2.0.0-preview.6",
+    version: "2.0.0-preview.7",
     orientation: "default",
     icon: "./assets/images/icon.png",
     scheme: "harmonia",
     userInterfaceStyle: "automatic",
     android: {
       package: "com.alhudar.harmonia",
-      versionCode: 12,
+      versionCode: 13,
       intentFilters: [
         {
           action: "VIEW",

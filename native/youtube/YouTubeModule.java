@@ -18,6 +18,12 @@ import org.xmlpull.v1.XmlSerializer;
 
 public final class YouTubeModule extends ReactContextBaseJavaModule {
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
+    private final ThreadPoolExecutor castExecutor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1));
+    private CastWork castWork;
+    private static final class CastWork {
+        final String requestId; final Promise promise; Future<?> future; boolean finished;
+        CastWork(String id, Promise promise) { requestId = id; this.promise = promise; }
+    }
     // Page objects can contain POST data/cookies; keep them native rather than exposing them to JS.
     private final Map<String, SearchPage> pages = Collections.synchronizedMap(new LinkedHashMap<>());
     private static boolean initialized;
@@ -38,7 +44,43 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
         }
     }
     @Override public String getName() { return "HarmoniaYouTube"; }
-    @Override public void invalidate() { executor.shutdownNow(); pages.clear(); super.invalidate(); }
+    @Override public void invalidate() { cancelCastWork(null); castExecutor.shutdownNow(); CastSourcePolicy.clearGrants(); executor.shutdownNow(); pages.clear(); super.invalidate(); }
+
+    private synchronized void cancelCastWork(String requestId) {
+        if (castWork == null || (requestId != null && !requestId.equals(castWork.requestId))) return;
+        if (!castWork.finished) { castWork.finished = true; if (getReactApplicationContext().hasActiveReactInstance()) castWork.promise.reject("CAST_CANCELLED", "Cast preparation cancelled."); }
+        if (castWork.future != null) castWork.future.cancel(true);
+        castWork = null; castExecutor.purge();
+    }
+    @ReactMethod public void cancelCast(String requestId) { cancelCastWork(requestId); }
+    @ReactMethod public synchronized void resolveCast(String id, String kind, String requestId, Promise promise) {
+        cancelCastWork(null);
+        try { validateId(id); CastSourcePolicy.contentId(id, kind); }
+        catch (RuntimeException error) { promise.reject("CAST_SOURCE", CastSourcePolicy.UNAVAILABLE); return; }
+        if (requestId == null || requestId.length() > 80 || castExecutor.isShutdown()) { promise.reject("CAST_SOURCE", CastSourcePolicy.UNAVAILABLE); return; }
+        CastWork work = new CastWork(requestId, promise); castWork = work;
+        try {
+            work.future = castExecutor.submit(() -> {
+                ExtractorDownloader.beginDeadline();
+                try {
+                    CastSourcePolicy.Grant grant = YouTubeCastResolver.resolve(info(id), id, kind);
+                    ExtractorDownloader.remainingMillis();
+                    synchronized (YouTubeModule.this) {
+                        if (work.finished || castWork != work) return;
+                        WritableMap media = Arguments.createMap(); media.putString("uri", grant.uri); media.putString("contentType", grant.contentType);
+                        media.putString("contentId", grant.contentId); media.putString("sourceToken", grant.token); media.putDouble("expiresAt", grant.expiresAt);
+                        work.finished = true; promise.resolve(media);
+                    }
+                } catch (Exception error) {
+                    boolean timeout = false;
+                    try { ExtractorDownloader.remainingMillis(); } catch (java.io.IOException deadline) { timeout = true; }
+                    synchronized (YouTubeModule.this) {
+                        if (!work.finished) { work.finished = true; promise.reject(timeout ? "CAST_TIMEOUT" : "CAST_SOURCE", timeout ? "Cast preparation timed out. Keep playing here or try again." : CastSourcePolicy.UNAVAILABLE); }
+                    }
+                } finally { ExtractorDownloader.clearDeadline(); synchronized (YouTubeModule.this) { if (castWork == work) castWork = null; } }
+            });
+        } catch (RejectedExecutionException error) { work.finished = true; castWork = null; promise.reject("CAST_BUSY", "Cast preparation is busy. Try again shortly."); }
+    }
 
     private interface Work { Object run() throws Exception; }
     private void submit(Promise promise, Work work) { submit(promise, work, false); }
