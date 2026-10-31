@@ -1,5 +1,7 @@
 # YouTube Cast candidate transfer — preview.7
 
+The owner subsequently reported streaming Cast working on Mi Box. [Preview.8](DOWNLOADED_CAST_PREVIEW8.md) adds a separate downloaded-file source; the local-file exclusion below describes preview.7.
+
 Preview **2.0.0-preview.7 / Android versionCode 13** implements a separate YouTube Cast-source resolver. Tapping Harmonia's Cast icon can now open the SDK receiver picker for an online YouTube track, including one playing through phone-local Auto/DASH. This is a candidate-based implementation; successful YouTube playback on physical Mi Box/Chromecast hardware remains unverified.
 
 ## Source contract

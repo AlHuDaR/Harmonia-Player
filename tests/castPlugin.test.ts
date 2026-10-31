@@ -67,7 +67,13 @@ it("adds Cast configuration idempotently without removing phone/TV launchers or 
   expect(result.application[0].activity[0]).toEqual(activity);
   expect(result.application[0]["meta-data"]).toHaveLength(1);
   expect(result.application[0].activity[1].$["android:exported"]).toBe("false");
-  expect(result["uses-permission"]).toHaveLength(4);
+  expect(result["uses-permission"]).toHaveLength(7);
+  expect(result.application[0].service).toHaveLength(1);
+  expect(result.application[0].service[0].$).toMatchObject({
+    "android:exported": "false",
+    "android:foregroundServiceType": "mediaPlayback",
+    "android:stopWithTask": "false",
+  });
   const build = { modResults: { contents: "dependencies {}" } };
   gradleTransform(build);
   gradleTransform(build);

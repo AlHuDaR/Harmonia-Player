@@ -34,8 +34,10 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     private String mediaReason = "This source cannot be sent to a Cast receiver. Local playback is available.";
     private String label = "Cast";
     private boolean eligible;
+    private boolean localSource;
     private String ownedContentId = "";
     private String loadingContentId = "";
+    private boolean loadingAcknowledged;
     private long loadRevision;
     private int revision;
     private volatile int listeners;
@@ -85,7 +87,7 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     }
     private void connected() { connection = "connected"; watch(client()); emit(); }
     private void disconnected(int code) {
-        connection = "disconnected"; watch(null); ownedContentId = ""; loadingContentId = ""; ++loadRevision; emit();
+        connection = "disconnected"; watch(null); ownedContentId = ""; loadingContentId = ""; loadingAcknowledged = false; ++loadRevision; emit();
         if (code != 0) error("Cast connection failed. Check the receiver and Wi-Fi, then retry.");
     }
     private WritableMap snapshot() {
@@ -99,8 +101,9 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         // LOAD acknowledgement is not proof that playback/status has switched.
         // Retain pending ownership until the receiver reports this content, so a
         // timeout can still STOP a late LOAD before the phone resumes audio.
-        if (client != null && client.getMediaInfo() != null && loadingContentId.equals(client.getMediaInfo().getContentId())) loadingContentId = "";
+        if (loadingAcknowledged && client != null && client.hasMediaSession() && client.getPlayerState() != MediaStatus.PLAYER_STATE_IDLE && client.getMediaInfo() != null && loadingContentId.equals(client.getMediaInfo().getContentId())) loadingContentId = "";
         state.putString("contentId", client != null && client.getMediaInfo() != null ? client.getMediaInfo().getContentId() : "");
+        state.putBoolean("localSourceActive", client != null && client.getMediaInfo() != null && LocalCastService.active(client.getMediaInfo().getContentId()));
         state.putString("ownedContentId", ownedContentId);
         state.putBoolean("hasMedia", client != null && client.hasMediaSession() && client.getPlayerState() != MediaStatus.PLAYER_STATE_IDLE);
         state.putDouble("position", client == null ? 0 : Math.max(0, client.getApproximateStreamPosition() / 1000.0));
@@ -126,6 +129,30 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     @ReactMethod public void configure(boolean canCast, String reason, String castLabel, String unavailableLabel) {
         UiThreadUtil.runOnUiThread(() -> { eligible = canCast; mediaReason = reason; label = castLabel; unavailable = unavailableLabel; });
     }
+    @ReactMethod public void configureLocal(boolean local, String caption, String stop) {
+        UiThreadUtil.runOnUiThread(() -> { localSource = local; LocalCastService.labels(caption, stop); });
+    }
+    @ReactMethod public void reserveLocal(Promise promise) {
+        UiThreadUtil.runOnUiThread(() -> {
+            try { LocalCastService.reserve(context); promise.resolve(null); }
+            catch (RuntimeException error) { promise.reject("CAST_LOCAL_BACKGROUND", "Open Harmonia to start casting this download, then retry."); }
+        });
+    }
+    @ReactMethod public void cancelLocal(String nonce) { LocalCastService.cancel(nonce); }
+    @ReactMethod public void prepareLocal(String uri, String kind, String contentId, String nonce, String title, Promise promise) {
+        UiThreadUtil.runOnUiThread(() -> {
+            ensureCastInitialized(); CastSession session = session();
+            if (session == null || !session.isConnected() || session.getCastDevice() == null) { LocalCastService.cancelReservation(); promise.reject("CAST_SESSION", "Cast receiver disconnected."); return; }
+            LocalCastService.prepare(context, uri, kind, contentId, nonce, title, session.getCastDevice().getInetAddress(), new LocalCastService.Callback() {
+                @Override public void ready(LocalCastService.Grant grant) {
+                    if (!context.hasActiveReactInstance()) return;
+                    WritableMap media = Arguments.createMap(); media.putString("uri", grant.uri); media.putString("contentType", grant.contentType);
+                    media.putString("contentId", grant.contentId); media.putString("localToken", grant.token); promise.resolve(media);
+                }
+                @Override public void failed(String code, String message) { if (context.hasActiveReactInstance()) promise.reject(code, message); }
+            });
+        });
+    }
     @ReactMethod public void showPicker(boolean requestPlayback, Promise promise) {
         UiThreadUtil.runOnUiThread(() -> {
             ensureCastInitialized();
@@ -137,6 +164,7 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         });
     }
     private void openPicker(Activity activity, boolean requestPlayback) {
+        if (requestPlayback && localSource) LocalCastService.reserve(context);
         if (requestPlayback) event("HarmoniaCastPicker", null);
         Intent intent = new Intent(activity, CastPickerActivity.class);
         intent.putExtra("label", label); intent.putExtra("unavailable", unavailable);
@@ -146,6 +174,7 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
         UiThreadUtil.runOnUiThread(() -> {
             RemoteMediaClient client = client();
             if (client != null && client.getMediaInfo() != null && contentId.equals(client.getMediaInfo().getContentId())) {
+                if (contentId.startsWith("harmonia:local:") && !LocalCastService.active(contentId)) { promise.reject("CAST_LOCAL", "The downloaded Cast source stopped. Tap Cast to reconnect or disconnect first."); return; }
                 ownedContentId = contentId; promise.resolve(null); emit();
             } else promise.reject("CAST_SESSION", "Cast receiver disconnected.");
         });
@@ -156,21 +185,22 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
                 String uri = media.getString("uri"), type = media.getString("contentType");
                 String contentId = media.hasKey("contentId") ? media.getString("contentId") : uri;
                 boolean youtube = media.hasKey("sourceToken");
-                boolean supported = youtube ? CastSourcePolicy.claim(media.getString("sourceToken"), uri, type, contentId, System.currentTimeMillis())
+                boolean local = media.hasKey("localToken");
+                boolean supported = local ? LocalCastService.claim(media.getString("localToken"), uri, type, contentId) : youtube ? CastSourcePolicy.claim(media.getString("sourceToken"), uri, type, contentId, System.currentTimeMillis())
                         : uri.equals(contentId) && CastMediaPolicy.supports(uri, type);
-                if (!supported) { promise.reject("CAST_SOURCE", youtube ? CastSourcePolicy.UNAVAILABLE : mediaReason); return; }
+                if (!supported) { promise.reject("CAST_SOURCE", local ? LocalCastMedia.UNAVAILABLE : youtube ? CastSourcePolicy.UNAVAILABLE : mediaReason); return; }
                 RemoteMediaClient client = client();
                 if (client == null || session() == null || !session().isConnected()) { promise.reject("CAST_SESSION", "Cast receiver disconnected."); return; }
-                MediaMetadata metadata = new MediaMetadata("audio/mp4".equals(type) ? MediaMetadata.MEDIA_TYPE_MUSIC_TRACK : MediaMetadata.MEDIA_TYPE_MOVIE);
+                MediaMetadata metadata = new MediaMetadata(type.startsWith("audio/") ? MediaMetadata.MEDIA_TYPE_MUSIC_TRACK : MediaMetadata.MEDIA_TYPE_MOVIE);
                 metadata.putString(MediaMetadata.KEY_TITLE, media.getString("title"));
-                metadata.putString("audio/mp4".equals(type) ? MediaMetadata.KEY_ARTIST : MediaMetadata.KEY_SUBTITLE, media.getString("artist"));
+                metadata.putString(type.startsWith("audio/") ? MediaMetadata.KEY_ARTIST : MediaMetadata.KEY_SUBTITLE, media.getString("artist"));
                 MediaInfo.Builder builder = new MediaInfo.Builder(contentId).setContentUrl(uri).setContentType(type).setStreamType(MediaInfo.STREAM_TYPE_BUFFERED).setMetadata(metadata);
                 if (youtube && "application/x-mpegURL".equals(type)) builder.setHlsSegmentFormat(HlsSegmentFormat.TS).setHlsVideoSegmentFormat(HlsVideoSegmentFormat.MPEG2_TS);
                 MediaInfo info = builder.build();
-                ownedContentId = contentId; loadingContentId = contentId; final long requestRevision = ++loadRevision;
+                ownedContentId = contentId; loadingContentId = contentId; loadingAcknowledged = false; final long requestRevision = ++loadRevision;
                 MediaLoadRequestData data = new MediaLoadRequestData.Builder().setMediaInfo(info).setAutoplay(autoplay).setCurrentTime(Math.max(0, (long) (position * 1000))).build();
                 client.load(data).setResultCallback(result -> {
-                    if (result.getStatus().isSuccess()) { promise.resolve(null); if (requestRevision == loadRevision) emit(); }
+                    if (result.getStatus().isSuccess()) { if (requestRevision == loadRevision) loadingAcknowledged = true; promise.resolve(null); if (requestRevision == loadRevision) emit(); }
                     else promise.reject("CAST_RECEIVER", "The receiver couldn't play this stream. You can play it on this device.");
                 }, 30, TimeUnit.SECONDS);
             } catch (RuntimeException error) { promise.reject("CAST_LOAD", "Cast playback failed. Try again or play on this device."); }
@@ -200,16 +230,27 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     @ReactMethod public void stopOwned(String contentId, Promise promise) {
         UiThreadUtil.runOnUiThread(() -> {
             RemoteMediaClient client = client();
+            if (client != null && client.getMediaInfo() != null && client.getMediaStatus() != null && CastMediaPolicy.settledIdle(ownedContentId, contentId, loadingContentId,
+                    client.getMediaInfo().getContentId(), client.getPlayerState() == MediaStatus.PLAYER_STATE_IDLE, client.getMediaStatus().getIdleReason())) {
+                ++loadRevision; ownedContentId = ""; loadingContentId = ""; loadingAcknowledged = false;
+                LocalCastService.release(contentId); promise.resolve(null); emit(); return;
+            }
             if (client != null && CastMediaPolicy.mayStopOwned(ownedContentId, contentId, loadingContentId, client.getMediaInfo() == null ? null : client.getMediaInfo().getContentId())) {
-                ++loadRevision;
+                final long stopRevision = ++loadRevision;
                 client.stop().setResultCallback(result -> {
                     if (result.getStatus().isSuccess()) {
-                        if (contentId.equals(ownedContentId)) ownedContentId = "";
-                        if (contentId.equals(loadingContentId)) loadingContentId = "";
+                        if (stopRevision == loadRevision) {
+                            if (contentId.equals(ownedContentId)) ownedContentId = "";
+                            if (contentId.equals(loadingContentId)) loadingContentId = "";
+                            loadingAcknowledged = false;
+                            LocalCastService.release(contentId);
+                        }
                         promise.resolve(null); emit();
                     } else promise.reject("CAST_STOP", "Could not stop the Cast receiver.");
                 }, 10, TimeUnit.SECONDS);
-            } else promise.resolve(null);
+            } else if (client == null && contentId.equals(ownedContentId) && LocalCastService.active(contentId)) {
+                promise.reject("CAST_STOP", "Could not stop the Cast receiver.");
+            } else { LocalCastService.release(contentId); promise.resolve(null); }
         });
     }
     @ReactMethod public void disconnect(Promise promise) {
@@ -270,6 +311,6 @@ public final class HarmoniaCastModule extends ReactContextBaseJavaModule impleme
     @Override public void onActivityStopped(Activity a) {}
     @Override public void onActivitySaveInstanceState(Activity a, Bundle b) {}
     @Override public void onActivityDestroyed(Activity a) {
-        if (a instanceof CastPickerActivity && "disconnected".equals(connection)) event("HarmoniaCastPickerClosed", null);
+        if (a instanceof CastPickerActivity && "disconnected".equals(connection)) { LocalCastService.cancelReservation(); event("HarmoniaCastPickerClosed", null); }
     }
 }

@@ -8,13 +8,95 @@ export const CAST_SOURCE_UNSUPPORTED =
   "Casting isn't supported for this source. You can play it on this device.";
 export const CAST_YOUTUBE_UNSUPPORTED =
   "No compatible YouTube stream is available for Cast. You can play it on this device.";
+export const CAST_LOCAL_UNSUPPORTED =
+  "This downloaded file is missing, protected or unsupported for Cast. Try another download.";
 export interface CastMedia {
   uri: string;
-  contentType: "video/mp4" | "audio/mp4" | "application/x-mpegURL";
+  contentType:
+    | "video/mp4"
+    | "audio/mp4"
+    | "application/x-mpegURL"
+    | "audio/mpeg"
+    | "audio/aac"
+    | "audio/wav"
+    | "audio/ogg"
+    | "audio/flac"
+    | "audio/webm"
+    | "video/webm";
   contentId?: string;
   sourceToken?: string;
+  localToken?: string;
   title: string;
   artist: string;
+}
+export function canPrepareLocalCast(track: Track) {
+  return !!track.localUri && /^file:\/\//i.test(track.localUri);
+}
+/** Non-secret playback identity; the native file/receiver grant supplies authorization. */
+export function localCastContentId(track: Track) {
+  let a = 0x811c9dc5,
+    b = 0x9e3779b9;
+  for (const ch of track.localUri || "") {
+    for (let i = 0; i < ch.length; i++) {
+      a = Math.imul(a ^ ch.charCodeAt(i), 0x01000193);
+      b = Math.imul(b ^ ch.charCodeAt(i), 0x85ebca6b);
+    }
+  }
+  return `harmonia:local:${(a >>> 0).toString(16).padStart(8, "0")}${(b >>> 0).toString(16).padStart(8, "0")}:${track.kind}`;
+}
+export function localCastMedia(
+  track: Track,
+  candidate: Omit<CastMedia, "title" | "artist">,
+): CastMedia {
+  try {
+    const url = new URL(candidate.uri);
+    const host = url.hostname;
+    const ipv4 = host.split(".");
+    const literal =
+      (ipv4.length === 4 &&
+        ipv4.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255) &&
+        !["0", "127"].includes(ipv4[0])) ||
+      (/^\[[0-9a-f:]+\]$/i.test(host) && !["[::]", "[::1]"].includes(host));
+    if (
+      !canPrepareLocalCast(track) ||
+      url.protocol !== "http:" ||
+      !literal ||
+      !url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !/^\/cast\/[a-f0-9]{64}\/media\.(mp4|m4a|mp3|aac|webm|wav|ogg|flac)$/.test(
+        url.pathname,
+      ) ||
+      candidate.contentId !== localCastContentId(track) ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+        candidate.localToken || "",
+      ) ||
+      ![
+        "video/mp4",
+        "audio/mp4",
+        "video/webm",
+        "audio/webm",
+        "audio/mpeg",
+        "audio/aac",
+        "audio/wav",
+        "audio/ogg",
+        "audio/flac",
+      ].includes(candidate.contentType)
+    )
+      throw new Error(CAST_LOCAL_UNSUPPORTED);
+    return {
+      uri: candidate.uri,
+      contentType: candidate.contentType,
+      contentId: candidate.contentId,
+      localToken: candidate.localToken,
+      title: track.title,
+      artist: track.artist,
+    };
+  } catch {
+    throw new Error(CAST_LOCAL_UNSUPPORTED);
+  }
 }
 export function canPrepareYouTubeCast(track: Track) {
   return (
@@ -98,6 +180,7 @@ export interface CastState {
   canVolume: boolean;
   volume: number;
   idleReason: number;
+  localSourceActive: boolean;
 }
 export const EMPTY_CAST_STATE: CastState = {
   revision: 0,
@@ -116,6 +199,7 @@ export const EMPTY_CAST_STATE: CastState = {
   canVolume: false,
   volume: 1,
   idleReason: 0,
+  localSourceActive: false,
 };
 
 /** Eligibility, not a claim about receiver codecs, CORS, authentication or manifest contents. */
@@ -257,6 +341,7 @@ export class CastHandoff {
     private resolver?: {
       contentId: string;
       resolve(signal: AbortSignal): Promise<CastMedia>;
+      canAdopt?(state: CastState): boolean;
     },
   ) {}
   get contentId() {
@@ -273,16 +358,19 @@ export class CastHandoff {
     this.state = { ...this.state, ...patch };
     this.listeners.forEach((listener) => listener());
   }
+  accepts(state: CastState) {
+    return (
+      !this.disposed &&
+      !this.state.preparing &&
+      !!this.contentId &&
+      state.hasMedia &&
+      state.contentId === this.contentId &&
+      state.connection === "connected" &&
+      (!this.resolver?.canAdopt || this.resolver.canAdopt(state))
+    );
+  }
   adopt(state: CastState) {
-    if (
-      this.disposed ||
-      !state.hasMedia ||
-      this.state.preparing ||
-      !this.contentId ||
-      state.contentId !== this.contentId ||
-      state.connection !== "connected"
-    )
-      return;
+    if (!this.accepts(state)) return;
     this.requested = true;
     this.automaticRecoveryAttempted = false;
     this.lastPosition = state.position;
