@@ -68,6 +68,14 @@ jobs:
       - run: npm run build:android-release
       - name: Native provider and transfer policy unit tests
         run: cd android && ./gradlew :app:testReleaseUnitTest --max-workers=2 --no-daemon '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g'
+      - name: Build local Cast device tests
+        run: cd android && ./gradlew :app:assembleReleaseAndroidTest --max-workers=2 --no-daemon '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Harmonia-Player-local-cast-tests
+          path: android/app/build/outputs/apk/androidTest/release/app-release-androidTest.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify Android release artifacts
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose artifacts/Harmonia-Player-arm64.apk
@@ -156,7 +164,14 @@ jobs:
           path: artifacts
           run-id: ${{ inputs.artifact_run_id || github.run_id }}
           github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: Harmonia-Player-local-cast-tests
+          path: artifacts/local-cast-tests
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Enable KVM for emulator
+        # The local Cast tests use the same release APK and require no live Cast receiver.
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -173,6 +188,7 @@ jobs:
             adb install -r artifacts/Harmonia-Player-universal.apk
             python3 scripts/test-android-share.py
             python3 scripts/test-instagram-share.py
+            python3 scripts/test-android-local-cast.py
         env:
           HARMONIA_INSTAGRAM_SMOKE_URL: ${{ inputs.instagram_url || '' }}
 

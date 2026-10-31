@@ -2,6 +2,12 @@ package com.alhudar.harmonia.cast;
 import org.junit.Test;
 import static org.junit.Assert.*;
 public class CastMediaPolicyTest {
+    @Test public void normalEndCanReleaseTheHostButPendingLoadsCannotMasqueradeAsIdle() {
+        assertTrue(CastMediaPolicy.settledIdle("a", "a", "", "a", true, 1));
+        assertFalse(CastMediaPolicy.settledIdle("a", "a", "a", "a", true, 1));
+        assertFalse(CastMediaPolicy.settledIdle("a", "a", "", "other", true, 1));
+        assertFalse(CastMediaPolicy.settledIdle("a", "a", "", "a", true, 0));
+    }
     @Test public void pendingLoadsMustBeStoppedEvenBeforeReceiverStatusSwitches() {
         assertTrue(CastMediaPolicy.mayStopOwned("new-video", "new-video", "new-video", "previous-video"));
         assertTrue(CastMediaPolicy.mayStopOwned("new-video", "new-video", "new-video", null));

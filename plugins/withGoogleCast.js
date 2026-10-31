@@ -11,6 +11,9 @@ module.exports = function withGoogleCast(config) {
     const marker = "// @generated Harmonia Google Cast";
     if (!mod.modResults.contents.includes(marker))
       mod.modResults.contents += `\n${marker}\ndependencies {\n    implementation 'com.google.android.gms:play-services-cast-framework:22.3.1'\n    implementation 'androidx.mediarouter:mediarouter:1.8.1'\n}\n`;
+    const tests = "// @generated Harmonia local Cast instrumentation";
+    if (!mod.modResults.contents.includes(tests))
+      mod.modResults.contents += `\n${tests}\nandroid {\n    defaultConfig { testInstrumentationRunner 'com.alhudar.harmonia.cast.LocalCastInstrumentation' }\n    testBuildType 'release'\n}\n`;
     return mod;
   });
   config = withMainApplication(config, (mod) => {
@@ -35,6 +38,9 @@ module.exports = function withGoogleCast(config) {
       "android.permission.ACCESS_NETWORK_STATE",
       "android.permission.ACCESS_WIFI_STATE",
       "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+      "android.permission.WAKE_LOCK",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
     ]) {
       if (
         !manifest["uses-permission"].some(
@@ -44,6 +50,22 @@ module.exports = function withGoogleCast(config) {
         manifest["uses-permission"].push({ $: { "android:name": name } });
     }
     const app = manifest.application[0];
+    app.service ||= [];
+    if (
+      !app.service.some(
+        (item) =>
+          item.$["android:name"] ===
+          "com.alhudar.harmonia.cast.LocalCastService",
+      )
+    )
+      app.service.push({
+        $: {
+          "android:name": "com.alhudar.harmonia.cast.LocalCastService",
+          "android:exported": "false",
+          "android:foregroundServiceType": "mediaPlayback",
+          "android:stopWithTask": "false",
+        },
+      });
     app["meta-data"] ||= [];
     const key =
       "com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME";
@@ -92,6 +114,20 @@ module.exports = function withGoogleCast(config) {
           test,
           path.join(root, "app/src/test/java/com/alhudar/harmonia/cast"),
         );
+      const deviceTests = path.join(__dirname, "../native/cast-android-tests");
+      if (fs.existsSync(deviceTests)) {
+        copy(
+          deviceTests,
+          path.join(root, "app/src/androidTest/java/com/alhudar/harmonia/cast"),
+        );
+        const assets = path.join(root, "app/src/androidTest/assets");
+        fs.mkdirSync(assets, { recursive: true });
+        for (const fixture of ["tone.mp3", "tone.m4a", "video.mp4"])
+          fs.copyFileSync(
+            path.join(__dirname, "../tests/fixtures", fixture),
+            path.join(assets, fixture),
+          );
+      }
       const values = path.join(root, "app/src/main/res/values");
       fs.mkdirSync(values, { recursive: true });
       fs.writeFileSync(

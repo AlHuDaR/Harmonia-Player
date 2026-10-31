@@ -9,13 +9,17 @@ import { NativeEventEmitter, NativeModules, Platform } from "react-native";
 import type { VideoPlayer } from "expo-video";
 import type { Track } from "@/types/media";
 import { resolveYouTubeCast, type MediaSource } from "@/utils/youtube";
+import { resolveLocalCast } from "@/utils/localCast";
 import {
   castMedia,
   canPrepareYouTubeCast,
+  canPrepareLocalCast,
+  localCastContentId,
   youtubeCastContentId,
   CastHandoff,
   CAST_SOURCE_UNSUPPORTED,
   CAST_YOUTUBE_UNSUPPORTED,
+  CAST_LOCAL_UNSUPPORTED,
   CAST_UNAVAILABLE,
   EMPTY_CAST_STATE,
   type CastState,
@@ -33,6 +37,8 @@ interface CastModule extends CastTransport {
     unavailable: string,
   ): void;
   showPicker(requestPlayback: boolean): Promise<void>;
+  configureLocal?(local: boolean, caption: string, stop: string): void;
+  reserveLocal?(): Promise<void>;
   command(action: string, value: number): Promise<void>;
   disconnect(): Promise<void>;
   addListener(name: string): void;
@@ -76,23 +82,35 @@ export function useCastPlayback(
   const exit = useRef(exitFullscreen);
   exit.current = exitFullscreen;
   const media = useMemo(() => castMedia(track, source), [track, source]);
+  const local = canPrepareLocalCast(track);
   const resolver = useMemo(
     () =>
-      canPrepareYouTubeCast(track)
+      local
         ? {
-            contentId: youtubeCastContentId(track),
+            contentId: localCastContentId(track),
             resolve: async (signal: AbortSignal) => {
               await waitForCastStop();
-              return resolveYouTubeCast(track, signal);
+              return resolveLocalCast(track, signal);
             },
+            canAdopt: (state: CastState) => state.localSourceActive,
           }
-        : undefined,
-    [track],
+        : canPrepareYouTubeCast(track)
+          ? {
+              contentId: youtubeCastContentId(track),
+              resolve: async (signal: AbortSignal) => {
+                await waitForCastStop();
+                return resolveYouTubeCast(track, signal);
+              },
+            }
+          : undefined,
+    [track, local],
   );
   const eligible = !!media || !!resolver;
-  const sourceReason = track.youtubeId
-    ? CAST_YOUTUBE_UNSUPPORTED
-    : CAST_SOURCE_UNSUPPORTED;
+  const sourceReason = track.localUri
+    ? CAST_LOCAL_UNSUPPORTED
+    : track.youtubeId
+      ? CAST_YOUTUBE_UNSUPPORTED
+      : CAST_SOURCE_UNSUPPORTED;
   const handoff = useMemo(
     () =>
       new CastHandoff(
@@ -143,6 +161,7 @@ export function useCastPlayback(
         handoff.contentId &&
         next.contentId === handoff.contentId &&
         next.hasMedia &&
+        handoff.accepts(next) &&
         !wantsCast.current &&
         !adopting &&
         !handoff.getSnapshot().active &&
@@ -214,7 +233,12 @@ export function useCastPlayback(
       t("Cast"),
       t(CAST_UNAVAILABLE),
     );
-  }, [eligible, sourceReason, t]);
+    native?.configureLocal?.(
+      local,
+      t("Casting downloaded media"),
+      t("Stop casting"),
+    );
+  }, [eligible, sourceReason, t, local]);
   const picker = async () => {
     setError("");
     if (!native || !remote.available) {
@@ -233,6 +257,14 @@ export function useCastPlayback(
     if (!eligible && remote.connection !== "connected") {
       setError(sourceReason);
       return;
+    }
+    if (local && eligible) {
+      try {
+        await native.reserveLocal?.();
+      } catch {
+        setError("Open Harmonia to start casting this download, then retry.");
+        return;
+      }
     }
     if (eligible && remote.connection === "connected" && !state.active) {
       exit.current();
@@ -281,6 +313,12 @@ export function useCastPlayback(
       current.hasMedia &&
       current.contentId === handoff.contentId
     ) {
+      if (!handoff.accepts(current)) {
+        setError(
+          "The downloaded Cast source stopped. Tap Cast to reconnect or disconnect first.",
+        );
+        return false;
+      }
       await native?.adopt(handoff.contentId);
       setRemote(current);
       handoff.adopt(current);

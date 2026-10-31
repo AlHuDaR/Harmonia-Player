@@ -1,3 +1,10 @@
+## 2.0.0-preview.8 — downloaded-file Cast
+
+- Cast completed app-owned downloads directly over the local network, independently of YouTube metadata or temporary provider URLs.
+- Add selected-file/receiver grants, real HTTP byte-range seeking, MIME/container inspection, bounded connections and source revocation.
+- Keep serving through app backgrounding/screen-off using a foreground media service with Stop casting and lifecycle-bound wake/Wi-Fi locks.
+- Add native HTTP and Android device tests for MP3/M4A/MP4, foreground/background serving, seek and cleanup. Code 14; physical Mi Box downloaded-file acceptance remains pending. See [contract and manual checks](docs/DOWNLOADED_CAST_PREVIEW8.md).
+
 ## 2.0.0-preview.7 — YouTube Cast candidate transfer
 
 - Resolve fresh receiver candidates for finite YouTube video/audio after receiver selection, independently of phone-local Auto/DASH. Admit validated progressive MP4/AAC or compatible clear HLS through short-lived native grants.

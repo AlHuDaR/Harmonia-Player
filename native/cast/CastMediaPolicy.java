@@ -6,6 +6,11 @@ import java.util.Locale;
 
 /** Receiver URLs must not depend on the sender's filesystem, credentials or signed extraction. */
 public final class CastMediaPolicy {
+    /** Terminal receiver status is already a confirmed stop; a pending LOAD never qualifies. */
+    public static boolean settledIdle(String owned, String requested, String pending, String receiver, boolean idle, int reason) {
+        return requested != null && !requested.isEmpty() && requested.equals(owned) && requested.equals(receiver)
+                && !requested.equals(pending) && idle && reason >= 1 && reason <= 4;
+    }
     /** A pending LOAD can arrive late even while status still describes the previous item. */
     public static boolean mayStopOwned(String owned, String requested, String pending, String receiverContentId) {
         return requested != null && !requested.isEmpty() && requested.equals(owned)
