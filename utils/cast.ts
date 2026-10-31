@@ -5,7 +5,9 @@ import { publicWebUrl } from "./linkProviders";
 export const CAST_UNAVAILABLE =
   "Google Cast needs Google Play services on an Android phone. Install the standalone APK; Expo Go and web are unsupported.";
 export const CAST_SOURCE_UNSUPPORTED =
-  "This source cannot be sent to a Cast receiver. Use a public HTTPS MP4 or HLS URL without credentials or query parameters. Extracted, local and DASH sources play on this device.";
+  "Casting isn't supported for this source. You can play it on this device.";
+export const CAST_YOUTUBE_UNSUPPORTED =
+  "YouTube casting isn't supported in this build. You can play it on this device.";
 export interface CastMedia {
   uri: string;
   contentType: "video/mp4" | "application/x-mpegURL";
