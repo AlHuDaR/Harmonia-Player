@@ -1,5 +1,7 @@
 # Preview 5 — adaptive streaming and Android TV acceptance
 
+**Historical preview.5 record:** the work described below was subsequently merged in PR #34. The current app is preview.8/code 14; see the [README](../README.md) and [latest Cast record](DOWNLOADED_CAST_PREVIEW8.md). The owner has confirmed casting from Harmonia to Mi Box. This does not establish direct Android TV installation, adaptive-quality switching or every physical D-pad/lifecycle check listed below.
+
 Follows merged PR #32 on a new branch, `feat/harmonia-tv-adaptive-preview5`, created from verified latest main `bfb8220eae602337a2bf1da8fe1a6fa89c477429`. While this follow-up was in progress, the repository owner merged #32 at its previous head `447fc43` (preview.4). The six follow-up commits were replayed onto that new main without resetting the previous branch. Runtime source equality against the already tested follow-up tree was verified. This preview.5 follow-up has not been merged or published; no automatic merge was performed. Version changes to **2.0.0-preview.5 / Android versionCode 11**, so the updated application can be distinguished from the previous preview. The package, signing configuration, library schema and existing dependencies remain unchanged.
 
 ## Implementation
@@ -27,7 +29,6 @@ A best-effort JVM discovery probe used the existing NewPipe downloader and a pub
 `adb devices` found no attached device/emulator. Native decoding, actual bandwidth-driven quality switching, Mi Box launcher presentation, physical remote navigation, HDMI/Bluetooth, background controls and cold/repeated sharing therefore remain **unverified**. The new grouped ladder is a tested implementation boundary, not a claim of end-to-end live YouTube success. The exact Mi Box model/OS and a target public URL were requested; until supplied, compatibility work targets Android TV API 24+ with both ARM userspaces.
 
 The refreshed October 31 npm audit fails with **17 affected entries: 5 high, 10 moderate, 2 low**; affected roots include decode-uri-component, Zod, deepmerge, glob and minimatch. This is an updated advisory database result without dependency changes, not 17 independent proven application exploits. No forced SDK migration or unverified override was applied. The downstream Media3/NewPipe request-policy limitations described in [the earlier repair record](MEDIA_REPAIR_2026_10.md) remain open. This work does not certify completion of the entire original roadmap or remove existing provider restrictions. The [Arabic TV installation/test guide](ANDROID_TV_AR.md) includes PowerShell commands and the required device acceptance procedure.
-
 
 ## APK inspection
 

@@ -1,8 +1,8 @@
 # YouTube Cast candidate transfer — preview.7
 
-The owner subsequently reported streaming Cast working on Mi Box. [Preview.8](DOWNLOADED_CAST_PREVIEW8.md) adds a separate downloaded-file source; the local-file exclusion below describes preview.7.
+The owner subsequently reported streaming Cast working on Mi Box and then confirmed downloaded-file Cast working after installing [preview.8](DOWNLOADED_CAST_PREVIEW8.md). These are owner-reported device outcomes. Preview.8 adds a separate downloaded-file source; the local-file exclusion below describes preview.7.
 
-Preview **2.0.0-preview.7 / Android versionCode 13** implements a separate YouTube Cast-source resolver. Tapping Harmonia's Cast icon can now open the SDK receiver picker for an online YouTube track, including one playing through phone-local Auto/DASH. This is a candidate-based implementation; successful YouTube playback on physical Mi Box/Chromecast hardware remains unverified.
+Preview **2.0.0-preview.7 / Android versionCode 13** implements a separate YouTube Cast-source resolver. Tapping Harmonia's Cast icon can now open the SDK receiver picker for an online YouTube track, including one playing through phone-local Auto/DASH. This is a candidate-based implementation; Mi Box streaming playback is owner-confirmed, while other receivers and source combinations still need device checks.
 
 ## Source contract
 
@@ -44,6 +44,6 @@ The supplied phone image shows a Mi Box route in Android's media-output panel; t
 
 Local validation passed TypeScript, **171 unit tests**, **19 browser tests**, **42 native JVM tests in 10 classes**, and **21/21 Expo Doctor checks**. The universal release APK assembled and its v2 signature, all four ABIs, code 13 and updated native/JS code were verified. This incremental local assembly reused unchanged linked C++ libraries and excluded their 16 previously completed CMake build tasks after disposable object cleanup; hosted CI performs the normal build independently. APK provenance and subsequent hosted results are recorded in the draft pull request.
 
-Focused tests cover granted-source admission/rejection, expiry/identity binding, single-use native grants, HLS codecs/audio/protection, cancellation and late completions, current position/play intent, resumed ownership, pending LOAD stop policy, buffering timeouts, healthy native receiver state after backgrounding and bounded recovery. Browser tests exercise fixtures and the unavailable-Cast environment, not the Android Cast SDK or live YouTube. Physical receiver playback and live provider acceptance remain pending.
+Focused tests cover granted-source admission/rejection, expiry/identity binding, single-use native grants, HLS codecs/audio/protection, cancellation and late completions, current position/play intent, resumed ownership, pending LOAD stop policy, buffering timeouts, healthy native receiver state after backgrounding and bounded recovery. Browser tests exercise fixtures and the unavailable-Cast environment, not the Android Cast SDK or live YouTube. The owner subsequently confirmed Mi Box streaming playback; other receivers and source combinations remain outside that report.
 
 Windows/Android Studio builds continue to use the [existing PowerShell instructions](WINDOWS_BUILD.md). Remaining dependency/security advisories are unchanged by this feature.

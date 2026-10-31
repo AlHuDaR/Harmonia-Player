@@ -1,6 +1,6 @@
 # Harmonia 2.0 media repair — review and acceptance record
 
-Historical preview.4 evidence below. For the newer preview.5/code 11 TV and adaptive-streaming work, see [the current verification record](TV_STREAMING_PREVIEW5.md).
+Historical preview.4 evidence below. The [preview.5 TV/adaptive-streaming record](TV_STREAMING_PREVIEW5.md) covers the next increment. For the current preview.8 features and owner-confirmed Mi Box Cast outcome, see the [README](../README.md) and [downloaded-file Cast record](DOWNLOADED_CAST_PREVIEW8.md).
 
 ## Scope and baseline
 
@@ -46,21 +46,21 @@ These are not reported as reproduced bugs:
 
 Automated tests use mocked fixtures; “covered” means the named boundary, not live-provider/device success.
 
-| Case | Automated evidence | Acceptance still required |
-| --- | --- | --- |
-| YouTube | Existing discovery, source and format mock tests | Live NewPipe playback/download and provider restrictions |
-| Instagram | Embed parser fixtures, shortcode/private/unavailable cases; JS choices | Real share redirects and Android playback |
-| Facebook | Canonical IDs/wrappers, mocked discovered choices, OG parser fixtures | Real public video/Reel/watch/share, access refusal |
-| Snapchat Spotlight | Opaque-ID canonicalization, lookalikes, mocked choices, public metadata parser | Real public Spotlight and source-specific unavailable pages |
-| Direct MP4/audio | Existing probe/source tests and browser fixture playback/pause/seek | Android codec support and offline copy |
-| Unsupported links | Existing policy/browser/save tests | Device browser chooser |
-| Private/login-required | Instagram private fixtures; social missing OG/HTTP access failures | Real provider restrictions without credentials |
-| Expired links | Native HTTP refusal/retry policy; fresh source resolution retained | Actual expiring CDN link/retry |
-| Offline/unstable | Existing finite retry/length tests and structured network errors | Airplane mode, reconnect, process kill |
-| Closed/repeated sharing | Inbox FIFO/token tests, separate content URI envelope | ACTION_SEND/MULTIPLE cold/warm delivery and granted file reads |
-| Cancellation/recovery | Existing store/native transfer-state tests | Worker cancellation/interruption/restart/notification race |
-| English/Arabic | Existing browser language/theme/filter/save coverage; new strings | Native import/error UI and RTL on device |
-| Playback speed | Browser fixture asserts HTML playbackRate changes | Android speed/seek/audio focus behavior |
+| Case                    | Automated evidence                                                             | Acceptance still required                                      |
+| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| YouTube                 | Existing discovery, source and format mock tests                               | Live NewPipe playback/download and provider restrictions       |
+| Instagram               | Embed parser fixtures, shortcode/private/unavailable cases; JS choices         | Real share redirects and Android playback                      |
+| Facebook                | Canonical IDs/wrappers, mocked discovered choices, OG parser fixtures          | Real public video/Reel/watch/share, access refusal             |
+| Snapchat Spotlight      | Opaque-ID canonicalization, lookalikes, mocked choices, public metadata parser | Real public Spotlight and source-specific unavailable pages    |
+| Direct MP4/audio        | Existing probe/source tests and browser fixture playback/pause/seek            | Android codec support and offline copy                         |
+| Unsupported links       | Existing policy/browser/save tests                                             | Device browser chooser                                         |
+| Private/login-required  | Instagram private fixtures; social missing OG/HTTP access failures             | Real provider restrictions without credentials                 |
+| Expired links           | Native HTTP refusal/retry policy; fresh source resolution retained             | Actual expiring CDN link/retry                                 |
+| Offline/unstable        | Existing finite retry/length tests and structured network errors               | Airplane mode, reconnect, process kill                         |
+| Closed/repeated sharing | Inbox FIFO/token tests, separate content URI envelope                          | ACTION_SEND/MULTIPLE cold/warm delivery and granted file reads |
+| Cancellation/recovery   | Existing store/native transfer-state tests                                     | Worker cancellation/interruption/restart/notification race     |
+| English/Arabic          | Existing browser language/theme/filter/save coverage; new strings              | Native import/error UI and RTL on device                       |
+| Playback speed          | Browser fixture asserts HTML playbackRate changes                              | Android speed/seek/audio focus behavior                        |
 
 Final executed check results and blockers are recorded below before PR submission.
 
