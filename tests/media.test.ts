@@ -25,3 +25,8 @@ describe("direct media input", () => {
     );
   });
 });
+
+it("preserves a valid stream URL whose filename contains malformed UTF-8 escapes", () => {
+  const uri = "https://cdn.example.com/music%FF.mp3?sig=abc";
+  expect(directTrack(uri)).toMatchObject({ uri, title: "music%FF.mp3", kind: "audio" });
+});

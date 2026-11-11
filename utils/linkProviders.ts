@@ -119,6 +119,13 @@ export function classifyLink(input: string): SharedLink {
     actions: ["save", "browser"],
   };
 }
+/** Pasted provider pages use the same actions as Android Share. */
+export function pastedProviderLink(input: string): SharedLink | undefined {
+  const link = classifyLink(input.trim());
+  if (link.kind === "youtube" || !providers.some(({ name }) => name === link.provider))
+    return undefined;
+  return link;
+}
 export function sharedLinks(text: string): SharedLink[] {
   if (typeof text !== "string" || text.length > 4096) return [];
   const links = new Map<string, SharedLink>();

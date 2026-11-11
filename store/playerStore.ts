@@ -70,7 +70,7 @@ export const useLibraryStatus = create<{ hydrated: boolean; error: boolean }>(
 
 export const usePlayerStore = create<PlayerStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       savedLinks: [],
       saveLink: (link) => {
         const checked = classifyLink(link.url);
@@ -129,7 +129,11 @@ export const usePlayerStore = create<PlayerStore>()(
       autoQueue: false,
       position: 0,
       resumePoints: {},
-      rememberPosition: (track, position, duration) => set((s) => ({ resumePoints: saveResume(s.resumePoints, track, position, duration) })),
+      rememberPosition: (track, position, duration) => {
+        const previous = get().resumePoints;
+        const next = saveResume(previous, track, position, duration);
+        if (next !== previous) set({ resumePoints: next });
+      },
       setExpanded: (expanded) => set({ expanded }),
       enqueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
       removeQueued: (index) =>

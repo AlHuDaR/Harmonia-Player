@@ -1,3 +1,4 @@
+import { redirectSystemPath } from "../app/+native-intent";
 import { sharedLinks } from "../utils/linkProviders";
 import { describe, it, expect, vi } from "vitest";
 vi.mock("react-native", () => ({
@@ -39,4 +40,11 @@ it("accepts a file-share envelope once without interpreting content URIs as link
   expect(accept(value)).toBe("");
   expect(accept(value)).toBeUndefined();
   expect(sharedLinks("content://provider/video")).toEqual([]);
+});
+
+it("keeps oversized or external Android intents out of the navigation parser", () => {
+  expect(redirectSystemPath({ path: "/library?data=" + "%FF".repeat(1500), initial: true })).toBe("/");
+  expect(redirectSystemPath({ path: "HARMONIA://library", initial: false })).toBe("/");
+  expect(redirectSystemPath({ path: "https://example.com/file.mp4", initial: false })).toBe("/");
+  expect(redirectSystemPath({ path: "/library", initial: false })).toBe("/library");
 });

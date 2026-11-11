@@ -593,3 +593,14 @@ test("keyboard and remote-style focus stays visible and activates navigation", a
   await page.keyboard.press("Enter");
   await expect(page.getByRole("button",{name:"Settings",exact:true})).toBeVisible();
 });
+
+test("pasted social links expose share actions without opening the player", async ({ page }) => {
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Open link", exact: true }).click();
+  await page.getByLabel("Media URL", { exact: true }).fill("https://www.tiktok.com/@sample/video/123");
+  await page.getByRole("button", { name: "Open URL", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Open in Browser" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save Link" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Download Video" })).toBeDisabled();
+  await expect(page.locator("video")).toHaveCount(0);
+});

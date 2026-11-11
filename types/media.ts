@@ -49,11 +49,16 @@ export function directTrack(input: string, title?: string): Track {
     throw new Error(
       "Use YouTube search for YouTube links; a page URL is not a media stream.",
     );
+  const filename = url.pathname.split("/").pop() || "Direct stream";
+  let displayName = filename;
+  try {
+    displayName = decodeURIComponent(filename);
+  } catch {
+    // A URL can be valid even if its path cannot be decoded as UTF-8.
+  }
   return {
     id: `url:${url.href}`,
-    title:
-      title?.trim() ||
-      decodeURIComponent(url.pathname.split("/").pop() || "Direct stream"),
+    title: title?.trim() || displayName,
     artist: url.hostname,
     uri: url.href,
     kind: /\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(url.pathname)

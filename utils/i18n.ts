@@ -228,6 +228,7 @@ export const ar: Record<string, string> = {
     "استورد ملفاً لإضافته إلى المكتبة.",
   "Import local audio or video": "استيراد صوت أو فيديو",
   "Open a YouTube or media URL": "فتح رابط يوتيوب أو وسائط",
+  "Media or social link": "رابط وسائط أو منصة اجتماعية",
   "YouTube link or direct media URL": "رابط يوتيوب أو رابط وسائط مباشر",
   "Media URL": "رابط الوسائط",
   "Open URL": "فتح الرابط",

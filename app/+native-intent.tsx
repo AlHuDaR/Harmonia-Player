@@ -6,6 +6,6 @@ export function redirectSystemPath({
   path: string;
   initial: boolean;
 }) {
-  if (/^https?:/i.test(path) || path.startsWith("harmonia:")) return "/";
+  if (path.length > 4096 || /^(?:https?|harmonia):/i.test(path)) return "/";
   return path;
 }
