@@ -163,8 +163,9 @@ test("unsupported Cast environment leaves local playback, seeking and speed oper
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
     .toBe(false);
   await page
-    .getByRole("button", { name: "Playback speed 1×", exact: true })
+    .getByRole("button", { name: "Playback tools · 1×", exact: true })
     .click();
+  await page.getByRole("radio", { name: "1.25×", exact: true }).click();
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.playbackRate))
     .toBe(1.25);

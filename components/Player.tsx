@@ -30,7 +30,8 @@ import {
 } from "@/utils/youtube";
 import { message, type Track } from "@/types/media";
 import { useCastPlayback } from "@/hooks/useCastPlayback";
-import { Button } from "./MediaUI";
+import { Button, ChoiceChip } from "./MediaUI";
+import { playbackLoop, playbackSpeeds, type LoopRange } from "@/utils/playbackControls";
 
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60)
@@ -139,6 +140,15 @@ function MediaEngine({
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
   const speed = settings.playbackSpeed;
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [loopStart, setLoopStart] = useState<number | null>(null);
+  const [loop, setLoop] = useState<LoopRange | null>(null);
+  const loopRef = useRef<LoopRange | null>(null);
+  function clearLoop() {
+    loopRef.current = null;
+    setLoopStart(null);
+    setLoop(null);
+  }
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const expanded = usePlayerStore((s) => s.expanded);
@@ -195,6 +205,13 @@ function MediaEngine({
     view.current?.exitFullscreen().catch(() => {});
   });
   const remoteActive = cast.active || cast.loading;
+  const canLoop = !remoteActive && !cast.preparing && Number.isFinite(duration) && duration >= 2;
+  useEffect(() => {
+    if (remoteActive || cast.preparing) clearLoop();
+  }, [remoteActive, cast.preparing]);
+  useEffect(() => {
+    player.timeUpdateEventInterval = loop ? 0.25 : 1;
+  }, [player, loop]);
   const currentPosition = remoteActive ? cast.remote.position : position;
   const currentDuration = remoteActive ? cast.remote.duration : duration;
   const isPlaying = remoteActive ? cast.remote.playing : playing;
@@ -278,10 +295,21 @@ function MediaEngine({
       setPlaying(e.isPlaying),
     );
     const time = player.addListener("timeUpdate", (e) => {
-      setPosition(e.currentTime);
+      const range = loopRef.current;
+      if (range && player.playing && e.currentTime >= range.end) {
+        player.currentTime = range.start;
+        setPosition(range.start);
+      } else {
+        setPosition(e.currentTime);
+      }
       setDuration(player.duration);
     });
     const end = player.addListener("playToEnd", () => {
+      if (loopRef.current) {
+        player.currentTime = loopRef.current.start;
+        player.play();
+        return;
+      }
       const s = usePlayerStore.getState();
       if (s.repeat === "one") {
         player.currentTime = 0;
@@ -321,18 +349,40 @@ function MediaEngine({
       }
     };
   }, [player]);
-  function seek(delta: number) {
+  function seekTo(value: number) {
     if (remoteActive) {
-      void cast.command("seek", Math.max(0, cast.remote.position + delta));
+      if (cast.remote.canSeek) void cast.command("seek", value);
       return;
     }
-    player.currentTime = Math.max(
-      0,
-      Math.min(
-        player.duration || Number.MAX_SAFE_INTEGER,
-        player.currentTime + delta,
-      ),
-    );
+    if (loop && (value < loop.start || value >= loop.end)) clearLoop();
+    player.currentTime = value;
+    setPosition(value);
+  }
+  function seek(delta: number) {
+    const from = remoteActive ? cast.remote.position : player.currentTime;
+    seekTo(Math.max(0, Math.min(currentDuration || Number.MAX_SAFE_INTEGER, from + delta)));
+  }
+  function markLoop() {
+    if (loop) {
+      clearLoop();
+      return;
+    }
+    if (!canLoop) return;
+    if (loopStart === null) {
+      setActionError("");
+      setLoopStart(player.currentTime);
+      return;
+    }
+    const range = playbackLoop(loopStart, player.currentTime, player.duration);
+    if (!range) {
+      setActionError("Choose an end point at least 2 seconds after the start.");
+      return;
+    }
+    setActionError("");
+    loopRef.current = range;
+    setLoop(range);
+    player.currentTime = range.start;
+    setPosition(range.start);
   }
   async function changeMode(audio: boolean) {
     if (switching || remoteActive) return;
@@ -610,11 +660,8 @@ function MediaEngine({
               value={currentPosition}
               duration={currentDuration}
               disabled={remoteActive && !cast.remote.canSeek}
-              onSeek={(value) => {
-                if (remoteActive) {
-                  if (cast.remote.canSeek) void cast.command("seek", value);
-                } else player.currentTime = value;
-              }}
+              loop={remoteActive ? null : loop}
+              onSeek={seekTo}
             />
             <View
               style={[
@@ -722,23 +769,15 @@ function MediaEngine({
             <View
               style={[
                 styles.row,
-                { direction: "ltr", justifyContent: "center" },
+                { direction: "ltr", justifyContent: "center", flexWrap: "wrap" },
               ]}
             >
-              <Pressable
-                accessibilityRole="button"
-                disabled={remoteActive}
-                accessibilityLabel={`${t("Playback speed")} ${speed}×`}
-                onPress={() => {
-                  const rates = [0.75, 1, 1.25, 1.5, 2];
-                  const next = rates[(rates.indexOf(speed) + 1) % rates.length];
-                  transport.updateSettings({ playbackSpeed: next });
-                }}
-              >
-                <Text raw style={styles.button}>
-                  {speed}×
-                </Text>
-              </Pressable>
+              <Button
+                title={`${t("Playback tools")} · ${speed}×`}
+                raw
+                expanded={controlsOpen}
+                onPress={() => setControlsOpen(!controlsOpen)}
+              />
               <IconButton
                 name="replay-10"
                 label="Seek back 10 seconds"
@@ -752,6 +791,33 @@ function MediaEngine({
                 onPress={() => seek(10)}
               />
             </View>
+            {controlsOpen && (
+              <View style={{ backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: 16, padding: 12, marginHorizontal: 12, gap: 8 }}>
+                {!remoteActive && (
+                  <View accessibilityRole="radiogroup" accessibilityLabel={t("Playback speed")}
+                    style={[styles.row, { flexWrap: "wrap" }]}>
+                    {playbackSpeeds.map((rate) => (
+                      <ChoiceChip key={rate} label={`${rate}×`} selected={speed === rate}
+                        onPress={() => transport.updateSettings({ playbackSpeed: rate })} />
+                    ))}
+                  </View>
+                )}
+                {canLoop && (
+                  <View style={[styles.row, { flexWrap: "wrap" }]}>
+                    <Button title={loop ? "Clear A–B loop" : loopStart === null ? "Set loop start (A)" : "Set loop end (B)"} onPress={markLoop} />
+                    {loopStart !== null && !loop && (
+                      <Button title="Cancel" onPress={() => { clearLoop(); setActionError(""); }} />
+                    )}
+                  </View>
+                )}
+                {loopStart !== null && !remoteActive && (
+                  <Text raw style={styles.muted}>
+                    {loop ? `A ${clock(loop.start)} – B ${clock(loop.end)}` : `A ${clock(loopStart)}`}
+                  </Text>
+                )}
+                {remoteActive && <Text style={styles.muted}>Speed and A–B loop are available during local playback.</Text>}
+              </View>
+            )}
           </>
         )}
         {!!error && (
