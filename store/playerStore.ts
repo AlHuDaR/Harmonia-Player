@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { normalizePreset, type ThemePreset } from "@/constants/themes";
 import type { Track, Playlist, Download } from "@/types/media";
+import { playbackSpeeds } from "@/utils/playbackControls";
 import { resumeKey, resumePosition, saveResume, type ResumePoint } from "@/utils/playbackResume";
 
 export interface SavedLink {
@@ -340,7 +341,7 @@ export const usePlayerStore = create<PlayerStore>()(
               state.settings.transparency === "solid" ? "solid" : "subtle",
             downloadKind:
               state.settings.downloadKind === "video" ? "video" : "audio",
-            playbackSpeed: [0.75, 1, 1.25, 1.5, 2].includes(state.settings.playbackSpeed) ? state.settings.playbackSpeed : 1,
+            playbackSpeed: playbackSpeeds.includes(state.settings.playbackSpeed) ? state.settings.playbackSpeed : 1,
           };
           state.downloads = state.downloads.map((d) =>
             d.status === "downloading" && !d.nativeId

@@ -67,7 +67,8 @@ for (const [file, type] of [
       .fill(`https://media.example.com/${file}`);
     await page.getByRole("button", { name: "Open URL", exact: true }).click();
     const video = page.locator("video");
-    await page.getByRole("button", { name: "Playback speed 1×", exact: true }).click();
+    await page.getByRole("button", { name: "Playback tools · 1×", exact: true }).click();
+    await page.getByRole("radio", { name: "1.25×", exact: true }).click();
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.playbackRate)).toBe(1.25);
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
@@ -103,6 +104,22 @@ for (const [file, type] of [
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
       .toBeGreaterThan(10);
+    if (file === "video.mp4") {
+      const timeline = page.getByLabel("Seek", { exact: true });
+      await timeline.scrollIntoViewIfNeeded();
+      const bar = (await timeline.boundingBox())!;
+      await page.mouse.move(bar.x + bar.width * 0.2, bar.y + bar.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(bar.x + bar.width * 0.5, bar.y + bar.height / 2, { steps: 8 });
+      await page.mouse.up();
+      await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime / v.duration)).toBeCloseTo(0.5, 1);
+      await page.getByRole("button", { name: "Set loop start (A)", exact: true }).click();
+      const start = await video.evaluate((v: HTMLVideoElement) => v.currentTime);
+      await page.getByLabel("Seek forward 10 seconds", { exact: true }).click();
+      await page.getByRole("button", { name: "Set loop end (B)", exact: true }).click();
+      await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeCloseTo(start, 1);
+      await page.getByRole("button", { name: "Clear A–B loop", exact: true }).click();
+    }
     await page.getByLabel("Favorite", { exact: true }).click();
     await page.getByLabel("Close player", { exact: true }).click();
     await expect(video).toHaveCount(0);
