@@ -40,8 +40,7 @@ public final class MediaModule extends ReactContextBaseJavaModule {
                 String state=r.getString("status");
                 if(state.equals("queued")||state.equals("downloading")||state.equals("retrying")){p.resolve(r.toString());return;}
                 if(state.equals("complete")) {
-                    String local=r.getJSONObject("track").optString("localUri");
-                    if(!local.isEmpty() && new File(android.net.Uri.parse(local).getPath()).isFile()){p.resolve(r.toString());return;}
+                    if(hasOfflineFile(r)){p.resolve(r.toString());return;}
                 }
                 forget(r.getString("nativeId"));
             }
@@ -56,7 +55,21 @@ public final class MediaModule extends ReactContextBaseJavaModule {
             record.remove("source");p.resolve(record.toString());
         } catch(Exception e){p.reject("E_DOWNLOAD","Could not queue download. Check source, storage and background-work availability.");}
     }
+    private static boolean hasOfflineFile(JSONObject record) throws JSONException {
+        String uri=record.getJSONObject("track").optString("localUri");
+        android.net.Uri parsed=android.net.Uri.parse(uri);
+        String path=parsed.getPath();
+        if(!"file".equals(parsed.getScheme()) || path==null)return false;
+        File file=new File(path);
+        return file.isFile() && file.length()>0;
+    }
     @ReactMethod public synchronized void downloads(Promise p){
+        readDownloads(false,p);
+    }
+    @ReactMethod public synchronized void verifyDownloads(Promise p){
+        readDownloads(true,p);
+    }
+    private void readDownloads(boolean verifyOffline,Promise p){
         try{
             Context c=getReactApplicationContext();JSONArray records=DownloadRecords.all(c);
             for(int i=0;i<records.length();i++) {
@@ -65,6 +78,9 @@ public final class MediaModule extends ReactContextBaseJavaModule {
                     WorkInfo info=WorkManager.getInstance(c).getWorkInfoById(UUID.fromString(id)).get();
                     if(info!=null && info.getState()==WorkInfo.State.CANCELLED) DownloadRecords.update(c,id,"cancelled",0,"Download cancelled.",null);
                     else if(info==null || info.getState()==WorkInfo.State.FAILED) DownloadRecords.update(c,id,"failed",0,"Background job stopped. Retry to resolve fresh media.",null);
+                }
+                if(verifyOffline && status.equals("complete") && !hasOfflineFile(r)) {
+                    DownloadRecords.update(c,id,"failed",0,"Offline file is missing or empty. Download it again.",null);
                 }
                 if(status.equals("cancelled")) {
                     File dir=new File(c.getFilesDir(),"media-jobs");File[] files=dir.listFiles();

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const bridge = vi.hoisted(() => ({
   enqueueDownload: vi.fn(),
   downloads: vi.fn(),
+  verifyDownloads: vi.fn(),
   cancel: vi.fn(),
   forgetDownload: vi.fn(),
 }));
@@ -32,6 +33,7 @@ vi.mock("../utils/youtube", () => ({
 import {
   downloadTrack,
   syncNativeDownloads,
+  verifyOfflineDownloads,
   cancelDownload,
   deleteDownload,
 } from "../utils/downloads";
@@ -177,4 +179,18 @@ it("does not resurrect a download removed while native polling was in flight", a
   finish(JSON.stringify([record]));
   await poll;
   expect(usePlayerStore.getState().downloads).toEqual([]);
+});
+
+it("reconciles a missing native file through the verification bridge", async () => {
+  usePlayerStore.getState().setDownload({
+    track: { ...track, localUri: "file:///jobs/missing.mp4" },
+    nativeId: "job", status: "complete", progress: 1,
+  });
+  bridge.verifyDownloads.mockResolvedValue(JSON.stringify([
+    { track, nativeId: "job", status: "failed", progress: 0, error: "Offline file is missing or empty. Download it again." },
+  ]));
+  await verifyOfflineDownloads();
+  expect(bridge.downloads).not.toHaveBeenCalled();
+  expect(usePlayerStore.getState().downloads[0]).toMatchObject({ status: "failed", progress: 0 });
+  expect(usePlayerStore.getState().tracks[0].localUri).toBeUndefined();
 });

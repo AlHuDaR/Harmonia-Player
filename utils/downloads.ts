@@ -25,11 +25,8 @@ export async function downloadTrack(track: Track): Promise<void> {
     const existing = store.downloads.find(
       (d) => d.track.id === track.id && d.status === "complete",
     );
-    if (
-      existing?.track.localUri &&
-      (await FileSystem.getInfoAsync(existing.track.localUri)).exists
-    )
-      return;
+    if (existing?.track.localUri && await hasOfflineFile(existing.track.localUri)) return;
+    track = { ...track, localUri: undefined };
     store.setDownload({ track, status: "downloading", progress: 0, createdAt: Date.now() });
     await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
     const source = await resolveSource(track, undefined, true);
@@ -217,10 +214,48 @@ export async function cleanInterruptedDownloads(): Promise<void> {
   );
 }
 
-export async function syncNativeDownloads(): Promise<void> {
+async function hasOfflineFile(uri: string): Promise<boolean> {
+  const info = await FileSystem.getInfoAsync(uri);
+  return info.exists && !info.isDirectory && info.size > 0;
+}
+
+export async function verifyOfflineDownloads(): Promise<void> {
+  if (Platform.OS === "web") return;
+  const hasNativeVerification = Platform.OS === "android" &&
+    typeof NativeModules?.HarmoniaMedia?.verifyDownloads === "function";
+  if (hasNativeVerification) await syncNativeDownloads(true);
+  const snapshot = usePlayerStore.getState().downloads;
+  for (const record of snapshot) {
+    if (record.status !== "complete" || record.nativeId) continue;
+    const { track } = record;
+    if (track.localUri && await hasOfflineFile(track.localUri)) continue;
+    const store = usePlayerStore.getState();
+    if (active.has(track.id) || deleting.has(track.id) ||
+        !store.downloads.includes(record)) continue;
+    store.setDownload({
+      ...record,
+      track: { ...track, localUri: undefined },
+      status: "failed",
+      progress: 0,
+      error: "Offline file is missing or empty. Download it again.",
+    });
+  }
+}
+
+export async function retryFailedDownloads(ids: readonly string[]): Promise<void> {
+  for (const id of ids) {
+    const record = usePlayerStore.getState().downloads.find((d) => d.track.id === id);
+    if (record?.status !== "failed") continue;
+    // Continue the batch. downloadTrack records each item's error on its card.
+    await downloadTrack(record.track).catch(() => {});
+  }
+}
+
+export async function syncNativeDownloads(verifyOffline = false): Promise<void> {
   if (Platform.OS !== "android" || !NativeModules?.HarmoniaMedia) return;
   const snapshot = new Map(usePlayerStore.getState().downloads.map((d) => [d.track.id, d]));
-  const records = JSON.parse(await NativeModules.HarmoniaMedia.downloads());
+  const bridge = NativeModules.HarmoniaMedia;
+  const records = JSON.parse(await (verifyOffline ? bridge.verifyDownloads() : bridge.downloads()));
   if (!Array.isArray(records)) throw new Error("Invalid download records.");
   for (const record of records) {
     if (active.has(record?.track?.id) || deleting.has(record?.track?.id)) continue;
