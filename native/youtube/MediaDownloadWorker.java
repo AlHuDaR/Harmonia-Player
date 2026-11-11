@@ -47,15 +47,15 @@ public final class MediaDownloadWorker extends Worker {
             String title=record.getJSONObject("track").optString("title","Media");
             setForegroundAsync(notification(title,0)).get();
             JSONObject source=record.getJSONObject("source");
-            DownloadRecords.update(context,id,"downloading",0,null,null);
+            if(!DownloadRecords.update(context,id,"downloading",0,null,null))return Result.failure();
             File video=file(".video.part"),audio=file(".audio.part"),output=file(".output.part");
             boolean separate=source.has("audioUri");
             File committed=file(extension(source,record.getJSONObject("track")));
             // A process can die after final rename but before WorkManager records success.
             if(committed.isFile()) {
                 inspect(committed,record.getJSONObject("track").getString("kind"),separate);
-                DownloadRecords.update(context,id,"complete",1,null,Uri.fromFile(committed).toString());
-                complete=true;return Result.success();
+                complete=DownloadRecords.update(context,id,"complete",1,null,Uri.fromFile(committed).toString());
+                return complete?Result.success():Result.failure();
             }
             for(File partial:new File[]{video,audio,output})partial.delete();
             transfer(source.getString("uri"),video,separate?0.7:1,0,title,source.optJSONObject("headers"));
@@ -67,8 +67,8 @@ public final class MediaDownloadWorker extends Worker {
             inspect(output,record.getJSONObject("track").getString("kind"),separate);
             File target=file(extension(source,record.getJSONObject("track")));
             if(!output.renameTo(target))throw new IOException("Could not commit downloaded media.");
-            DownloadRecords.update(context,id,"complete",1,null,Uri.fromFile(target).toString());
-            complete=true;return Result.success();
+            complete=DownloadRecords.update(context,id,"complete",1,null,Uri.fromFile(target).toString());
+            return complete?Result.success():Result.failure();
         } catch(Exception e) {
             if(isStopped()) return Result.failure();
             Throwable cause=e;while(cause instanceof java.util.concurrent.ExecutionException && cause.getCause()!=null)cause=cause.getCause();
@@ -78,7 +78,7 @@ public final class MediaDownloadWorker extends Worker {
             return retry?Result.retry():Result.failure();
         } finally {
             for(String suffix:new String[]{".video.part",".audio.part",".output.part"})file(suffix).delete();
-            if(isStopped() || !complete) {
+            if(!complete) {
                 File[] leftovers=file(".output.part").getParentFile().listFiles();
                 if(leftovers!=null)for(File f:leftovers)if(f.getName().startsWith(id+"."))f.delete();
             }
@@ -113,8 +113,7 @@ public final class MediaDownloadWorker extends Worker {
                         last=System.currentTimeMillis();
                         if(new StatFs(target.getParent()).getAvailableBytes()<16L*1024*1024)throw new PermanentFailure("Not enough free storage.");
                         double p=offset+(length>0?Math.min(1,(double)count/length)*weight:0);
-                        DownloadRecords.update(context,id,"downloading",p,null,null);
-                        DownloadRecords.transfer(context,id,count,length,count*1000/Math.max(1,android.os.SystemClock.elapsedRealtime()-started));
+                        DownloadRecords.transfer(context,id,p,count,length,count*1000/Math.max(1,android.os.SystemClock.elapsedRealtime()-started));
                         setForegroundAsync(notification(title,(int)(p*100)));
                     }
                 }

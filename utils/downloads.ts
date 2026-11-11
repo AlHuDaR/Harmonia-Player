@@ -5,10 +5,11 @@ import { usePlayerStore } from "@/store/playerStore";
 import { resolveSource, muxDownload } from "./youtube";
 import { message, type Track } from "@/types/media";
 const active = new Set<string>();
+const deleting = new Set<string>();
 export async function downloadTrack(track: Track): Promise<void> {
   if (Platform.OS === "web")
     throw new Error("Offline downloads are available in the Android app.");
-  if (active.has(track.id)) return;
+  if (active.has(track.id) || deleting.has(track.id)) return;
   const store = usePlayerStore.getState();
   const pending = store.downloads.find((d) => d.track.id === track.id);
   if (pending?.nativeId && ["queued", "downloading", "retrying"].includes(pending.status))
@@ -148,15 +149,23 @@ export async function downloadTrack(track: Track): Promise<void> {
   }
 }
 export async function deleteDownload(track: Track): Promise<void> {
-  const job = usePlayerStore
-    .getState()
-    .downloads.find((d) => d.track.id === track.id);
-  if (job?.nativeId && NativeModules?.HarmoniaMedia)
-    await NativeModules.HarmoniaMedia.forgetDownload(job.nativeId);
-  const localUri = job?.track.localUri || track.localUri;
-  if (localUri)
-    await FileSystem.deleteAsync(localUri, { idempotent: true });
-  usePlayerStore.getState().removeDownload(track.id);
+  if (deleting.has(track.id)) return;
+  if (active.has(track.id))
+    throw new Error("Wait for the download to finish preparing before removing it.");
+  deleting.add(track.id);
+  try {
+    const job = usePlayerStore
+      .getState()
+      .downloads.find((d) => d.track.id === track.id);
+    if (job?.nativeId && NativeModules?.HarmoniaMedia)
+      await NativeModules.HarmoniaMedia.forgetDownload(job.nativeId);
+    const localUri = job?.track.localUri || track.localUri;
+    if (localUri)
+      await FileSystem.deleteAsync(localUri, { idempotent: true });
+    usePlayerStore.getState().removeDownload(track.id);
+  } finally {
+    deleting.delete(track.id);
+  }
 }
 export async function importMedia(): Promise<void> {
   if (Platform.OS === "web")
@@ -210,10 +219,11 @@ export async function cleanInterruptedDownloads(): Promise<void> {
 
 export async function syncNativeDownloads(): Promise<void> {
   if (Platform.OS !== "android" || !NativeModules?.HarmoniaMedia) return;
+  const snapshot = new Map(usePlayerStore.getState().downloads.map((d) => [d.track.id, d]));
   const records = JSON.parse(await NativeModules.HarmoniaMedia.downloads());
   if (!Array.isArray(records)) throw new Error("Invalid download records.");
   for (const record of records) {
-    if (active.has(record?.track?.id)) continue;
+    if (active.has(record?.track?.id) || deleting.has(record?.track?.id)) continue;
     if (
       record &&
       typeof record.nativeId === "string" &&
@@ -230,6 +240,7 @@ export async function syncNativeDownloads(): Promise<void> {
       const previous = usePlayerStore
         .getState()
         .downloads.find((d) => d.track.id === record.track.id);
+      if (previous !== snapshot.get(record.track.id)) continue;
       if (
         previous?.nativeId !== record.nativeId &&
         (previous?.createdAt || 0) > (record.createdAt || 0)
@@ -242,6 +253,7 @@ export async function syncNativeDownloads(): Promise<void> {
         previous.progress === record.progress &&
         previous.error === record.error &&
         previous.bytesDownloaded === record.bytesDownloaded &&
+        previous.bytesTotal === record.bytesTotal &&
         previous.bytesPerSecond === record.bytesPerSecond &&
         previous.track.localUri === record.track.localUri
       )

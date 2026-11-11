@@ -91,10 +91,11 @@ export class SearchController {
         this.state.activeQuery === searchTerm(this.state.query))
     )
       return;
-    void this.run(false);
+    if (this.state.status === "error") this.retry();
+    else void this.run(false);
   };
   retry = () => {
-    if (!this.request) void this.run(this.state.results.length > 0);
+    if (!this.request) void this.run(!!this.state.nextPage);
   };
   more = () => {
     if (this.state.status === "ready" && this.state.nextPage && !this.request)
@@ -107,6 +108,7 @@ export class SearchController {
       (more && (!this.state.nextPage || this.state.activeQuery !== term))
     )
       return;
+    const cursor = more ? this.state.nextPage : undefined;
     this.cancel();
     const generation = this.generation;
     const request = (this.request = new AbortController());
@@ -118,7 +120,7 @@ export class SearchController {
     try {
       const page = await this.fetchPage(
         term,
-        more ? this.state.nextPage : undefined,
+        cursor,
         request.signal,
       );
       if (request.signal.aborted || generation !== this.generation) return;
@@ -129,7 +131,7 @@ export class SearchController {
       );
       this.update({
         results: [...unique.values()],
-        nextPage: page.nextPage,
+        nextPage: page.nextPage === cursor ? undefined : page.nextPage,
         activeQuery: term,
         status: "ready",
       });

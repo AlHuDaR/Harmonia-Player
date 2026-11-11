@@ -35,13 +35,29 @@ final class MediaDiscovery {
             JSONObject config=new JSONObject(SafeHttp.text("https://player.vimeo.com/video/"+id+"/config",2*1024*1024));
             return vimeo(config,input);
         }
-        if(host.equals("reddit.com") || host.equals("www.reddit.com") || host.equals("old.reddit.com")) {
-            Matcher m=Pattern.compile("/(?:comments)/([a-z0-9]+)(?:/|$)").matcher(url.encodedPath());
-            if(!m.find()) throw new IOException("Use a public Reddit post URL; short links and external embeds are not extracted.");
-            String id=m.group(1);
+        if(isReddit(host) || host.equals("redd.it")) {
+            String id=redditPostId(url);
+            if(id==null && isReddit(host) && url.encodedPath().matches("/r/[^/]+/s/[A-Za-z0-9]+/?")) {
+                try(Response response=SafeHttp.open(input,null)) {
+                    if(!response.isSuccessful())throw new SafeHttp.HttpFailure(response.code());
+                    HttpUrl resolved=response.request().url();
+                    if(isReddit(resolved.host()))id=redditPostId(resolved);
+                }
+            }
+            if(id==null)throw new IOException("Use a public Reddit post URL. External embeds are not extracted.");
             return reddit(new JSONArray(SafeHttp.text("https://www.reddit.com/comments/"+id+".json?raw_json=1",2*1024*1024)),input);
         }
         return probe(input);
+    }
+    private static boolean isReddit(String host) {
+        return host.matches("(?:(?:www|old|m)\\.)?reddit\\.com");
+    }
+    static String redditPostId(HttpUrl url) {
+        String path=url.encodedPath();
+        Matcher id=url.host().equals("redd.it")
+            ?Pattern.compile("^/([a-z0-9]+)/?$").matcher(path)
+            :Pattern.compile("^/(?:r/[^/]+/)?comments/([a-z0-9]+)(?:/|$)").matcher(path);
+        return id.find()?id.group(1):null;
     }
     static JSONObject vimeo(JSONObject config,String page) throws Exception {
         JSONObject video=config.optJSONObject("video"), request=config.optJSONObject("request");
@@ -108,7 +124,14 @@ final class MediaDiscovery {
         if(!fallback.isEmpty() && rv.optBoolean("is_gif")) formats.put(format("mp4-silent",fallback,"video","mp4",true));
         // Reddit fallback files often contain NO AUDIO: do not advertise them as complete videos.
         String hls=rv.optString("hls_url");
-        if(!hls.isEmpty()) {clearPlaylist(hls);formats.put(format("hls-auto",hls,"video","m3u8",false));}
+        if(!hls.isEmpty()) {
+            try {
+                clearPlaylist(hls);
+                formats.put(format("hls-auto",hls,"video","m3u8",false));
+            } catch(IOException unavailable) {
+                if(formats.length()==0)throw unavailable;
+            }
+        }
         if(formats.length()==0) throw new IOException("Reddit exposed no compatible complete media. Video-only fallback is not offered as audio.");
         return new JSONObject().put("title",data.optString("title","Reddit video")).put("page",page).put("formats",formats);
     }
@@ -117,6 +140,7 @@ final class MediaDiscovery {
         try(Response r=SafeHttp.open(url,"bytes=0-65535")) {
             if(r.code()!=200 && r.code()!=206) throw new SafeHttp.HttpFailure(r.code());
             String type=r.header("Content-Type","").toLowerCase(Locale.ROOT);
+            String path=r.request().url().encodedPath().toLowerCase(Locale.ROOT);
             if(r.body()==null) throw new IOException("Empty media response.");
             byte[] bytes=new byte[65536];int count=0,n;
             try(InputStream in=r.body().byteStream()) {while(count<bytes.length && (n=in.read(bytes,count,bytes.length-count))!=-1)count+=n;}
@@ -136,11 +160,26 @@ final class MediaDiscovery {
                 if(!known) throw new IOException("The response does not have a recognized media container signature.");
                 if(type.startsWith("application/octet-stream")) {
                     boolean audio=(bytes[0]=='I' && bytes[1]=='D' && bytes[2]=='3') || ((bytes[0]&255)==255 && (bytes[1]&224)==224)
-                        || SafeHttp.url(url).encodedPath().matches("(?i).*\\.(mp3|m4a|wav|ogg|flac|aac)$");
-                    String path=SafeHttp.url(url).encodedPath().toLowerCase(Locale.ROOT);
-                    type=audio?(path.endsWith(".wav")?"audio/wav":path.endsWith(".ogg")?"audio/ogg":path.endsWith(".flac")?"audio/flac":path.endsWith(".m4a")?"audio/mp4":"audio/mpeg"):(path.endsWith(".webm")?"video/webm":"video/mp4");
+                        || path.matches("(?i).*\\.(mp3|m4a|wav|ogg|flac|aac)$");
+                    type=audio?(path.endsWith(".wav")?"audio/wav":path.endsWith(".ogg")?"audio/ogg":path.endsWith(".flac")?"audio/flac":path.endsWith(".m4a")?"audio/mp4":path.endsWith(".aac")?"audio/aac":"audio/mpeg"):(path.endsWith(".webm")?"video/webm":path.endsWith(".mov")?"video/quicktime":path.endsWith(".mkv")?"video/x-matroska":"video/mp4");
                 }
-                String ext=type.contains("mpeg")?"mp3":type.contains("webm")?"webm":type.contains("ogg")?"ogg":type.contains("flac")?"flac":type.contains("wav")?"wav":type.startsWith("audio/")?"m4a":"mp4";
+                String mime=type.split(";",2)[0].trim();
+                String ext;
+                switch(mime) {
+                    case "audio/mpeg": ext="mp3"; break;
+                    case "audio/aac": ext="aac"; break;
+                    case "audio/webm":
+                    case "video/webm": ext="webm"; break;
+                    case "audio/ogg": ext="ogg"; break;
+                    case "audio/flac":
+                    case "audio/x-flac": ext="flac"; break;
+                    case "audio/wav":
+                    case "audio/x-wav":
+                    case "audio/wave": ext="wav"; break;
+                    case "video/quicktime": ext="mov"; break;
+                    case "video/x-matroska": ext="mkv"; break;
+                    default: ext=type.startsWith("audio/")?"m4a":"mp4";
+                }
                 formats.put(format("original",url,type.startsWith("audio/")?"audio":"video",ext,true));
             }
         }

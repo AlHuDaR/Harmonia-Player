@@ -11,19 +11,25 @@ final class DownloadRecords {
     static synchronized void put(Context c,String id,JSONObject value) throws Exception {
         if(!prefs(c).edit().putString(id,value.toString()).commit()) throw new java.io.IOException("Could not persist download record.");
     }
-    static synchronized void update(Context c,String id,String status,double progress,String error,String uri) throws Exception {
-        JSONObject r=get(c,id);if(r==null || !TransferPolicy.canTransition(r.optString("status"),status))return;
+    static synchronized boolean update(Context c,String id,String status,double progress,String error,String uri) throws Exception {
+        JSONObject r=get(c,id);if(r==null || !TransferPolicy.canTransition(r.optString("status"),status))return false;
         r.put("status",status).put("progress",Math.max(0,Math.min(1,progress)));
         if(error!=null)r.put("error",error);else r.remove("error");
         if(uri!=null)r.getJSONObject("track").put("localUri",uri);
         if(!status.equals("downloading"))r.put("bytesPerSecond",0);
+        if(progress==0) {
+            r.remove("bytesDownloaded");
+            r.remove("bytesTotal");
+            r.remove("bytesPerSecond");
+        }
         if(status.equals("complete")||status.equals("failed")||status.equals("cancelled"))r.remove("source");
         if(status.equals("failed")||status.equals("cancelled"))r.getJSONObject("track").remove("localUri");
         put(c,id,r);
+        return true;
     }
-    static synchronized void transfer(Context c,String id,long bytes,long total,long speed) throws Exception {
+    static synchronized void transfer(Context c,String id,double progress,long bytes,long total,long speed) throws Exception {
         JSONObject r=get(c,id);if(r==null || !r.optString("status").equals("downloading"))return;
-        r.put("bytesDownloaded",bytes).put("bytesTotal",Math.max(0,total)).put("bytesPerSecond",Math.max(0,speed));put(c,id,r);
+        r.put("progress",Math.max(0,Math.min(1,progress))).put("bytesDownloaded",bytes).put("bytesTotal",Math.max(0,total)).put("bytesPerSecond",Math.max(0,speed));put(c,id,r);
     }
     static synchronized JSONArray all(Context c) throws Exception {
         JSONArray a=new JSONArray();for(String id:prefs(c).getAll().keySet()){JSONObject r=get(c,id);if(r!=null){JSONObject safe=new JSONObject(r.toString());safe.remove("source");a.put(safe);}}return a;

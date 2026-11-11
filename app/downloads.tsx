@@ -107,11 +107,9 @@ export default function DownloadsScreen() {
             <>
               <View
                 accessibilityRole="progressbar"
-                accessibilityValue={{
-                  min: 0,
-                  max: 100,
-                  now: Math.round(d.progress * 100),
-                }}
+                accessibilityValue={d.bytesTotal === 0
+                  ? { text: t("Downloading") }
+                  : { min: 0, max: 100, now: Math.round(d.progress * 100) }}
                 style={{
                   height: 6,
                   borderRadius: 3,
@@ -128,9 +126,9 @@ export default function DownloadsScreen() {
                 />
               </View>
               <Text raw style={styles.text}>
-                {Math.round(d.progress * 100)}%
+                {d.bytesTotal !== 0 ? `${Math.round(d.progress * 100)}%` : ""}
                 {typeof d.bytesDownloaded === "number"
-                  ? ` · ${(d.bytesDownloaded / 1048576).toFixed(1)} MB`
+                  ? `${d.bytesTotal === 0 ? "" : " · "}${(d.bytesDownloaded / 1048576).toFixed(1)} MB`
                   : ""}
                 {d.bytesPerSecond
                   ? ` · ${(d.bytesPerSecond / 1024).toFixed(0)} KB/s`

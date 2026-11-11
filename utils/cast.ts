@@ -207,11 +207,11 @@ export function castMedia(
   track: Track,
   source: MediaSource,
 ): CastMedia | undefined {
+  const discoveredDirect = track.provider === "Direct media" && track.sourcePage === source.uri;
   if (
     track.localUri ||
     track.youtubeId ||
-    track.sourcePage ||
-    track.provider ||
+    ((track.sourcePage || track.provider) && !discoveredDirect) ||
     source.audioUri ||
     Object.keys(source.headers || {}).length
   )

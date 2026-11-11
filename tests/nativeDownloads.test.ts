@@ -166,3 +166,15 @@ it("does not restore a stale job generation over a newly queued retry", async ()
   await syncNativeDownloads();
   expect(usePlayerStore.getState().downloads[0].nativeId).toBe("new");
 });
+
+it("does not resurrect a download removed while native polling was in flight", async () => {
+  const record = { track, nativeId: "job", status: "failed" as const, progress: 0 };
+  usePlayerStore.getState().setDownload(record);
+  let finish!: (value: string) => void;
+  bridge.downloads.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  const poll = syncNativeDownloads();
+  await deleteDownload(track);
+  finish(JSON.stringify([record]));
+  await poll;
+  expect(usePlayerStore.getState().downloads).toEqual([]);
+});

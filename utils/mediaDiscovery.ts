@@ -1,6 +1,6 @@
 import { discoveryError, MediaDiscoveryError } from "./mediaErrors";
 import type { Track } from "@/types/media";
-import { classifyLink, type SharedLink } from "./linkProviders";
+import { classifyLink, providers, type SharedLink } from "./linkProviders";
 import { discoverRemote, type DiscoveredFormat } from "./providerBridge";
 import {
   youtubeTrack,
@@ -48,10 +48,11 @@ export const providerPolicy: Record<
   },
 };
 export function policy(link: SharedLink) {
+  const knownProvider = providers.some(({ name }) => name === link.provider);
+  const canProbe = !knownProvider && new URL(link.url).protocol === "https:";
   return (
     providerPolicy[link.provider] || {
-      adapter:
-        link.kind === "direct" ? ("direct" as const) : ("unavailable" as const),
+      adapter: canProbe ? ("direct" as const) : ("unavailable" as const),
       reason: "No supported public media interface is available for this page.",
     }
   );
@@ -111,7 +112,7 @@ async function discoverWithPolicy(
   return {
     title: media.title,
     choices: media.formats.map((f) =>
-      externalChoice(link.url, link.provider, media.title, f),
+      externalChoice(link.url, p.adapter === "direct" ? "Direct media" : link.provider, media.title, f),
     ),
   };
 }
@@ -129,7 +130,7 @@ function adapter(name: string): ProviderAdapter {
   return {
     name,
     matches(input) {
-      try { const link = classifyLink(input); return name === "Direct media" ? link.kind === "direct" : link.provider === name; }
+      try { const link = classifyLink(input); return name === "Direct media" ? policy(link).adapter === "direct" : link.provider === name; }
       catch { return false; }
     },
     normalize: classifyLink,
