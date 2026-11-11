@@ -37,3 +37,11 @@ describe("bounded eligible video resume", () => {
     expect(Object.keys(points)).toHaveLength(100);
   });
 });
+
+it("preserves object identity for unchanged or ineligible checkpoints", () => {
+  const empty = {};
+  expect(saveResume(empty, track, 0, 300)).toBe(empty);
+  const points = saveResume(empty, track, 42, 300);
+  expect(saveResume(points, track, 42, 300)).toBe(points);
+  expect(saveResume(points, track, 43, 300)).not.toBe(points);
+});

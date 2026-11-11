@@ -29,10 +29,16 @@ export function saveResume(
     duration < 60
   )
     return points;
-  const next = { ...points };
+  const key = resumeKey(track);
+  const previous = points[key];
   const point = { position, duration, updatedAt: Date.now() };
-  if (resumePosition(point)) next[resumeKey(track)] = point;
-  else delete next[resumeKey(track)];
+  const eligible = resumePosition(point) > 0;
+  if ((!eligible && !previous) ||
+      (eligible && previous?.position === position && previous.duration === duration))
+    return points;
+  const next = { ...points };
+  if (eligible) next[key] = point;
+  else delete next[key];
   return Object.fromEntries(
     Object.entries(next)
       .sort((a, b) => b[1].updatedAt - a[1].updatedAt)

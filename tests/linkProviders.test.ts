@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyLink,
+  pastedProviderLink,
   publicWebUrl,
   sharedLinks,
 } from "../utils/linkProviders";
@@ -136,4 +137,15 @@ it("unwraps known outbound tracking links but rejects unsafe wrapped destination
   expect(classifyLink("https://l.facebook.com/l.php?u=https%3A%2F%2Ffacebook.com%2Freel%2F123456%2F").url).toBe("https://www.facebook.com/reel/123456/");
   expect(() => classifyLink("https://l.instagram.com/?u=http%3A%2F%2F127.0.0.1%2F")).toThrow();
   expect(classifyLink("https://example.com/redirect?u=https%3A%2F%2Ffacebook.com%2Freel%2F123456").provider).toBe("example.com");
+});
+
+it("routes pasted provider pages through shared-link actions and keeps direct and YouTube playback", () => {
+  expect(pastedProviderLink(" https://facebook.com/reel/12345 ")).toMatchObject({
+    provider: "Facebook", url: "https://www.facebook.com/reel/12345/",
+  });
+  expect(pastedProviderLink("https://vm.tiktok.com/example")).toMatchObject({
+    provider: "TikTok", actions: ["save", "browser"],
+  });
+  expect(pastedProviderLink("https://youtu.be/abcdefghijk")).toBeUndefined();
+  expect(pastedProviderLink("https://cdn.example.com/asset.mp4?sig=123")).toBeUndefined();
 });
