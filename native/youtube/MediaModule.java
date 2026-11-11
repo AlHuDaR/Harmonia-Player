@@ -56,7 +56,7 @@ public final class MediaModule extends ReactContextBaseJavaModule {
             record.remove("source");p.resolve(record.toString());
         } catch(Exception e){p.reject("E_DOWNLOAD","Could not queue download. Check source, storage and background-work availability.");}
     }
-    @ReactMethod public void downloads(Promise p){
+    @ReactMethod public synchronized void downloads(Promise p){
         try{
             Context c=getReactApplicationContext();JSONArray records=DownloadRecords.all(c);
             for(int i=0;i<records.length();i++) {
@@ -77,14 +77,14 @@ public final class MediaModule extends ReactContextBaseJavaModule {
     }
     @ReactMethod public synchronized void cancel(String id,Promise p){
         try{
-            UUID uuid=UUID.fromString(id);JSONObject r=DownloadRecords.get(getReactApplicationContext(),id);
-            if(r!=null && r.optString("status").equals("complete")){p.resolve(null);return;}
-            if(r!=null){r.put("status","cancelled").put("progress",0).put("error","Download cancelled.");r.getJSONObject("track").remove("localUri");r.remove("source");DownloadRecords.put(getReactApplicationContext(),id,r);}
-            WorkManager.getInstance(getReactApplicationContext()).cancelWorkById(uuid);p.resolve(null);
+            UUID uuid=UUID.fromString(id);
+            Context c=getReactApplicationContext();
+            if(!DownloadRecords.update(c,id,"cancelled",0,"Download cancelled.",null)){p.resolve(null);return;}
+            WorkManager.getInstance(getReactApplicationContext()).cancelWorkById(uuid).getResult().get();p.resolve(null);
         }catch(Exception e){p.reject("E_CANCEL","Could not cancel download.");}
     }
     private void forget(String id) throws Exception {
-        WorkManager.getInstance(getReactApplicationContext()).cancelWorkById(UUID.fromString(id));
+        WorkManager.getInstance(getReactApplicationContext()).cancelWorkById(UUID.fromString(id)).getResult().get();
         DownloadRecords.forget(getReactApplicationContext(),id);
         File dir=new File(getReactApplicationContext().getFilesDir(),"media-jobs");
         File[] files=dir.listFiles();if(files!=null)for(File f:files)if(f.getName().startsWith(id+"."))f.delete();

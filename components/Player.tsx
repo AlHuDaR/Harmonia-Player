@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { usePlayerStore } from "@/store/playerStore";
+import { useShallow } from "zustand/react/shallow";
 import {
   resolveSource,
   playbackContentType,
@@ -114,7 +115,19 @@ function MediaEngine({
   const { t } = useLocale();
   const theme = useTheme();
   const styles = usePlayerStyles();
-  const transport = usePlayerStore();
+  const transport = usePlayerStore(useShallow((state) => ({
+    previousCount: state.previousTracks.length,
+    playbackIndex: state.playbackIndex,
+    playbackCount: state.playbackList.length,
+    queueCount: state.queue.length,
+    shuffle: state.shuffle,
+    repeat: state.repeat,
+    advance: state.advance,
+    setCurrentTrack: state.setCurrentTrack,
+    toggleFavorite: state.toggleFavorite,
+    previous: state.previous,
+    updateSettings: state.updateSettings,
+  })));
   const [audioMode, setAudioMode] = useState(track.kind === "audio");
   const [switching, setSwitching] = useState(false);
   const modeRequest = useRef<AbortController | null>(null);
@@ -364,13 +377,13 @@ function MediaEngine({
     else store.advance(related.current);
   }, [cast.active, cast.remote.idleReason]);
   const canPrevious =
-    transport.previousTracks.length > 0 || transport.playbackIndex > 0;
+    transport.previousCount > 0 || transport.playbackIndex > 0;
   const canNext =
-    (transport.shuffle && transport.playbackList.length > 1) ||
-    transport.queue.length > 0 ||
-    transport.playbackIndex + 1 < transport.playbackList.length ||
-    (transport.repeat === "all" && transport.playbackList.length > 0) ||
-    (!!details.related?.length && !transport.playbackList.length);
+    (transport.shuffle && transport.playbackCount > 1) ||
+    transport.queueCount > 0 ||
+    transport.playbackIndex + 1 < transport.playbackCount ||
+    (transport.repeat === "all" && transport.playbackCount > 0) ||
+    (!!details.related?.length && !transport.playbackCount);
   const next = () => transport.advance(related.current, true);
   return (
     <View

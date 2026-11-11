@@ -11,6 +11,12 @@ public class MediaDiscoveryTest {
     JSONObject f=media.getJSONArray("formats").getJSONObject(0);
     assertEquals("video",f.getString("kind"));assertTrue(f.getBoolean("downloadable"));
   }
+  @Test public void recognizesCanonicalRedditPostsAndShortIds() throws Exception {
+    assertEquals("abc123",MediaDiscovery.redditPostId(SafeHttp.url("https://redd.it/abc123?share=1")));
+    assertEquals("abc123",MediaDiscovery.redditPostId(SafeHttp.url("https://www.reddit.com/r/videos/comments/abc123/title/")));
+    assertNull(MediaDiscovery.redditPostId(SafeHttp.url("https://www.reddit.com/r/videos/s/opaque")));
+    assertNull(MediaDiscovery.redditPostId(SafeHttp.url("https://www.reddit.com/other/comments/abc123")));
+  }
   @Test public void rejectsMissingAndRestrictedMedia() throws Exception {
     try{MediaDiscovery.vimeo(new JSONObject(),"https://vimeo.com/123");fail();}catch(java.io.IOException expected){}
     JSONArray reddit=new JSONArray("[{\"data\":{\"children\":[{\"data\":{\"over_18\":true,\"is_video\":true}}]}}]");

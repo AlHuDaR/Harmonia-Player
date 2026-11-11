@@ -192,3 +192,14 @@ it("retains structured access-denied errors and browser fallback", async () => {
     code:"access-denied", fallback:["browser","save"], message:"Public access denied",
   });
 });
+
+it("uses native content probing for HTTPS media links without file extensions", async () => {
+  const url = "https://cdn.example.com/asset?token=signed";
+  native.discover.mockResolvedValue(JSON.stringify({
+    title: "Direct media",
+    formats: [{ id: "original", label: "Original", uri: url, kind: "video", extension: "mp4", downloadable: true }],
+  }));
+  const result = await discoverMedia(classifyLink(url));
+  expect(native.discover).toHaveBeenCalledWith(url);
+  expect(choicesFor(result, "download-video")[0].track).toMatchObject({ sourcePage: url, provider: "Direct media" });
+});

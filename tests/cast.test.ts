@@ -41,6 +41,12 @@ describe("Cast source limits", () => {
         ?.contentType,
     ).toBe("application/x-mpegURL");
   });
+  it("accepts discovered public MP4 links while retaining signed-link restrictions", () => {
+    const candidate = { ...track, provider: "Direct media", sourcePage: source.uri };
+    expect(castMedia(candidate, source)?.contentType).toBe("video/mp4");
+    const signed = `${source.uri}?token=secret`;
+    expect(castMedia({ ...candidate, sourcePage: signed }, { uri: signed })).toBeUndefined();
+  });
   it("preserves extraction, local, authenticated, signed, separate and DASH playback on the sender", () => {
     for (const candidate of [
       { ...track, localUri: "file:///a.mp4" },

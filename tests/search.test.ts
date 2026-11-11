@@ -139,3 +139,22 @@ describe("search lifecycle", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
+
+it("retries pagination after an empty first page and stops on a repeated cursor", async () => {
+  const fetch = vi.fn()
+    .mockResolvedValueOnce({ tracks: [], nextPage: "2" })
+    .mockRejectedValueOnce(new Error("Network unavailable"))
+    .mockResolvedValueOnce({ tracks: [track("1")], nextPage: "2" });
+  const search = new SearchController(fetch);
+  search.setQuery("مرحبا");
+  search.submit();
+  await vi.waitFor(() => expect(search.getSnapshot().status).toBe("ready"));
+  search.more();
+  await vi.waitFor(() => expect(search.getSnapshot().status).toBe("error"));
+  search.retry();
+  await vi.waitFor(() => expect(search.getSnapshot().status).toBe("ready"));
+  expect(fetch.mock.calls.map(([term, page]) => [term, page])).toEqual([
+    ["مرحبا", undefined], ["مرحبا", "2"], ["مرحبا", "2"],
+  ]);
+  expect(search.getSnapshot().nextPage).toBeUndefined();
+});
