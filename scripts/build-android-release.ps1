@@ -27,7 +27,7 @@ try {
   $env:EXPO_NO_TELEMETRY='1'; $env:CI='1'
   if (-not $SkipInstall) { & npm.cmd ci; if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' } }
   & npm.cmd run typecheck; if ($LASTEXITCODE -ne 0) { throw 'Type checking failed.' }
-  & npx.cmd expo prebuild --platform android --no-install
+  & npx.cmd expo prebuild --platform android --no-install --no-clean
   if ($LASTEXITCODE -ne 0) { throw 'Expo prebuild failed.' }
   New-Item -ItemType Directory -Force -Path artifacts | Out-Null
   function Invoke-AndroidBuild([string]$Target,[string]$Abis,[string]$Source,[string]$Destination) {
