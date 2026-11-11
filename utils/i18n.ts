@@ -230,6 +230,10 @@ export const ar: Record<string, string> = {
     "تُحفظ الملفات داخل التطبيق على هذا الجهاز للتشغيل دون إنترنت.",
   "Download a direct media file from Home or a search result.":
     "نزّل مقطعاً من نتائج البحث للاستماع دون إنترنت.",
+  "Retry shown failed downloads": "إعادة محاولة التنزيلات الفاشلة المعروضة",
+  "Retrying failed downloads…": "جارٍ إعادة محاولة التنزيلات الفاشلة…",
+  "Offline file is missing or empty. Download it again.": "الملف المحفوظ مفقود أو فارغ. نزّله مرة أخرى.",
+  "Could not check offline files.": "تعذّر التحقق من الملفات المحفوظة.",
   "Retry download": "إعادة التنزيل",
   "Delete download": "حذف التنزيل",
   downloading: "جارٍ التنزيل",

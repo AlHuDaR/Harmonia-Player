@@ -1,6 +1,7 @@
 import { Text } from "@/components/LocalizedText";
-import { useState } from "react";
-import { View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { Platform, View } from "react-native";
 import {
   Page,
   TrackCard,
@@ -15,6 +16,8 @@ import {
   deleteDownload,
   downloadTrack,
   cancelDownload,
+  retryFailedDownloads,
+  verifyOfflineDownloads,
 } from "@/utils/downloads";
 import { message } from "@/types/media";
 import { useTheme } from "@/utils/theme";
@@ -33,6 +36,28 @@ export default function DownloadsScreen() {
     .filter((d) => d.status === "complete" && d.track.localUri)
     .map((d) => d.track);
   const [error, setError] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const batchActive = useRef(false);
+  const failedIds = visible.filter((d) => d.status === "failed").map((d) => d.track.id);
+  useFocusEffect(useCallback(() => {
+    let focused = true;
+    void verifyOfflineDownloads().catch(() => {
+      if (focused) setError("Could not check offline files.");
+    });
+    return () => { focused = false; };
+  }, []));
+  async function retryVisibleFailures() {
+    if (batchActive.current) return;
+    batchActive.current = true;
+    setRetrying(true);
+    setError("");
+    try {
+      await retryFailedDownloads(failedIds);
+    } finally {
+      batchActive.current = false;
+      setRetrying(false);
+    }
+  }
   return (
     <Page title="Downloads">
       {!!downloads.length && (
@@ -73,6 +98,13 @@ export default function DownloadsScreen() {
         <Button
           title="Play all"
           onPress={() => usePlayerStore.getState().playList(offline, 0)}
+        />
+      )}
+      {Platform.OS !== "web" && (retrying || failedIds.length > 1) && (
+        <Button
+          title={retrying ? "Retrying failed downloads…" : "Retry shown failed downloads"}
+          disabled={retrying}
+          onPress={() => void retryVisibleFailures()}
         />
       )}
       <Text style={styles.text}>

@@ -22,7 +22,7 @@ const fs = vi.hoisted(() => ({
 }));
 vi.mock("expo-file-system/legacy", () => fs);
 vi.mock("../utils/youtube", () => source);
-import { downloadTrack } from "../utils/downloads";
+import { downloadTrack, retryFailedDownloads, verifyOfflineDownloads } from "../utils/downloads";
 import { usePlayerStore } from "../store/playerStore";
 import { directTrack } from "../types/media";
 beforeEach(() => {
@@ -175,4 +175,46 @@ describe("offline downloads", () => {
     expect(usePlayerStore.getState().downloads[0].status).toBe("failed");
     expect(fs.moveAsync).not.toHaveBeenCalled();
   });
+});
+
+it("replaces an empty offline file using its original remote source", async () => {
+  const track = { ...directTrack("https://example.com/a.mp3"), localUri: "file:///app/empty.mp3" };
+  usePlayerStore.getState().setDownload({ track, status: "complete", progress: 1 });
+  fs.getInfoAsync.mockResolvedValueOnce({ exists: true, size: 0 });
+  await downloadTrack(track);
+  expect(source.resolveSource).toHaveBeenCalledWith(
+    expect.objectContaining({ uri: track.uri, localUri: undefined }), undefined, true,
+  );
+  expect(usePlayerStore.getState().downloads[0]).toMatchObject({
+    status: "complete", track: { localUri: expect.stringMatching(/downloads\//) },
+  });
+});
+
+it("flags missing legacy files while keeping healthy downloads playable", async () => {
+  const missing = { ...directTrack("https://example.com/a.mp3"), localUri: "file:///app/a.mp3" };
+  const healthy = { ...directTrack("https://example.com/b.mp3"), localUri: "file:///app/b.mp3" };
+  const store = usePlayerStore.getState();
+  store.setDownload({ track: missing, status: "complete", progress: 1 });
+  store.setDownload({ track: healthy, status: "complete", progress: 1 });
+  fs.getInfoAsync.mockResolvedValueOnce({ exists: false, size: 0 });
+  await verifyOfflineDownloads();
+  expect(usePlayerStore.getState().downloads).toEqual(expect.arrayContaining([
+    expect.objectContaining({ status: "failed", track: { ...missing, localUri: undefined } }),
+    expect.objectContaining({ status: "complete", track: healthy }),
+  ]));
+});
+
+it("retries only selected failed items and continues past an unavailable source", async () => {
+  const failed = directTrack("https://example.com/a.mp3");
+  const retry = directTrack("https://example.com/b.mp3");
+  const cancelled = directTrack("https://example.com/c.mp3");
+  const hidden = directTrack("https://example.com/d.mp3");
+  const store = usePlayerStore.getState();
+  for (const track of [failed, retry, hidden]) store.setDownload({ track, status: "failed", progress: 0 });
+  store.setDownload({ track: cancelled, status: "cancelled", progress: 0 });
+  source.resolveSource.mockRejectedValueOnce(new Error("Source unavailable"));
+  await retryFailedDownloads([failed.id, cancelled.id, retry.id]);
+  expect(source.resolveSource.mock.calls.map(([track]) => track.id)).toEqual([failed.id, retry.id]);
+  expect(usePlayerStore.getState().downloads.find((d) => d.track.id === failed.id)?.error).toBe("Source unavailable");
+  expect(usePlayerStore.getState().downloads.find((d) => d.track.id === retry.id)?.status).toBe("complete");
 });
