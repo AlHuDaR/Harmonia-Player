@@ -1,5 +1,7 @@
 # Harmonia 1.4 release candidate
 
+> Historical implementation/validation record. Version numbers and pending checks below describe that increment. See the [current release record](release-2.0.0.md) for accepted owner baseline results, candidate status and remaining gates.
+
 ## Included
 - Persistent English / Arabic language selection; RTL interface layout, translated labels, app errors and accessibility names. Original titles and channel names remain unchanged.
 - Clean Home; link entry and file import live in Library. Cards use a three-dot action sheet instead of oversized button blocks.
