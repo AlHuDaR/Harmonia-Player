@@ -1,8 +1,19 @@
-## 2.0.0 — release candidate
+# Changelog
 
-- Patch both decode-uri-component advisories without upgrading Expo SDK 57; retain query-string 7 with a guarded ESM import adapter.
-- Propose Android versionCode 15, preserving `com.alhudar.harmonia` and existing playback, downloads, Library, Arabic RTL and Cast.
-- Record validation, signing/update compatibility and provider-policy publication gates in [the release checklist](docs/release-2.0.0.md). Public publication is not approved by this candidate.
+## 2.0.0 — stability release candidate (Android versionCode 15)
+
+Current main configures 2.0.0, Expo ~57.0.33 and React Native 0.86.3. This is a candidate, not a claim of public publication. See [release evidence and gates](docs/release-2.0.0.md).
+
+Merged since preview.8:
+
+- Harden pasted URLs, Android intents and queued-share recovery; preserve long-video checkpoints without restoring autoplay (#46, #51).
+- Add missing-offline-file recovery and batch retry of failed downloads; retain restart-based transfers, not byte-range resume (#43–44).
+- Add speed presets, timeline scrubbing and A–B loops; refine playback/navigation and receiver-status presentation (#45, #52–53).
+- Polish four-tab navigation, menus, bilingual search, Library/Downloads and history confirmation; reduce collection lookup/rendering work without claiming measured hardware performance (#47–48, #53–54).
+- Keep Android on SDK 57, align native dependencies, resolve the scoped minimatch conflict and patch query-string's decoder with a checked postinstall adapter and regression coverage (#50, #55–56).
+- Preserve package identity, signing configuration and existing media/storage paths. Production signer compatibility, exact-candidate hardware checks and public-distribution review remain open.
+
+The entries below preserve the scope/evidence at each earlier increment; pending gates there are historical unless reaffirmed in the current release record.
 
 ## 2.0.0-preview.8 — downloaded-file Cast
 
@@ -34,15 +45,13 @@
 - Package Android versionCode 11 with the existing application identity/signing configuration; universal builds include both ARM32 and ARM64 for Mi Box userspaces.
 - Record fixture/build evidence separately from blocked live YouTube and unavailable physical-device acceptance. See docs/TV_STREAMING_PREVIEW5.md and docs/ANDROID_TV_AR.md.
 
-## Unreleased — media repair review
+## Historical media repair increment — subsequently merged
 
 - Recognize Snapchat Spotlight and canonical Facebook video/Reel IDs; attempt only explicit public video metadata and verify compatible media before offering actions. Browser/save fallback remains available; live provider success is unverified.
 - Introduce provider adapter contracts and typed discovery failures while retaining YouTube/NewPipe, Instagram, Vimeo, Reddit and direct source paths.
 - Separate granted Android audio/video file shares from text links; add bounded private-storage imports and multiple-share intake.
 - Add native transfer size/time limits, byte/speed reporting, playback speed and bilingual explanations for unavailable format actions.
 - Record baseline, PR merge status, dependency findings, regression matrix and remaining device/security gates. Update Windows PowerShell/Android Studio instructions.
-
-# Changelog
 
 ## 2.0.0-preview.4 — download/library reliability
 

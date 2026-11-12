@@ -15,12 +15,13 @@ npm -v
 java -version
 ```
 
-Clone/switch to this PR's feature branch, then run:
+Clone current main, then run:
 
 ```powershell
 git clone https://github.com/AlHuDaR/Harmonia-Player.git
 cd Harmonia-Player
-git switch feat/harmonia-tv-adaptive-preview5
+git switch main
+git pull --ff-only
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-android-release.ps1 -Mode arm64
 ```
 
@@ -34,7 +35,7 @@ For JS checks on Windows, use `npm run typecheck` and `npm test`. The existing U
 
 Default builds are **test-signed**. Do not overwrite or regenerate the established production signing identity. An APK built with a different test/debug key cannot update an installed production-signed APK. Preserve user data and obtain a matching signed upgrade rather than uninstalling a production app without a backup.
 
-Production signing remains opt-in through the existing protected configuration (`HARMONIA_PRODUCTION=1`, `HARMONIA_STORE_FILE`, `HARMONIA_STORE_PASSWORD`, `HARMONIA_KEY_ALIAS`, `HARMONIA_KEY_PASSWORD`). Never commit or print keys/passwords. Do not publish this preview.
+Production signing remains opt-in through the existing protected configuration (`HARMONIA_PRODUCTION=1`, `HARMONIA_STORE_FILE`, `HARMONIA_STORE_PASSWORD`, `HARMONIA_KEY_ALIAS`, `HARMONIA_KEY_PASSWORD`). Never commit or print keys/passwords. Public distribution remains subject to the [current release gates](release-2.0.0.md).
 
 For a fresh test device/emulator:
 
@@ -47,7 +48,7 @@ Use the universal APK on an x86_64 emulator; an ARM64-only APK needs an ARM64 de
 
 ## Verification boundary
 
-The new CI Windows job runs this PowerShell build on a Windows runner and uploads a separate Windows ARM64 artifact. Its observed result is recorded in PR checks; adding the job is not a claim that it passed. The Linux execution environment does not itself execute Windows programs or prove a Windows-native build. Neither passing build checks nor test signing authorizes production publication.
+The CI Windows job runs this PowerShell build on a Windows runner and uploads a separate Windows ARM64 artifact. Its observed result is recorded in PR checks; adding the job is not a claim that it passed. The Linux execution environment does not itself execute Windows programs or prove a Windows-native build. Neither passing build checks nor test signing authorizes production publication.
 
 
 ## Synchronize an existing checkout safely
@@ -58,7 +59,7 @@ Commit or stash your own work first. Do not reset the checkout. Use a new local 
 cd C:\src\Harmonia-Player
 git status --short
 git fetch origin
-git switch --create review/harmonia-tv-preview5 --track origin/feat/harmonia-tv-adaptive-preview5
+git switch --create review/harmonia-main --track origin/main
 npm.cmd ci
 npm.cmd run typecheck
 npm.cmd test
@@ -98,6 +99,6 @@ Use a real authorized public URL in the last command. Test again with the app cl
 The script copies release results to `artifacts\Harmonia-Player-arm64.apk`, `artifacts\Harmonia-Player-universal.apk` and `artifacts\Harmonia-Player.aab`. Generated originals are under `android\app\build\outputs\apk\release\app-release.apk` and `android\app\build\outputs\bundle\release\app-release.aab`. Default release builds remain test-signed; production requires the existing protected signing configuration. An AAB cannot be installed with `adb install`.
 
 
-## Android TV / Mi Box — preview 5
+## Android TV / Mi Box
 
-Use **`-Mode universal`** for Mi Box: some models have 32-bit Android even with a 64-bit CPU. ARM64-only APKs will not cover those devices. Preview 5 is `2.0.0-preview.5` / versionCode `11`, requires Android 7/API 24+, and retains test signing. See the [Arabic TV guide](ANDROID_TV_AR.md) and [current verification record](TV_STREAMING_PREVIEW5.md). The TV launcher/focus changes and adaptive ladder do not substitute for physical-device acceptance or a successful live provider test.
+Use **`-Mode universal`** for Mi Box: some models have 32-bit Android even with a 64-bit CPU. ARM64-only APKs will not cover those devices. Current main is `2.0.0` / versionCode `15`, requires Android 7/API 24+, and defaults to test signing. See the [Arabic TV guide](ANDROID_TV_AR.md) and [historical TV implementation record](TV_STREAMING_PREVIEW5.md) and [current release evidence](release-2.0.0.md). The TV launcher/focus changes and adaptive ladder do not substitute for physical-device acceptance or a successful live provider test.

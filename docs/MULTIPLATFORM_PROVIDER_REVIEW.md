@@ -1,5 +1,9 @@
 # Multi-platform provider investigation — 2026-10-20
 
+**Current scope:** Android 2.0.0/code 15 retains these adapters and adds bounded Facebook public-video/Reel and Snapchat Spotlight discovery through `PublicSocialEmbed`. Only matching public progressive video metadata followed by media-response verification enables playback/download; isolated audio is not extracted. Fixture tests in `native/tests/PublicSocialEmbedTest.java` are not live-provider success. See [current release evidence](release-2.0.0.md) and [README matrix](../README.md#feature-compatibility-matrix).
+
+The investigation/options below are historical; references to Facebook being unavailable describe that earlier increment.
+
 Baseline: PR #27 / `9401790`, `feat/harmonia-v2-universal-media`. PR #27's CI stopped at Expo Doctor: six SDK-57 patch mismatches. Its URL registry assigns actions without fetching formats. Social sources have no extractor. This increment separates recognition, adapter policy, discovery results and actions; a matching hostname alone never enables media actions.
 
 ## Options evaluated
@@ -32,7 +36,8 @@ https://docs.x.com/x-api.
 | --- | --- | --- | --- |
 | YouTube | Existing NewPipe details/formats/resolve retained | Actual returned formats only; separate MP4/AAC downloads use native mux | Existing mocked regressions and native bridge packaging; live/device extraction must be rechecked. |
 | Instagram | Preview 3: public post/Reel embed JSON; matching shortcode, video-only type, private-marker and actual media-response checks | Returned public progressive MP4 enables Play Video/Download Video. Isolated audio stays disabled. Save/Browser retained. No Stories, profiles, share redirects or carousels. | User-provided `DerYMOFsvXQ`: public embed 200 without credentials; file 200/206, 3,220,008 bytes, H.264 720×1280 + AAC, 12.585215 s; full ffmpeg decoding passed. Android live results are recorded separately in PR checks; no universal Instagram guarantee. |
-| Facebook | No authorized binary adapter | All media actions disabled; Save/Browser | Not supported for extraction in this increment. |
+| Facebook | Bounded public video/Reel metadata adapter (`PublicSocialEmbed`) | Verified returned progressive video only; no isolated audio; Save/Browser fallback | Parser fixtures; live playback/download success unverified. |
+| Snapchat | Bounded public Spotlight metadata adapter (`PublicSocialEmbed`) | Verified returned progressive video only; no isolated audio; Save/Browser fallback | Parser fixtures; live playback/download success unverified. |
 | TikTok | No supported binary adapter | All media actions disabled; Save/Browser | Not supported for extraction in this increment. |
 | X/Twitter | No authorized API adapter | All media actions disabled; Save/Browser | Not supported for extraction in this increment. |
 | Reddit | Public JSON, native-video only | Clear HLS video; silent GIF fallback only, explicitly labelled. No fabricated isolated audio. | Live test `6rrwyj` returned 403. Parser tested; **not reported as verified playback/download support**. |

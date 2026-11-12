@@ -1,5 +1,7 @@
 # Harmonia 1.5.0 production baseline
 
+> Historical implementation/validation record. Version numbers and pending checks below describe that increment. See the [current release record](release-2.0.0.md) for accepted owner baseline results, candidate status and remaining gates.
+
 This release starts a fresh production installation baseline: package ID
 `com.alhudar.harmonia`, version `1.5.0`, Android versionCode `6`.
 The package ID must stay unchanged. Every later release needs a higher

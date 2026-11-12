@@ -1,5 +1,7 @@
 # Casting downloaded files — preview.8
 
+> Historical implementation/validation record. Version numbers and pending checks below describe that increment. See the [current release record](release-2.0.0.md) for accepted owner baseline results, candidate status and remaining gates.
+
 Preview **2.0.0-preview.8 / Android versionCode 14** adds an app-owned local-media Cast source. The owner reported preview.7 streaming Cast working on Mi Box; downloaded tracks were still rejected. This change addresses the downloaded-file path instead of changing its warning or resolving another YouTube URL.
 
 ## How it works

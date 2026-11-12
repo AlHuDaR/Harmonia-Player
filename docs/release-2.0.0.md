@@ -1,7 +1,13 @@
 # Android 2.0.0 release candidate
 
-Prepared from current main `5925cc8dad0e22e0b298978f4aee71badf446564`.
+Prepared from baseline main `5925cc8dad0e22e0b298978f4aee71badf446564`.
 Baseline: successful [Android build #130](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/43293830757), at that exact commit, and the owner's confirmed S24 Ultra and Mi Box tests. Those physical results are accepted as the baseline, not claimed as reruns of this candidate. Historical documents with pending hardware gates describe older evidence.
+
+## Current documentation snapshot
+
+Merged candidate configuration at `663c5f7`: **2.0.0 / Android versionCode 15**, Expo `~57.0.33`, React Native `0.86.3`. At documentation review, [the exact-main workflow](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/43307066351) was still in progress. The baseline outcomes below do not establish candidate CI success.
+
+Current feature/evidence summaries are in the [README](../README.md#feature-compatibility-matrix) and [provider matrix](MULTIPLATFORM_PROVIDER_REVIEW.md). Facebook public video/Reel and Snapchat Spotlight have conditional public-metadata adapters with fixture tests; their live playback/download success remains unverified. Historical statements below that group Facebook with providers lacking adapters are superseded by this narrower statement.
 
 ## Small dependency fix
 
@@ -63,7 +69,7 @@ Technical playback/download success, publicly accessible media, a disclaimer, an
 - **YouTube — unresolved public-release blocker:** [YouTube Terms](https://www.youtube.com/static?template=terms) restrict downloading, automated access and other uses except where authorized by the service, written permission or applicable law. NewPipe/no API key does not establish an exemption. Current extraction, isolated audio, downloads, persistent offline copies and casting those copies need an explicit documented authorization/legal review for the intended distribution and regions. Keep functionality unchanged for this small PR; do not publicly publish until the owner resolves this gate, or separately approves a compliant provider-feature restriction.
 - If YouTube API Services are used, [Developer Policies](https://developers.google.com/youtube/terms/developer-policies), including III.E, restrict downloading/caching audiovisual content, separating audio/video and background playback without required approval. Current NewPipe integration is not represented as an approved API client; switching to an API key alone would not authorize these behaviors. Do not imply YouTube Premium offline rights extend to this app.
 - [Google Play Intellectual Property policy](https://support.google.com/googleplay/android-developer/answer/9888072): document rights to the app, branding and distributed media; downloading copyrighted works without authorization is a policy risk. Validate store description/screenshots (no universal downloader or provider-approval claims), privacy policy/Data Safety, target audience/content rating, foreground-service declarations and current target-API/native 16 KB requirements against the final signed artifact and Console. No Play approval is claimed.
-- Instagram/Meta, Vimeo and Reddit adapters also require provider-terms, automated-access, rate-limit, content-rights and download/offline permission review. Public embed/config/JSON availability is not consent. Facebook/TikTok/X remain Save Link/Open in Browser unless a genuinely supported, authorized adapter is separately reviewed. See the [capability matrix](MULTIPLATFORM_PROVIDER_REVIEW.md). Do not bypass authentication, DRM or access controls.
+- Instagram/Meta, Vimeo and Reddit adapters also require provider-terms, automated-access, rate-limit, content-rights and download/offline permission review. Public embed/config/JSON availability is not consent. Facebook/Snapchat have conditional public-metadata discovery, without verified live success or provider authorization; TikTok/X remain Save Link/Open in Browser. See the [capability matrix](MULTIPLATFORM_PROVIDER_REVIEW.md). Do not bypass authentication, DRM or access controls.
 - Direct/local files: distribute/test with owned, licensed or otherwise permitted fixtures. Offline availability is appropriate only where rights allow it. Cast must respect those same rights; LAN serving is not a rights exemption. Publish matching GPL source/build instructions and third-party notices with binaries.
 
 ## Short physical-device checklist for this candidate

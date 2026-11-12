@@ -1,5 +1,7 @@
 # Harmonia 2.0 media repair — review and acceptance record
 
+> Historical implementation/validation record. Version numbers and pending checks below describe that increment. See the [current release record](release-2.0.0.md) for accepted owner baseline results, candidate status and remaining gates.
+
 Historical preview.4 evidence below. For the newer preview.5/code 11 TV and adaptive-streaming work, see [the current verification record](TV_STREAMING_PREVIEW5.md).
 
 ## Scope and baseline

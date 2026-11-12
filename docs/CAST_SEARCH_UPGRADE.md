@@ -1,5 +1,7 @@
 # Cast and bilingual search upgrade
 
+> Historical implementation/validation record. Version numbers and pending checks below describe that increment. See the [current release record](release-2.0.0.md) for accepted owner baseline results, candidate status and remaining gates.
+
 This describes preview.6. [Preview.7's YouTube Cast-source contract](YOUTUBE_CAST_PREVIEW7.md) supersedes its blanket YouTube-source exclusion; physical receiver acceptance remains pending.
 
 ## Inspection and plan
