@@ -6,6 +6,10 @@ PACKAGE = 'com.alhudar.harmonia'
 COMPONENT = PACKAGE + '/.MainActivity'
 ARTIFACTS=pathlib.Path('artifacts/android-smoke');ARTIFACTS.mkdir(parents=True,exist_ok=True)
 def capture():
+    try:
+        dump_window()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ET.ParseError):
+        pass
     for name,command in [('logcat.txt',['adb','logcat','-d']),('media-session.txt',['adb','shell','dumpsys','media_session']),('window.xml',['adb','shell','cat','/sdcard/harmonia-window.xml'])]:
         try:(ARTIFACTS/name).write_bytes(subprocess.check_output(command,stderr=subprocess.STDOUT,timeout=20))
         except Exception:pass
@@ -13,42 +17,91 @@ def capture():
     except Exception:pass
 atexit.register(capture)
 def adb(*args):
-    return subprocess.check_output(['adb', *args], text=True, stderr=subprocess.STDOUT)
-def wait_sheet(source, media=False):
-    deadline = time.monotonic() + 60
+    return subprocess.check_output(['adb', *args], text=True, stderr=subprocess.STDOUT, timeout=25)
+WINDOW = '/sdcard/harmonia-window.xml'
+launcher_dialog_dismissed = False
+
+def dump_window():
+    # Never read an earlier hierarchy when UIAutomator fails to write a new one.
+    adb('shell', 'rm', '-f', WINDOW)
+    adb('shell', 'uiautomator', 'dump', WINDOW)
+    return ET.fromstring(adb('shell', 'cat', WINDOW))
+
+def tap_node(node):
+    values = list(map(int, re.findall(r'\d+', node.get('bounds', ''))))
+    if len(values) != 4 or values[2] <= values[0] or values[3] <= values[1]:
+        return False
+    adb('shell', 'input', 'tap', str((values[0]+values[2])//2), str((values[1]+values[3])//2))
+    return True
+
+def dismiss_launcher_anr(root):
+    global launcher_dialog_dismissed
+    if launcher_dialog_dismissed:
+        return False
+    system_nodes = [n for n in root.iter('node') if n.get('package') == 'android']
+    if not any(n.get('resource-id') == 'android:id/alertTitle' and
+               n.get('text') == "Pixel Launcher isn't responding" for n in system_nodes):
+        return False
+    close_button = next((n for n in system_nodes
+                         if n.get('resource-id') == 'android:id/aerr_close'
+                         and n.get('enabled') == 'true'), None)
+    if close_button is None:
+        return False
+    ET.ElementTree(root).write(ARTIFACTS / 'pixel-launcher-anr.xml', encoding='utf-8')
+    launcher_dialog_dismissed = tap_node(close_button)
+    if launcher_dialog_dismissed:
+        print('Dismissed Pixel Launcher ANR on the emulator; continuing UI assertions.', flush=True)
+    return launcher_dialog_dismissed
+
+def wait_for_window(description, matches, seconds=60):
+    deadline = time.monotonic() + seconds
+    observed = 'no hierarchy captured'
     while time.monotonic() < deadline:
         try:
-            adb('shell', 'uiautomator', 'dump', '/sdcard/harmonia-window.xml')
-            xml = adb('shell', 'cat', '/sdcard/harmonia-window.xml')
-            root = ET.fromstring(xml)
-            labels = [n.get('text', '') or n.get('content-desc', '') for n in root.iter('node')]
-            if source in labels and 'Save Link' in labels:
-                ready=all(any((n.get('text') == label or n.get('content-desc') == label) and n.get('enabled') == ('true' if media and label in ['Play Video', 'Download Video'] else 'false') for n in root.iter('node')) for label in ['Play Video', 'Audio Only', 'Download Video', 'Download Audio'])
-                if ready:return root
-        except (subprocess.CalledProcessError, ET.ParseError):
-            pass
+            root = dump_window()
+            nodes = list(root.iter('node'))
+            observed = ', '.join(
+                f"{n.get('package')}: {n.get('text') or n.get('content-desc')} (enabled={n.get('enabled')})"
+                for n in nodes if n.get('text') or n.get('content-desc')
+            ) or 'no visible labels'
+            if not dismiss_launcher_anr(root) and matches(root):
+                return root
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ET.ParseError) as error:
+            observed = str(error)
         time.sleep(1)
-    raise AssertionError('Share sheet did not appear: ' + source)
+    raise AssertionError(f'{description}. Last observation: {observed}')
+
+def wait_sheet(source, media=False):
+    def matches(root):
+        nodes = [n for n in root.iter('node') if n.get('package') == PACKAGE]
+        labels = {label for n in nodes for label in (n.get('text'), n.get('content-desc'))}
+        if source not in labels or 'Save Link' not in labels:
+            return False
+        return all(
+            any(label in (n.get('text'), n.get('content-desc')) and n.get('enabled') == expected
+                for n in nodes)
+            for label, expected in (
+                ('Play Video', 'true' if media else 'false'),
+                ('Audio Only', 'false'),
+                ('Download Video', 'true' if media else 'false'),
+                ('Download Audio', 'false'),
+            )
+        )
+    return wait_for_window('Share sheet did not appear: ' + source, matches)
+
 def click(root, label):
-    import re
     for n in root.iter('node'):
-        if n.get('text') == label or n.get('content-desc') == label:
-            values = list(map(int, re.findall(r'\d+', n.get('bounds', ''))))
-            if len(values) == 4 and values[2] > values[0] and values[3] > values[1]:
-                adb('shell', 'input', 'tap', str((values[0]+values[2])//2), str((values[1]+values[3])//2))
-                return
+        if label in (n.get('text'), n.get('content-desc')) and tap_node(n):
+            return
     raise AssertionError('Missing button: ' + label)
 def close(root): click(root, 'Close')
 def wait_text(label, seconds=60):
-    deadline=time.monotonic()+seconds
-    while time.monotonic()<deadline:
-        try:
-            adb('shell','uiautomator','dump','/sdcard/harmonia-window.xml')
-            root=ET.fromstring(adb('shell','cat','/sdcard/harmonia-window.xml'))
-            if any(n.get('text')==label or n.get('content-desc')==label for n in root.iter('node')):return root
-        except (subprocess.CalledProcessError,ET.ParseError):pass
-        time.sleep(1)
-    raise AssertionError('Timed out waiting for: '+label)
+    return wait_for_window(
+        'Timed out waiting for: ' + label,
+        lambda root: any(n.get('package') == PACKAGE and
+                         label in (n.get('text'), n.get('content-desc')) for n in root.iter('node')),
+        seconds,
+    )
 handlers=adb('shell','cmd','package','query-activities','--brief','-a','android.intent.action.SEND','-t','text/plain','-c','android.intent.category.DEFAULT')
 assert PACKAGE+'/' in handlers,'Harmonia is not registered as an Android text Share destination'
 adb('logcat', '-c')
@@ -58,6 +111,7 @@ for index in range(3):
     adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '-a', 'android.intent.action.SEND', '-t', 'text/plain', '--es', 'android.intent.extra.TEXT', 'https://instagram.com/reel/123')
     root = wait_sheet('Instagram')
     close(root)
+    wait_text('Home')  # Confirm dismissal before sending the next intent.
     print(('cold' if index == 0 else 'warm/repeated') + ' SEND passed')
 adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '-a', 'android.intent.action.VIEW', '-d', 'https://www.facebook.com/reel/123')
 close(wait_sheet('Facebook'))
