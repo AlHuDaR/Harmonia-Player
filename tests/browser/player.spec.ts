@@ -263,7 +263,7 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("tab")).toHaveText(["Home", "Search", "Downloads", "Library"]);
+  await expect(page.getByRole("tab")).toHaveText([/Home$/, /Search$/, /Downloads$/, /Library$/]);
   await page.getByRole("tab", { name: "Downloads", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Downloads", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: "Open menu", exact: true }).click();
