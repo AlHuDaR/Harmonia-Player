@@ -208,6 +208,15 @@ function MediaEngine({
     view.current?.exitFullscreen().catch(() => {});
   });
   const remoteActive = cast.active || cast.loading;
+  const connection = cast.remote.connection;
+  let receiverStatus = "Cast connected";
+  if (connection === "connecting") receiverStatus = "Connecting to receiver…";
+  else if (connection === "suspended") receiverStatus = "Cast connection interrupted";
+  else if (connection === "disconnecting") receiverStatus = "Disconnecting Cast…";
+  else if (cast.loading || (cast.active && cast.remote.buffering))
+    receiverStatus = "Loading on receiver…";
+  else if (cast.active)
+    receiverStatus = cast.remote.playing ? "Playing on receiver" : "Paused on receiver";
   const canLoop = !remoteActive && !cast.preparing && Number.isFinite(duration) && duration >= 2;
   useEffect(() => {
     if (remoteActive || cast.preparing) clearLoop();
@@ -700,14 +709,6 @@ function MediaEngine({
               ]}
             >
               <IconButton
-                name="shuffle"
-                label="Shuffle"
-                active={transport.shuffle}
-                onPress={() =>
-                  usePlayerStore.setState({ shuffle: !transport.shuffle })
-                }
-              />
-              <IconButton
                 name="skip-previous"
                 label="Previous"
                 size={36}
@@ -747,27 +748,6 @@ function MediaEngine({
                 disabled={!canNext}
                 onPress={next}
               />
-              <IconButton
-                name={transport.repeat === "one" ? "repeat-one" : "repeat"}
-                label={
-                  transport.repeat === "one"
-                    ? "Repeat one"
-                    : transport.repeat === "all"
-                      ? "Repeat all"
-                      : "Repeat off"
-                }
-                active={transport.repeat !== "off"}
-                onPress={() =>
-                  usePlayerStore.setState({
-                    repeat:
-                      transport.repeat === "off"
-                        ? "all"
-                        : transport.repeat === "all"
-                          ? "one"
-                          : "off",
-                  })
-                }
-              />
             </View>
             <View
               style={[
@@ -796,6 +776,37 @@ function MediaEngine({
             </View>
             {controlsOpen && (
               <View style={{ backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: 16, padding: 12, marginHorizontal: 12, gap: 8 }}>
+                <View style={[styles.row, { flexWrap: "wrap" }]}>
+                  <IconButton
+                    name="shuffle"
+                    label="Shuffle"
+                    active={transport.shuffle}
+                    onPress={() =>
+                      usePlayerStore.setState({ shuffle: !transport.shuffle })
+                    }
+                  />
+                  <IconButton
+                    name={transport.repeat === "one" ? "repeat-one" : "repeat"}
+                    label={
+                      transport.repeat === "one"
+                        ? "Repeat one"
+                        : transport.repeat === "all"
+                          ? "Repeat all"
+                          : "Repeat off"
+                    }
+                    active={transport.repeat !== "off"}
+                    onPress={() =>
+                      usePlayerStore.setState({
+                        repeat:
+                          transport.repeat === "off"
+                            ? "all"
+                            : transport.repeat === "all"
+                              ? "one"
+                              : "off",
+                      })
+                    }
+                  />
+                </View>
                 {!remoteActive && (
                   <View accessibilityRole="radiogroup" accessibilityLabel={t("Playback speed")}
                     style={[styles.row, { flexWrap: "wrap" }]}>
@@ -845,15 +856,9 @@ function MediaEngine({
           cast.remote.connection !== "disconnected" &&
           expanded && (
             <View style={{ padding: 12, gap: 8 }}>
-              <Text raw style={styles.muted}>
-                {t(
-                  cast.loading || (cast.active && cast.remote.buffering)
-                    ? "Loading on receiver…"
-                    : cast.active
-                      ? "Playback on receiver"
-                      : "Cast connected",
-                )}{" "}
-                · {cast.remote.deviceName}
+              <Text raw accessibilityLiveRegion="polite" style={styles.muted}>
+                {t(receiverStatus)}
+                {cast.remote.deviceName ? ` · ${cast.remote.deviceName}` : ""}
               </Text>
               <View style={[styles.row, { flexWrap: "wrap" }]}>
                 {remoteActive && (
