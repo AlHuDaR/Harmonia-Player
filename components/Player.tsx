@@ -1,5 +1,5 @@
 import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
-import { MaterialIcons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTheme } from "@/utils/theme";
 import { IconButton } from "./MediaUI";
 import { useLocale } from "@/utils/i18n";
@@ -50,6 +50,14 @@ function ActivePlayer({ track }: { track: Track }) {
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (!expanded) return;
+    const listener = BackHandler.addEventListener("hardwareBackPress", () => {
+      usePlayerStore.getState().setExpanded(false);
+      return true;
+    });
+    return () => listener.remove();
+  }, [expanded]);
+  useEffect(() => {
     const controller = new AbortController();
     setUri(null);
     setError("");
@@ -79,14 +87,17 @@ function ActivePlayer({ track }: { track: Track }) {
         <Text raw style={styles.title}>
           {track.title}
         </Text>
-        <Text style={styles.muted}>{error || "Loading media…"}</Text>
+        <Text accessibilityRole={error ? "alert" : undefined} style={styles.muted}>
+          {error || "Loading media…"}
+        </Text>
         <View style={styles.row}>
           {!!error && (
-            <Pressable onPress={() => setRetry((x) => x + 1)}>
+            <Pressable accessibilityRole="button" onPress={() => setRetry((x) => x + 1)}>
               <Text style={styles.button}>Retry</Text>
             </Pressable>
           )}
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel={t("Close player")}
             onPress={() => usePlayerStore.getState().setCurrentTrack(null)}
           >
@@ -169,14 +180,6 @@ function MediaEngine({
       .catch(() => {});
     return () => controller.abort();
   }, [track]);
-  useEffect(() => {
-    if (!expanded) return;
-    const listener = BackHandler.addEventListener("hardwareBackPress", () => {
-      setExpanded(false);
-      return true;
-    });
-    return () => listener.remove();
-  }, [expanded]);
   const view = useRef<VideoView>(null);
   const player = useVideoPlayer(
     {

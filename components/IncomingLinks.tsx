@@ -8,6 +8,8 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocale } from "@/utils/i18n";
 import { usePlayerStore } from "@/store/playerStore";
 import { message } from "@/types/media";
 import { intentInbox } from "@/utils/incomingLinks";
@@ -19,6 +21,7 @@ import SharedLinkCard from "./SharedLinkCard";
 const accept = intentInbox();
 export default function IncomingLinks() {
   const styles = useMediaStyles();
+  const { rtl } = useLocale();
   const [links, setLinks] = useState<{ link: SharedLink; key: string }[]>([]);
   const [files, setFiles] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
@@ -93,7 +96,7 @@ export default function IncomingLinks() {
         else if (!importing) setLinks((items) => items.slice(1));
       }}
     >
-      <View style={[styles.page, { padding: 16 }]}>
+      <SafeAreaView style={[styles.page, { padding: 16, direction: rtl ? "rtl" : "ltr" }]}>
         <ScrollView contentContainerStyle={{ gap: 12 }}>
           {!!error && (
             <>
@@ -127,7 +130,7 @@ export default function IncomingLinks() {
             />
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   ) : null;
 }

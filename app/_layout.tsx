@@ -44,14 +44,16 @@ function Layout() {
   useEffect(() => {
     if (!ready) return;
     let pending = false;
+    let subscribed = true;
     const sync = async () => {
-      if (pending) return;
+      if (pending || AppState.currentState === "background" ||
+          AppState.currentState === "inactive") return;
       pending = true;
       try {
         await syncNativeDownloads();
-        setDownloadSyncError(false);
+        if (subscribed) setDownloadSyncError(false);
       } catch {
-        setDownloadSyncError(true);
+        if (subscribed) setDownloadSyncError(true);
       } finally {
         pending = false;
       }
@@ -62,6 +64,7 @@ function Layout() {
       if (state === "active") sync();
     });
     return () => {
+      subscribed = false;
       if (timer) clearInterval(timer);
       foreground.remove();
     };
