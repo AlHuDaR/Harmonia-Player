@@ -1,6 +1,7 @@
 import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { useState } from "react";
-import { Image, Modal, View } from "react-native";
+import { Image, Modal, ScrollView, View } from "react-native";
+import Constants from "expo-constants";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, usePathname, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,7 +13,6 @@ const menu = [
   ["Settings", "/settings", "settings"],
   ["About Harmonia", "/about", "info-outline"],
   ["Support the Developer", "/support", "favorite-border"],
-  ["Source Code & Licenses", "/licenses", "code"],
 ] as const;
 const tabs = [
   ["Home", "/", "home"],
@@ -25,6 +25,8 @@ export function Header() {
   const theme = useTheme();
   const { t, rtl } = useLocale();
   const insets = useSafeAreaInsets();
+  const currentPath = usePathname();
+  const version = Constants.expoConfig?.version ?? require("../package.json").version;
   const dismiss = () => setOpen(false);
   return (
     <>
@@ -81,80 +83,192 @@ export function Header() {
         <View
           style={{
             flex: 1,
+            flexDirection: rtl ? "row-reverse" : "row",
             backgroundColor: theme.scrim,
-            direction: rtl ? "rtl" : "ltr",
           }}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("Close menu")}
-            onPress={dismiss}
-            style={{ position: "absolute", inset: 0 }}
-          />
           <View
+            accessibilityViewIsModal
             style={{
-              width: "82%",
-              maxWidth: 330,
+              width: "86%",
+              maxWidth: 350,
               height: "100%",
-              padding: 16,
-              paddingTop: insets.top + 12,
-              backgroundColor: theme.surface,
+              backgroundColor: theme.background,
+              borderTopLeftRadius: rtl ? 24 : 0,
+              borderBottomLeftRadius: rtl ? 24 : 0,
+              borderTopRightRadius: rtl ? 0 : 24,
+              borderBottomRightRadius: rtl ? 0 : 24,
+              paddingTop: 16,
+              paddingBottom: Math.max(insets.bottom, 12),
+              paddingHorizontal: 18,
             }}
           >
             <View
               style={{
                 flexDirection: "row",
+                direction: rtl ? "rtl" : "ltr",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 16,
+                gap: 8,
+                paddingBottom: 20,
               }}
             >
-              <Text
-                raw
-                style={{ color: theme.text, fontSize: 18, fontWeight: "700" }}
+              <View
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                }}
               >
-                Harmonia
-              </Text>
+                <Image
+                  source={require("@/assets/images/icon.png")}
+                  style={{ width: 44, height: 44, borderRadius: 12 }}
+                />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    raw
+                    style={{ color: theme.text, fontSize: 20, fontWeight: "800" }}
+                  >
+                    Harmonia
+                  </Text>
+                  <Text
+                    numberOfLines={2}
+                    style={{ color: theme.muted, fontSize: 12, lineHeight: 17 }}
+                  >
+                    Your music and videos, online and offline.
+                  </Text>
+                </View>
+              </View>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("Close menu")}
                 onPress={dismiss}
-                style={{ padding: 12 }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 24,
+                }}
               >
-                <MaterialIcons name="close" size={22} color={theme.text} />
+                <MaterialIcons name="close" size={23} color={theme.text} />
               </Pressable>
             </View>
-            {menu.map(([label, path, icon]) => (
-              <Pressable
-                key={path}
-                accessibilityRole="button"
-                accessibilityLabel={t(label)}
-                onPress={() => {
-                  dismiss();
-                  usePlayerStore.getState().setExpanded(false);
-                  router.navigate(path as Href);
-                }}
+            <View style={{ height: 1, backgroundColor: theme.border, opacity: 0.55 }} />
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingTop: 14, paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {menu.map(([label, path, icon], index) => {
+                const selected = currentPath === path;
+                return (
+                  <View key={path}>
+                    {index === 1 && (
+                      <View
+                        style={{
+                          height: 1,
+                          backgroundColor: theme.border,
+                          opacity: 0.45,
+                          marginVertical: 16,
+                          marginHorizontal: 10,
+                        }}
+                      />
+                    )}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t(label)}
+                      accessibilityState={{ selected }}
+                      onPress={() => {
+                        dismiss();
+                        usePlayerStore.getState().setExpanded(false);
+                        router.navigate(path as Href);
+                      }}
+                      style={({ pressed }) => ({
+                        minHeight: 64,
+                        flexDirection: "row",
+                        direction: rtl ? "rtl" : "ltr",
+                        alignItems: "center",
+                        gap: 12,
+                        paddingHorizontal: 12,
+                        borderRadius: 16,
+                        backgroundColor:
+                          selected || pressed ? theme.selected : "transparent",
+                      })}
+                    >
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 12,
+                          backgroundColor: selected ? theme.selected : theme.elevated,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <MaterialIcons
+                          name={icon}
+                          size={22}
+                          color={selected ? theme.accent : theme.text}
+                        />
+                      </View>
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          color: selected ? theme.accent : theme.text,
+                          fontSize: 16,
+                          fontWeight: selected ? "700" : "500",
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        {label}
+                      </Text>
+                      <MaterialIcons
+                        name={rtl ? "chevron-left" : "chevron-right"}
+                        size={20}
+                        color={theme.muted}
+                      />
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </ScrollView>
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderColor: theme.border,
+                paddingTop: 20,
+                paddingHorizontal: 10,
+                gap: 6,
+              }}
+            >
+              <Text
+                raw
                 style={{
-                  minHeight: 52,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                  paddingVertical: 10,
+                  color: theme.text,
+                  fontSize: 13,
+                  fontWeight: "600",
                 }}
               >
-                <MaterialIcons name={icon} size={21} color={theme.muted} />
-                <Text style={{ color: theme.text, flex: 1, flexShrink: 1 }}>
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-            <Text
-              raw
-              style={{ color: theme.muted, marginTop: 24, flexShrink: 1 }}
-            >
-              Coded By AlHuDaR
-            </Text>
+                Coded by AlHuDaR
+              </Text>
+              <Text
+                raw
+                style={{ color: theme.muted, fontSize: 12 }}
+              >
+                {(rtl ? "الإصدار " : "Version ") + version}
+              </Text>
+            </View>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("Close menu")}
+            onPress={dismiss}
+            style={{ flex: 1 }}
+          />
         </View>
       </Modal>
     </>
