@@ -1,3 +1,9 @@
+## 2.0.0 — release candidate
+
+- Patch both decode-uri-component advisories without upgrading Expo SDK 57; retain query-string 7 with a guarded ESM import adapter.
+- Propose Android versionCode 15, preserving `com.alhudar.harmonia` and existing playback, downloads, Library, Arabic RTL and Cast.
+- Record validation, signing/update compatibility and provider-policy publication gates in [the release checklist](docs/release-2.0.0.md). Public publication is not approved by this candidate.
+
 ## 2.0.0-preview.8 — downloaded-file Cast
 
 - Cast completed app-owned downloads directly over the local network, independently of YouTube metadata or temporary provider URLs.

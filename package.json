@@ -1,7 +1,7 @@
 {
   "name": "harmonia-player",
   "main": "expo-router/entry",
-  "version": "2.0.0-preview.8",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
@@ -18,7 +18,8 @@
     "build:aab": "bash scripts/build-android-release.sh aab",
     "build:android-release": "bash scripts/build-android-release.sh all",
     "test:web": "playwright test",
-    "build:apk:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-release.ps1 -Mode arm64"
+    "build:apk:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-release.ps1 -Mode arm64",
+    "postinstall": "node scripts/patch-query-string.cjs"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.7",
@@ -62,6 +63,9 @@
   "overrides": {
     "@expo/fingerprint": {
       "minimatch": "11.0.5"
+    },
+    "query-string": {
+      "decode-uri-component": "0.5.1"
     }
   }
 }
