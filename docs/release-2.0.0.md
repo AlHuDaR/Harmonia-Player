@@ -48,7 +48,7 @@ Keep the permanent key outside the checkout with encrypted backups. Supply passw
 
 Build #130 at the baseline commit passed Doctor **21/21**, TypeScript, **192 unit tests**, **20 browser checks**, web export, Linux ARM64/universal/AAB builds, native unit tests, instrumentation-APK build, signature/ABI/bundle checks, and the Windows ARM64 builder. Its Android emulator job passed cold/warm/repeated SEND, queued-share error/Back recovery, VIEW, direct-file background download, restart/offline playback, and local Cast instrumentation for three formats (grants, ranges, CORS, screen-off/foreground service and cleanup). Live Instagram was explicitly skipped, not verified.
 
-Baseline downloads (GitHub login required; retention ends 26 November 2026):
+Baseline downloads (GitHub login required; 14-day retention; expires 27 November 2026 in Asia/Muscat):
 
 - [ARM64 APK](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/43293830757/artifacts/13978629028)
 - [Universal APK](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/43293830757/artifacts/13978434201)
