@@ -67,7 +67,10 @@ for (const [file, type] of [
       .fill(`https://media.example.com/${file}`);
     await page.getByRole("button", { name: "Open URL", exact: true }).click();
     const video = page.locator("video");
+    await expect(page.getByRole("button", { name: "Shuffle", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Playback tools · 1×", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Shuffle", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Repeat off", exact: true })).toBeVisible();
     await page.getByRole("radio", { name: "1.25×", exact: true }).click();
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.playbackRate)).toBe(1.25);
     await expect
@@ -180,6 +183,7 @@ test("language switches instantly and persists with a clean Home", async ({
   ).toHaveCount(0);
   await page.getByRole("radio", { name: "العربية", exact: true }).click();
   await expect(page.getByRole("tab", { name: /الرئيسية/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "التنزيلات", exact: true })).toBeVisible();
   await expect(page.getByText("اللغة", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText("اللغة", { exact: true })).toBeVisible();
@@ -259,7 +263,9 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("tab")).toHaveCount(4);
+  await expect(page.getByRole("tab")).toHaveText(["Home", "Search", "Downloads", "Library"]);
+  await page.getByRole("tab", { name: "Downloads", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "Downloads", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: "Open menu", exact: true }).click();
   await page.mouse.click(400, 450);
   await expect(
@@ -419,7 +425,11 @@ test("Recent uses listening order, excludes unplayed saved items and honors hist
     2,
   );
   await expect(page.getByText("Unplayed", { exact: true })).toHaveCount(0);
-  await page.getByRole("tab", { name: "Recent", exact: true }).click();
+  const openRecent = async () => {
+    await page.getByRole("tab", { name: "Home", exact: true }).click();
+    await page.getByRole("button", { name: "View recent", exact: true }).click();
+  };
+  await openRecent();
   await expect(
     page.getByRole("button", { name: "Play Latest", exact: true }).first(),
   ).toBeVisible();
@@ -434,13 +444,13 @@ test("Recent uses listening order, excludes unplayed saved items and honors hist
     .getByRole("button", { name: "Clear listening history", exact: true })
     .click();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.getByRole("tab", { name: "Recent", exact: true }).click();
+  await openRecent();
   await expect(titles.first()).toBeVisible();
   await page.getByRole("button", { name: "Open menu", exact: true }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Clear listening history", exact: true }).click();
   await page.getByRole("button", { name: "Clear history", exact: true }).click();
-  await page.getByRole("tab", { name: "Recent", exact: true }).click();
+  await openRecent();
   await expect(
     page
       .getByText("No listening history yet", { exact: true })

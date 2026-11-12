@@ -71,11 +71,11 @@ def wait_for_window(description, matches, seconds=60):
         time.sleep(1)
     raise AssertionError(f'{description}. Last observation: {observed}')
 
-def wait_sheet(source, media=False):
+def wait_sheet(source, media=False, absent_label=None):
     def matches(root):
         nodes = [n for n in root.iter('node') if n.get('package') == PACKAGE]
         labels = {label for n in nodes for label in (n.get('text'), n.get('content-desc'))}
-        if source not in labels or 'Save Link' not in labels:
+        if source not in labels or 'Save Link' not in labels or absent_label in labels:
             return False
         return all(
             any(label in (n.get('text'), n.get('content-desc')) and n.get('enabled') == expected
@@ -113,6 +113,15 @@ for index in range(3):
     close(root)
     wait_text('Home')  # Confirm dismissal before sending the next intent.
     print(('cold' if index == 0 else 'warm/repeated') + ' SEND passed')
+adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '-a', 'android.intent.action.SEND', '-t', 'text/plain', '--es', 'android.intent.extra.TEXT', 'https://instagram.com/reel/123')
+wait_sheet('Instagram')
+adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '-a', 'android.intent.action.SEND', '-t', 'text/plain', '--es', 'android.intent.extra.TEXT', 'invalid-share')
+share_error = 'No safe web link was found in the shared text.'
+wait_text(share_error)
+adb('shell', 'input', 'keyevent', 'KEYCODE_BACK')
+root = wait_sheet('Instagram', absent_label=share_error)
+close(root)
+wait_text('Home')
 adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '-a', 'android.intent.action.VIEW', '-d', 'https://www.facebook.com/reel/123')
 close(wait_sheet('Facebook'))
 # The repository's generated media fixture, not third-party copyrighted media.

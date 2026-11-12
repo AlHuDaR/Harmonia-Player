@@ -1,7 +1,7 @@
 import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { useState } from "react";
 import Constants from "expo-constants";
-import { Modal, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, usePathname, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +15,12 @@ const menu = [
   ["Support the Developer", "/support", "favorite-border"],
 ] as const;
 const tabs = [
+  ["Home", "/", "home"],
+  ["Search", "/explore", "search"],
+  ["Downloads", "/downloads", "file-download"],
+  ["Library", "/library", "library-music"],
+] as const;
+const tvTabs = [
   ["Home", "/", "home"],
   ["Recent", "/samples", "history"],
   ["Search", "/explore", "search"],
@@ -202,9 +208,11 @@ export function BottomNavigation() {
         flexShrink: 0,
       }}
     >
-      {tabs.map(([label, href, icon]) => {
+      {(Platform.isTV ? tvTabs : tabs).map(([label, href, icon]) => {
         const selected =
-          path === href || (href === "/library" && path === "/downloads");
+          path === href ||
+          (Platform.isTV && href === "/library" && path === "/downloads") ||
+          (!Platform.isTV && href === "/" && path === "/samples");
         const color = selected ? theme.accent : theme.muted;
         return (
           <Pressable
