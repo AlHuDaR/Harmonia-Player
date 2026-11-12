@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { TextInput, View, type TextInputProps } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FocusablePressable } from "./FocusablePressable";
 import { useTheme } from "@/utils/theme";
 import { useLocale } from "@/utils/i18n";

@@ -3,7 +3,10 @@ import { classifyLink } from "@/utils/linkProviders";
 import { router } from "expo-router";
 import { Text } from "@/components/LocalizedText";
 import OpenMedia from "@/components/OpenMedia";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import SearchInput from "@/components/SearchInput";
+import { searchTerm } from "@/utils/textDirection";
 import { View } from "react-native";
 import {
   Page,
@@ -26,21 +29,37 @@ const collections = [
 ] as const;
 export default function LibraryScreen() {
   const styles = useMediaStyles();
-  const { tracks, favorites, playlists, downloads, savedLinks } =
-    usePlayerStore();
+  const { tracks, favorites, playlists, downloads, savedLinks } = usePlayerStore(
+    useShallow((state) => ({
+      tracks: state.tracks,
+      favorites: state.favorites,
+      playlists: state.playlists,
+      downloads: state.downloads,
+      savedLinks: state.savedLinks,
+    })),
+  );
   const [collection, setCollection] =
     useState<(typeof collections)[number]>("Favorites");
   const [selectedLink, setSelectedLink] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [openPlaylist, setOpenPlaylist] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const tracksById = useMemo(() => new Map(tracks.map((track) => [track.id, track])), [tracks]);
   const downloadedIds = new Set(downloads.map((d) => d.track.id));
-  const visible = tracks.filter((track) =>
+  const favoriteIds = new Set(favorites);
+  const collectionTracks = tracks.filter((track) =>
     collection === "Favorites"
-      ? favorites.includes(track.id)
+      ? favoriteIds.has(track.id)
       : collection === "Local media"
         ? !!track.localUri && !downloadedIds.has(track.id)
         : !track.localUri && !downloadedIds.has(track.id),
   );
+  const term = searchTerm(query).toLocaleLowerCase();
+  const visible = term
+    ? collectionTracks.filter(({ title, artist }) =>
+        searchTerm(`${title} ${artist}`).toLocaleLowerCase().includes(term),
+      )
+    : collectionTracks;
   return (
     <Page title="Library">
       <View style={[styles.row, { flexWrap: "wrap" }]}>
@@ -62,7 +81,10 @@ export default function LibraryScreen() {
             key={label}
             label={label}
             selected={collection === label}
-            onPress={() => setCollection(label)}
+            onPress={() => {
+              if (collection !== label) setQuery("");
+              setCollection(label);
+            }}
           />
         ))}
       </View>
@@ -125,7 +147,7 @@ export default function LibraryScreen() {
           )}
           {playlists.map((p) => {
             const list = p.trackIds
-              .map((id) => tracks.find((track) => track.id === id))
+              .map((id) => tracksById.get(id))
               .filter((track) => !!track);
             return (
               <SurfaceCard key={p.id}>
@@ -175,7 +197,16 @@ export default function LibraryScreen() {
         </>
       ) : (
         <>
-          {!visible.length && (
+          {!!collectionTracks.length && (
+            <SearchInput
+              accessibilityLabel="Search library"
+              placeholder="Search by title or artist"
+              value={query}
+              onChangeText={setQuery}
+            />
+          )}
+          {!visible.length && !!term && <Text style={styles.text}>No matching tracks.</Text>}
+          {!collectionTracks.length && (
             <EmptyState
               icon={
                 collection === "Favorites" ? "favorite-border" : "folder-open"

@@ -51,6 +51,19 @@ beforeEach(() => {
   usePlayerStore.setState({ downloads: [], tracks: [] });
 });
 describe("durable native job/library reconciliation", () => {
+  it("keeps download cards in place while an earlier job reports progress", async () => {
+    const other = { ...track, id: "native:2" };
+    const first = { track, nativeId: "job", status: "downloading" as const, progress: 0.1 };
+    usePlayerStore.getState().setDownload(first);
+    usePlayerStore.getState().setDownload({ track: other, status: "complete", progress: 1 });
+
+    bridge.downloads.mockResolvedValue(JSON.stringify([{ ...first, progress: 0.6 }]));
+    await syncNativeDownloads();
+
+    expect(usePlayerStore.getState().downloads.map((record) => record.track.id))
+      .toEqual([track.id, other.id]);
+    expect(usePlayerStore.getState().downloads[0].progress).toBe(0.6);
+  });
   it.each(["queued","downloading","retrying"] as const)("preserves %s native work when Download is tapped again", async (status) => {
     const record={track,nativeId:"existing",status,progress:0.4,createdAt:1};
     usePlayerStore.getState().setDownload(record);

@@ -267,10 +267,9 @@ export const usePlayerStore = create<PlayerStore>()(
         set((s) => ({ playlists: s.playlists.filter((p) => p.id !== id) })),
       setDownload: (download) =>
         set((s) => ({
-          downloads: [
-            ...s.downloads.filter((d) => d.track.id !== download.track.id),
-            download,
-          ],
+          downloads: s.downloads.some((d) => d.track.id === download.track.id)
+            ? s.downloads.map((d) => d.track.id === download.track.id ? download : d)
+            : [...s.downloads, download],
           tracks: [
             ...s.tracks.filter((t) => t.id !== download.track.id),
             download.track,

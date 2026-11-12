@@ -1,7 +1,7 @@
 import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { useState } from "react";
-import { Image, Modal, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Modal, ScrollView, StyleSheet, View } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, usePathname, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "./LocalizedText";
@@ -42,7 +42,7 @@ export function Header() {
           style={{
             height: 44,
             flexDirection: "row",
-            direction: "ltr",
+            direction: rtl ? "rtl" : "ltr",
             alignItems: "center",
             gap: 7,
           }}
@@ -50,6 +50,7 @@ export function Header() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("Open menu")}
+            accessibilityState={{ expanded: open }}
             onPress={() => setOpen(true)}
             style={{
               width: 44,
@@ -60,10 +61,7 @@ export function Header() {
           >
             <MaterialIcons name="menu" size={22} color={theme.text} />
           </Pressable>
-          <Image
-            source={require("@/assets/images/icon.png")}
-            style={{ width: 22, height: 22, borderRadius: 6 }}
-          />
+          <MaterialIcons name="play-circle-filled" size={24} color={theme.accent} />
           <Text
             raw
             style={{ color: theme.text, fontSize: 15, fontWeight: "700" }}
@@ -86,74 +84,79 @@ export function Header() {
           }}
         >
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("Close menu")}
+            accessible={false}
+            focusable={false}
+            importantForAccessibility="no"
             onPress={dismiss}
-            style={{ position: "absolute", inset: 0 }}
+            style={StyleSheet.absoluteFill}
           />
           <View
             style={{
               width: "82%",
               maxWidth: 330,
               height: "100%",
-              padding: 16,
-              paddingTop: insets.top + 12,
               backgroundColor: theme.surface,
             }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
-            >
-              <Text
-                raw
-                style={{ color: theme.text, fontSize: 18, fontWeight: "700" }}
-              >
-                Harmonia
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("Close menu")}
-                onPress={dismiss}
-                style={{ padding: 12 }}
-              >
-                <MaterialIcons name="close" size={22} color={theme.text} />
-              </Pressable>
-            </View>
-            {menu.map(([label, path, icon]) => (
-              <Pressable
-                key={path}
-                accessibilityRole="button"
-                accessibilityLabel={t(label)}
-                onPress={() => {
-                  dismiss();
-                  usePlayerStore.getState().setExpanded(false);
-                  router.navigate(path as Href);
-                }}
+            <ScrollView contentContainerStyle={{
+              padding: 16,
+              paddingTop: insets.top + 12,
+              paddingBottom: insets.bottom + 16,
+            }}>
+              <View
                 style={{
-                  minHeight: 52,
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 14,
-                  paddingVertical: 10,
+                  justifyContent: "space-between",
+                  marginBottom: 16,
                 }}
               >
-                <MaterialIcons name={icon} size={21} color={theme.muted} />
-                <Text style={{ color: theme.text, flex: 1, flexShrink: 1 }}>
-                  {label}
+                <Text
+                  raw
+                  style={{ color: theme.text, fontSize: 18, fontWeight: "700" }}
+                >
+                  Harmonia
                 </Text>
-              </Pressable>
-            ))}
-            <Text
-              raw
-              style={{ color: theme.muted, marginTop: 24, flexShrink: 1 }}
-            >
-              Coded By AlHuDaR
-            </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("Close menu")}
+                  onPress={dismiss}
+                  style={{ padding: 12 }}
+                >
+                  <MaterialIcons name="close" size={22} color={theme.text} />
+                </Pressable>
+              </View>
+              {menu.map(([label, path, icon]) => (
+                <Pressable
+                  key={path}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(label)}
+                  onPress={() => {
+                    dismiss();
+                    usePlayerStore.getState().setExpanded(false);
+                    router.navigate(path as Href);
+                  }}
+                  style={{
+                    minHeight: 52,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <MaterialIcons name={icon} size={21} color={theme.muted} />
+                  <Text style={{ color: theme.text, flex: 1, flexShrink: 1 }}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+              <Text
+                raw
+                style={{ color: theme.muted, marginTop: 24, flexShrink: 1 }}
+              >
+                Coded by AlHuDaR
+              </Text>
+            </ScrollView>
           </View>
         </View>
       </Modal>

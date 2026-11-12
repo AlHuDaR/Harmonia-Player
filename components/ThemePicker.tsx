@@ -1,6 +1,6 @@
 import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Text } from "./LocalizedText";
 import { useLocale } from "@/utils/i18n";
 import { useTheme } from "@/utils/theme";

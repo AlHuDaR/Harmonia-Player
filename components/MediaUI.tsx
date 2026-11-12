@@ -7,7 +7,7 @@ import { View,
   StyleSheet,
   Image,
   Modal } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "./LocalizedText";
 import { useLocale } from "@/utils/i18n";
@@ -62,7 +62,7 @@ export function Page({
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.title}>{title}</Text>
+        <Text accessibilityRole="header" style={styles.title}>{title}</Text>
         {children}
       </ScrollView>
     </SafeAreaView>
@@ -85,6 +85,11 @@ const icons: Record<
   "Open link": "link",
   "Search songs, artists, or videos": "search",
   Downloads: "download",
+  "About Harmonia": "info-outline",
+  "Support the Developer": "favorite-border",
+  "Source Code & Licenses": "code",
+  "Open repository": "open-in-new",
+  "Open GitHub Issues": "bug-report",
   "View library": "library-music",
   "View recent": "history",
   "Play all": "play-arrow",
@@ -205,10 +210,10 @@ export function TrackCard({
   const theme = useTheme();
   const styles = useMediaStyles();
   const [menu, setMenu] = useState(false);
-  const state = usePlayerStore();
   const { t, rtl } = useLocale();
-  const favorite = state.favorites.includes(track.id);
+  const favorite = usePlayerStore((state) => state.favorites.includes(track.id));
   const play = () => {
+    const state = usePlayerStore.getState();
     if (list)
       state.playList(
         list,
@@ -322,6 +327,7 @@ export function TrackCard({
             <Button
               title={favorite ? "♥ Saved" : "♡ Favorite"}
               onPress={() => {
+                const state = usePlayerStore.getState();
                 state.addTrack(track);
                 state.toggleFavorite(track.id);
                 setMenu(false);
@@ -330,7 +336,7 @@ export function TrackCard({
             <Button
               title="Add to queue"
               onPress={() => {
-                state.enqueue(track);
+                usePlayerStore.getState().enqueue(track);
                 setMenu(false);
               }}
             />
@@ -338,7 +344,7 @@ export function TrackCard({
               <Button
                 title="Remove"
                 onPress={() => {
-                  state.removeFromPlaylist(playlistId, track.id);
+                  usePlayerStore.getState().removeFromPlaylist(playlistId, track.id);
                   setMenu(false);
                 }}
               />
