@@ -37,12 +37,21 @@ public final class MediaModule extends ReactContextBaseJavaModule {
             for(int i=0;i<all.length();i++) {
                 JSONObject r=all.getJSONObject(i);
                 if(!r.getJSONObject("track").getString("id").equals(track.getString("id")))continue;
+                String id=r.getString("nativeId");
                 String state=r.getString("status");
-                if(state.equals("queued")||state.equals("downloading")||state.equals("retrying")){p.resolve(r.toString());return;}
+                if(isPending(state)) {
+                    WorkInfo info=workInfo(c,id);
+                    if(info!=null && !info.getState().isFinished()){p.resolve(r.toString());return;}
+                    // The worker may have committed the file since the list was read.
+                    r=DownloadRecords.get(c,id);
+                    if(r==null)continue;
+                    r.remove("source");
+                    state=r.getString("status");
+                }
                 if(state.equals("complete")) {
                     if(hasOfflineFile(r)){p.resolve(r.toString());return;}
                 }
-                forget(r.getString("nativeId"));
+                forget(id);
             }
             OneTimeWorkRequest request=new OneTimeWorkRequest.Builder(MediaDownloadWorker.class)
                 .setConstraints(new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -63,6 +72,12 @@ public final class MediaModule extends ReactContextBaseJavaModule {
         File file=new File(path);
         return file.isFile() && file.length()>0;
     }
+    private static boolean isPending(String status) {
+        return status.equals("queued")||status.equals("downloading")||status.equals("retrying");
+    }
+    private static WorkInfo workInfo(Context context,String id) throws Exception {
+        return WorkManager.getInstance(context).getWorkInfoById(UUID.fromString(id)).get();
+    }
     @ReactMethod public synchronized void downloads(Promise p){
         readDownloads(false,p);
     }
@@ -74,10 +89,15 @@ public final class MediaModule extends ReactContextBaseJavaModule {
             Context c=getReactApplicationContext();JSONArray records=DownloadRecords.all(c);
             for(int i=0;i<records.length();i++) {
                 JSONObject r=records.getJSONObject(i);String status=r.optString("status"),id=r.getString("nativeId");
-                if(status.equals("queued")||status.equals("downloading")||status.equals("retrying")) {
-                    WorkInfo info=WorkManager.getInstance(c).getWorkInfoById(UUID.fromString(id)).get();
-                    if(info!=null && info.getState()==WorkInfo.State.CANCELLED) DownloadRecords.update(c,id,"cancelled",0,"Download cancelled.",null);
-                    else if(info==null || info.getState()==WorkInfo.State.FAILED) DownloadRecords.update(c,id,"failed",0,"Background job stopped. Retry to resolve fresh media.",null);
+                if(isPending(status)) {
+                    WorkInfo info=workInfo(c,id);
+                    if(info==null || info.getState().isFinished()) {
+                        JSONObject latest=DownloadRecords.get(c,id);
+                        if(latest!=null && isPending(latest.optString("status"))) {
+                            if(info!=null && info.getState()==WorkInfo.State.CANCELLED) DownloadRecords.update(c,id,"cancelled",0,"Download cancelled.",null);
+                            else DownloadRecords.update(c,id,"failed",0,"Background job stopped. Retry to resolve fresh media.",null);
+                        }
+                    }
                 }
                 if(verifyOffline && status.equals("complete") && !hasOfflineFile(r)) {
                     DownloadRecords.update(c,id,"failed",0,"Offline file is missing or empty. Download it again.",null);
