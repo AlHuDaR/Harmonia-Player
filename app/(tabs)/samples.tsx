@@ -1,11 +1,20 @@
 import { router } from "expo-router";
+import { useMemo } from "react";
 import { Page, TrackCard, EmptyState, Button } from "@/components/MediaUI";
 import { usePlayerStore } from "@/store/playerStore";
 export default function RecentScreen() {
-  const { tracks, history, playList } = usePlayerStore();
-  const recent = [...new Set(history)]
-    .map((id) => tracks.find((track) => track.id === id))
-    .filter((track) => !!track);
+  const tracks = usePlayerStore((state) => state.tracks);
+  const history = usePlayerStore((state) => state.history);
+  const recent = useMemo(() => {
+    if (!history.length) return [];
+    const tracksById = new Map<string, (typeof tracks)[number]>();
+    for (const track of tracks) {
+      if (!tracksById.has(track.id)) tracksById.set(track.id, track);
+    }
+    return [...new Set(history)]
+      .map((id) => tracksById.get(id))
+      .filter((track) => !!track);
+  }, [tracks, history]);
   return (
     <Page title="Recent">
       {!recent.length ? (
@@ -18,7 +27,10 @@ export default function RecentScreen() {
         />
       ) : (
         <>
-          <Button title="Play all" onPress={() => playList(recent, 0)} />
+          <Button
+            title="Play all"
+            onPress={() => usePlayerStore.getState().playList(recent, 0)}
+          />
           {recent.map((track) => (
             <TrackCard key={track.id} track={track} list={recent} compact />
           ))}

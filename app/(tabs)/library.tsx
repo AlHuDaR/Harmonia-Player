@@ -29,14 +29,16 @@ const collections = [
 ] as const;
 export default function LibraryScreen() {
   const styles = useMediaStyles();
-  const { tracks, favorites, playlists, downloads, savedLinks } = usePlayerStore(
+  const { tracks, favorites, playlists, savedLinks } = usePlayerStore(
     useShallow((state) => ({
       tracks: state.tracks,
       favorites: state.favorites,
       playlists: state.playlists,
-      downloads: state.downloads,
       savedLinks: state.savedLinks,
     })),
+  );
+  const downloadedIds = usePlayerStore(
+    useShallow((state) => state.downloads.map((download) => download.track.id)),
   );
   const [collection, setCollection] =
     useState<(typeof collections)[number]>("Favorites");
@@ -44,16 +46,23 @@ export default function LibraryScreen() {
   const [name, setName] = useState("");
   const [openPlaylist, setOpenPlaylist] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const tracksById = useMemo(() => new Map(tracks.map((track) => [track.id, track])), [tracks]);
-  const downloadedIds = new Set(downloads.map((d) => d.track.id));
-  const favoriteIds = new Set(favorites);
-  const collectionTracks = tracks.filter((track) =>
-    collection === "Favorites"
-      ? favoriteIds.has(track.id)
-      : collection === "Local media"
-        ? !!track.localUri && !downloadedIds.has(track.id)
-        : !track.localUri && !downloadedIds.has(track.id),
-  );
+  const collectionTracks = useMemo(() => {
+    if (collection === "Saved links" || collection === "Playlists") return [];
+    if (collection === "Favorites") {
+      const ids = new Set(favorites);
+      return tracks.filter((track) => ids.has(track.id));
+    }
+    const ids = new Set(downloadedIds);
+    const local = collection === "Local media";
+    return tracks.filter((track) => !!track.localUri === local && !ids.has(track.id));
+  }, [collection, tracks, favorites, downloadedIds]);
+  const openedTracks = useMemo(() => {
+    if (collection !== "Playlists") return [];
+    const playlist = playlists.find((item) => item.id === openPlaylist);
+    if (!playlist?.trackIds.length) return [];
+    const tracksById = new Map(tracks.map((track) => [track.id, track]));
+    return playlist.trackIds.map((id) => tracksById.get(id)).filter((track) => !!track);
+  }, [collection, openPlaylist, playlists, tracks]);
   const term = searchTerm(query).toLocaleLowerCase();
   const visible = term
     ? collectionTracks.filter(({ title, artist }) =>
@@ -145,44 +154,40 @@ export default function LibraryScreen() {
               description="Create a playlist, then use Add To in the player to save tracks to it."
             />
           )}
-          {playlists.map((p) => {
-            const list = p.trackIds
-              .map((id) => tracksById.get(id))
-              .filter((track) => !!track);
-            return (
-              <SurfaceCard key={p.id}>
-                <Button
-                  raw
-                  expanded={openPlaylist === p.id}
-                  title={p.name}
-                  onPress={() =>
-                    setOpenPlaylist(openPlaylist === p.id ? null : p.id)
-                  }
-                />
-                {openPlaylist === p.id && (
-                  <>
-                    {!list.length && (
-                      <Text style={styles.text}>
-                        Use the Playlist button on a track to add it here.
-                      </Text>
-                    )}
-                    {!!list.length && (
-                      <Button
-                        title="Play all"
-                        onPress={() =>
-                          usePlayerStore.getState().playList(list, 0)
-                        }
-                      />
-                    )}
-                    {list.map((track) => (
-                      <TrackCard
-                        key={track.id}
-                        track={track}
-                        playlistId={p.id}
-                        list={list}
-                        compact
-                      />
-                    ))}
+          {playlists.map((p) => (
+            <SurfaceCard key={p.id}>
+              <Button
+                raw
+                expanded={openPlaylist === p.id}
+                title={p.name}
+                onPress={() =>
+                  setOpenPlaylist(openPlaylist === p.id ? null : p.id)
+                }
+              />
+              {openPlaylist === p.id && (
+                <>
+                  {!openedTracks.length && (
+                    <Text style={styles.text}>
+                      Use the Playlist button on a track to add it here.
+                    </Text>
+                  )}
+                  {!!openedTracks.length && (
+                    <Button
+                      title="Play all"
+                      onPress={() =>
+                        usePlayerStore.getState().playList(openedTracks, 0)
+                      }
+                    />
+                  )}
+                  {openedTracks.map((track) => (
+                    <TrackCard
+                      key={track.id}
+                      track={track}
+                      playlistId={p.id}
+                      list={openedTracks}
+                      compact
+                    />
+                  ))}
                     <Button
                       title="Delete playlist"
                       onPress={() =>
@@ -192,8 +197,7 @@ export default function LibraryScreen() {
                   </>
                 )}
               </SurfaceCard>
-            );
-          })}
+          ))}
         </>
       ) : (
         <>
