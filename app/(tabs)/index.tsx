@@ -85,7 +85,7 @@ export default function HomeScreen() {
       )}
       <SectionHeader
         title="Recently played"
-        action={recent.length ? "View recent" : undefined}
+        action="View recent"
         onPress={() => router.navigate("/samples")}
       />
       {!recent.length && (
