@@ -1,5 +1,6 @@
 import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
 import { useState } from "react";
+import Constants from "expo-constants";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, usePathname, type Href } from "expo-router";
@@ -12,7 +13,6 @@ const menu = [
   ["Settings", "/settings", "settings"],
   ["About Harmonia", "/about", "info-outline"],
   ["Support the Developer", "/support", "favorite-border"],
-  ["Source Code & Licenses", "/licenses", "code"],
 ] as const;
 const tabs = [
   ["Home", "/", "home"],
@@ -25,6 +25,8 @@ export function Header() {
   const theme = useTheme();
   const { t, rtl } = useLocale();
   const insets = useSafeAreaInsets();
+  const currentPath = usePathname();
+  const version = Constants.expoConfig?.version ?? require("../package.json").version;
   const dismiss = () => setOpen(false);
   return (
     <>
@@ -79,8 +81,8 @@ export function Header() {
         <View
           style={{
             flex: 1,
-            backgroundColor: theme.scrim,
             direction: rtl ? "rtl" : "ltr",
+            backgroundColor: theme.scrim,
           }}
         >
           <Pressable
@@ -91,15 +93,17 @@ export function Header() {
             style={StyleSheet.absoluteFill}
           />
           <View
+            accessibilityViewIsModal
             style={{
-              width: "82%",
-              maxWidth: 330,
+              width: "86%",
+              maxWidth: 350,
               height: "100%",
               backgroundColor: theme.surface,
             }}
           >
             <ScrollView contentContainerStyle={{
-              padding: 16,
+              paddingLeft: 16 + insets.left,
+              paddingRight: 16 + insets.right,
               paddingTop: insets.top + 12,
               paddingBottom: insets.bottom + 16,
             }}>
@@ -126,35 +130,51 @@ export function Header() {
                   <MaterialIcons name="close" size={22} color={theme.text} />
                 </Pressable>
               </View>
-              {menu.map(([label, path, icon]) => (
-                <Pressable
-                  key={path}
-                  accessibilityRole="button"
-                  accessibilityLabel={t(label)}
-                  onPress={() => {
-                    dismiss();
-                    usePlayerStore.getState().setExpanded(false);
-                    router.navigate(path as Href);
-                  }}
-                  style={{
-                    minHeight: 52,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 14,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <MaterialIcons name={icon} size={21} color={theme.muted} />
-                  <Text style={{ color: theme.text, flex: 1, flexShrink: 1 }}>
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
+              {menu.map(([label, path, icon]) => {
+                const selected = currentPath === path;
+                const iconColor = selected ? theme.accent : theme.muted;
+                return (
+                  <Pressable
+                    key={path}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(label)}
+                    accessibilityState={{ selected }}
+                    onPress={() => {
+                      dismiss();
+                      usePlayerStore.getState().setExpanded(false);
+                      router.navigate(path as Href);
+                    }}
+                    style={({ pressed }) => ({
+                      minHeight: 52,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      backgroundColor: selected || pressed ? theme.selected : "transparent",
+                    })}
+                  >
+                    <MaterialIcons name={icon} size={21} color={iconColor} />
+                    <Text style={{ color: theme.text, flex: 1, flexShrink: 1 }}>
+                      {label}
+                    </Text>
+                    <MaterialIcons
+                      name={rtl ? "chevron-left" : "chevron-right"}
+                      size={21}
+                      color={iconColor}
+                    />
+                  </Pressable>
+                );
+              })}
               <Text
                 raw
                 style={{ color: theme.muted, marginTop: 24, flexShrink: 1 }}
               >
                 Coded by AlHuDaR
+              </Text>
+              <Text style={{ color: theme.muted }}>
+                Version{" "}{version}
               </Text>
             </ScrollView>
           </View>
