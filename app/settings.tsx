@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
 import { NativeModules, Platform, Switch, View, Linking } from "react-native";
 import { Text } from "@/components/LocalizedText";
 import {
@@ -18,6 +19,9 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const { settings, autoQueue, updateSettings } = usePlayerStore();
   const [feedback, setFeedback] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const hasHistory = usePlayerStore((state) => state.history.length > 0);
+  useFocusEffect(useCallback(() => () => setConfirmClear(false), []));
   return (
     <Page title="Settings">
       <SurfaceCard>
@@ -119,8 +123,7 @@ export default function SettingsScreen() {
       <SurfaceCard>
         <Text style={styles.heading}>Links</Text>
         <Text style={styles.text}>
-          Share a YouTube link to Harmonia, or enable supported links in Android
-          settings.
+          Share supported links from other apps using Share → Harmonia.
         </Text>
         {Platform.OS === "android" && (
           <Button
@@ -144,18 +147,36 @@ export default function SettingsScreen() {
           Normal updates keep your library and preferences.
         </Text>
         <Text style={styles.text}>
-          Your library stays on this device. YouTube receives requests when you
-          search or stream. No advertising or analytics SDK is included.
+          Your library stays on this device. Online media and search requests are sent to the relevant provider.
         </Text>
-        <Button
-          title="Clear listening history"
-          onPress={() => {
-            usePlayerStore.getState().clearHistory();
-            setFeedback("History cleared.");
-          }}
-        />
+        {confirmClear ? (
+          <View style={{ gap: 8 }}>
+            <Text accessibilityRole="alert" style={styles.text}>
+              Remove all tracks from your listening history?
+            </Text>
+            <View style={[styles.row, { flexWrap: "wrap" }]}>
+              <Button title="Cancel" onPress={() => setConfirmClear(false)} />
+              <Button title="Clear history" onPress={() => {
+                usePlayerStore.getState().clearHistory();
+                setConfirmClear(false);
+                setFeedback("History cleared.");
+              }} />
+            </View>
+          </View>
+        ) : (
+          <Button title="Clear listening history" disabled={!hasHistory} onPress={() => {
+            setFeedback("");
+            setConfirmClear(true);
+          }} />
+        )}
+        {feedback === "History cleared." && (
+          <Text accessibilityRole="alert" style={styles.text}>{feedback}</Text>
+        )}
       </SurfaceCard>
-      {!!feedback && (
+      <SurfaceCard>
+        <Button title="About Harmonia" onPress={() => router.navigate("/about")} />
+      </SurfaceCard>
+      {!!feedback && feedback !== "History cleared." && (
         <Text accessibilityRole="alert" style={styles.text}>
           {feedback}
         </Text>

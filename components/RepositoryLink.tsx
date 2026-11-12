@@ -13,12 +13,13 @@ export default function RepositoryLink({
   return (
     <>
       <Button
-        title={issues ? "Developer support" : "Open repository"}
-        onPress={() =>
-          Linking.openURL(REPOSITORY + (issues ? "/issues" : "")).catch(() =>
-            setError("Could not open the source link."),
-          )
-        }
+        title={issues ? "Open GitHub Issues" : "Open repository"}
+        onPress={() => {
+          setError("");
+          void Linking.openURL(REPOSITORY + (issues ? "/issues" : "")).catch(() =>
+            setError("Could not open GitHub."),
+          );
+        }}
       />
       {!!error && (
         <Text accessibilityRole="alert" style={styles.error}>

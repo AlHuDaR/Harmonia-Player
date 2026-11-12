@@ -1,5 +1,5 @@
 import { FocusablePressable as Pressable } from "@/components/FocusablePressable";
-import { MaterialIcons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTheme } from "@/utils/theme";
 import { useLocale } from "@/utils/i18n";
 import { Text } from "@/components/LocalizedText";

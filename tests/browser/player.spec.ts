@@ -307,7 +307,6 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
   await expect(
     page.getByRole("radio", { name: "System", exact: true }),
   ).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("button", { name: "Open menu", exact: true }).click();
   await page
     .getByRole("button", { name: "About Harmonia", exact: true })
     .click();
@@ -315,7 +314,7 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
     page.getByRole("button", { name: "Close menu", exact: true }),
   ).toHaveCount(0);
   await expect(page.getByTestId("developer-credit")).toHaveText(
-    "Coded By AlHuDaR",
+    "Coded by AlHuDaR",
   );
   await expect(
     page.getByText(packageInfo.version, { exact: false }),
@@ -333,6 +332,10 @@ test("four tabs, dismissible drawer, persistent themes and full developer credit
     path: "artifacts/screenshots/about-small.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Support the Developer", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Open GitHub Issues" })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByTestId("developer-credit")).toBeVisible();
   await page
     .getByRole("button", { name: "Source Code & Licenses", exact: true })
     .click();
@@ -430,6 +433,13 @@ test("Recent uses listening order, excludes unplayed saved items and honors hist
   await page
     .getByRole("button", { name: "Clear listening history", exact: true })
     .click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("tab", { name: "Recent", exact: true }).click();
+  await expect(titles.first()).toBeVisible();
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Clear listening history", exact: true }).click();
+  await page.getByRole("button", { name: "Clear history", exact: true }).click();
   await page.getByRole("tab", { name: "Recent", exact: true }).click();
   await expect(
     page
@@ -438,6 +448,15 @@ test("Recent uses listening order, excludes unplayed saved items and honors hist
   ).toBeVisible();
   await page.getByRole("tab", { name: "Library", exact: true }).click();
   await page.getByRole("radio", { name: "Saved tracks", exact: true }).click();
+  await expect(page.getByText("Unplayed", { exact: true })).toBeVisible();
+  const librarySearch = page.getByRole("textbox", { name: "Search library" });
+  await librarySearch.fill("unPLAYED");
+  await expect(page.getByText("Unplayed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Latest", { exact: true }).filter({ visible: true })).toHaveCount(0);
+  await librarySearch.fill("غير موجود");
+  await expect(librarySearch).toHaveCSS("direction", "rtl");
+  await expect(page.getByText("No matching tracks.")).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
   await expect(page.getByText("Unplayed", { exact: true })).toBeVisible();
 });
 
