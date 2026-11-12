@@ -4,6 +4,8 @@
 **Baseline** Android preview 8, `2.0.0-preview.8`, version code 14, `main` at `31fe038`
 **Scope** Expo Router screens and navigation, theme and localization, player lifecycle, search, storage and queues, download reconciliation, Android intent/provider/Cast bridges, the optional resolver, build configuration, permissions, and automated coverage.
 
+Dependency follow-up: the [2.0.0 candidate](release-2.0.0.md) patches the decoder on SDK 57 and records current signing/policy gates. The original findings below are historical; an SDK 58 migration is not required for this fix.
+
 ## Findings and disposition
 
 | Severity | Area | Finding | Disposition |

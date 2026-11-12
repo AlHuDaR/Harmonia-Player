@@ -633,3 +633,13 @@ test("pasted social links expose share actions without opening the player", asyn
   await expect(page.getByRole("button", { name: "Download Video" })).toBeDisabled();
   await expect(page.locator("video")).toHaveCount(0);
 });
+
+test("router queries retain Arabic and tolerate malformed percent escapes", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/library?q=%D8%B9%D8%B1%D8%A8%D9%8A&bad=%EA%EA%zz&item=1&item=2");
+  await expect(page.getByRole("tab", { name: "Library", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Home", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "Home", exact: true })).toHaveAttribute("aria-selected", "true");
+  expect(errors).toEqual([]);
+});
