@@ -91,7 +91,10 @@ export default function IncomingLinks() {
       visible
       animationType="slide"
       onRequestClose={() => {
-        setError("");
+        if (error) {
+          setError("");
+          return;
+        }
         if (!importing && files.length) dismissFile();
         else if (!importing) setLinks((items) => items.slice(1));
       }}
