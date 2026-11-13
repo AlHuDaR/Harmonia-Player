@@ -7,6 +7,8 @@ import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import SearchInput from "@/components/SearchInput";
 import { searchTerm } from "@/utils/textDirection";
+import { sortLibraryTracks, type LibrarySort } from "@/utils/librarySort";
+import { useLocale } from "@/utils/i18n";
 import { View } from "react-native";
 import {
   Page,
@@ -27,8 +29,15 @@ const collections = [
   "Local media",
   "Saved tracks",
 ] as const;
+const sortOptions = [
+  ["default", "Default order"],
+  ["title", "Title"],
+  ["artist", "Artist"],
+] as const;
+
 export default function LibraryScreen() {
   const styles = useMediaStyles();
+  const { language, t } = useLocale();
   const { tracks, favorites, playlists, savedLinks } = usePlayerStore(
     useShallow((state) => ({
       tracks: state.tracks,
@@ -46,6 +55,7 @@ export default function LibraryScreen() {
   const [name, setName] = useState("");
   const [openPlaylist, setOpenPlaylist] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<LibrarySort>("default");
   const collectionTracks = useMemo(() => {
     if (collection === "Saved links" || collection === "Playlists") return [];
     if (collection === "Favorites") {
@@ -64,11 +74,14 @@ export default function LibraryScreen() {
     return playlist.trackIds.map((id) => tracksById.get(id)).filter((track) => !!track);
   }, [collection, openPlaylist, playlists, tracks]);
   const term = searchTerm(query).toLocaleLowerCase();
-  const visible = term
-    ? collectionTracks.filter(({ title, artist }) =>
-        searchTerm(`${title} ${artist}`).toLocaleLowerCase().includes(term),
-      )
-    : collectionTracks;
+  const visible = useMemo(() => {
+    const matches = term
+      ? collectionTracks.filter(({ title, artist }) =>
+          searchTerm(`${title} ${artist}`).toLocaleLowerCase().includes(term),
+        )
+      : collectionTracks;
+    return sortLibraryTracks(matches, sort, language);
+  }, [collectionTracks, term, sort, language]);
   return (
     <Page title="Library">
       <View style={[styles.row, { flexWrap: "wrap" }]}>
@@ -202,12 +215,33 @@ export default function LibraryScreen() {
       ) : (
         <>
           {!!collectionTracks.length && (
-            <SearchInput
-              accessibilityLabel="Search library"
-              placeholder="Search by title or artist"
-              value={query}
-              onChangeText={setQuery}
-            />
+            <>
+              <SearchInput
+                accessibilityLabel="Search library"
+                placeholder="Search by title or artist"
+                value={query}
+                onChangeText={setQuery}
+              />
+              {collectionTracks.length > 1 && (
+                <>
+                  <Text style={styles.text}>Sort by</Text>
+                  <View
+                    style={[styles.row, { flexWrap: "wrap" }]}
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel={t("Sort by")}
+                  >
+                    {sortOptions.map(([value, label]) => (
+                      <ChoiceChip
+                        key={value}
+                        label={label}
+                        selected={sort === value}
+                        onPress={() => setSort(value)}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+            </>
           )}
           {!visible.length && !!term && <Text style={styles.text}>No matching tracks.</Text>}
           {!collectionTracks.length && (
