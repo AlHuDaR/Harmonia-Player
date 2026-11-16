@@ -13,7 +13,7 @@ import { useLocale } from "@/utils/i18n";
 import { usePlayerStore } from "@/store/playerStore";
 import { message } from "@/types/media";
 import { cancelAutoPlay } from "@/utils/autoPlay";
-import { intentInbox } from "@/utils/incomingLinks";
+import { dismissIncomingLink, intentInbox } from "@/utils/incomingLinks";
 import { sharedLinks, type SharedLink } from "@/utils/linkProviders";
 import { Button, useMediaStyles } from "./MediaUI";
 import { Text } from "./LocalizedText";
@@ -101,7 +101,7 @@ export default function IncomingLinks() {
           return;
         }
         if (!importing && files.length) dismissFile();
-        else if (!importing) setLinks((items) => items.slice(1));
+        else if (!importing && current) setLinks((items) => dismissIncomingLink(items, current.key));
       }}
     >
       <SafeAreaView style={[styles.page, { padding: 16, direction: rtl ? "rtl" : "ltr" }]}>
@@ -136,7 +136,7 @@ export default function IncomingLinks() {
               autoPlay={current.autoPlay}
               key={current.key}
               link={current.link}
-              onClose={() => setLinks((items) => items.slice(1))}
+              onClose={() => setLinks((items) => dismissIncomingLink(items, current.key))}
             />
           )}
         </ScrollView>

@@ -24,3 +24,8 @@ export function intentInbox(limit = 64) {
     return text;
   };
 }
+
+/** Dismiss the originating share, even if a newer share has moved ahead of it. */
+export function dismissIncomingLink<T extends { key: string }>(items: T[], key: string): T[] {
+  return items.filter((entry) => entry.key !== key);
+}

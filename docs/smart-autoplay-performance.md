@@ -101,3 +101,20 @@ into first-frame measurements.
   Android TV and native cache behavior remain unverified on this host. Existing
   policies and transport implementations are retained; browser/unit success
   does not establish device compatibility.
+
+## CI smoke follow-up
+
+The first API 35 smoke attempt failed while SDK Manager unpacked the Google APIs
+system-image ZIP, before the emulator or app tests ran. A retry using the existing
+release artifacts successfully booted the emulator and recorded automatic playback
+and a first rendered frame for the repository's direct-video fixture. The old
+smoke assertion then failed because it still expected the pre-auto-play action sheet.
+
+The smoke scripts now assert elapsed playback without a Play tap, verify the manual
+quality and download pickers expose video without invented isolated audio, explicitly
+request a video download, and retain the background-download, process-restart and
+offline-playback checks. The live Instagram variant remains opt-in. UI dismissal is
+awaited before sending the next fixture, and share dismissal uses the originating
+token so a delayed Close cannot remove a newly prepended share. A regression test
+covers that ordering. The follow-up passed 214 regular unit tests and TypeScript;
+Python smoke scripts passed syntax validation. Updated emulator CI is pending.

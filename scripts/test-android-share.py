@@ -94,6 +94,31 @@ def click(root, label):
         if label in (n.get('text'), n.get('content-desc')) and tap_node(n):
             return
     raise AssertionError('Missing button: ' + label)
+def visible_label(root, label):
+    for node in root.iter('node'):
+        if node.get('package') != PACKAGE or label not in (node.get('text'), node.get('content-desc')):
+            continue
+        bounds = list(map(int, re.findall(r'\d+', node.get('bounds', ''))))
+        if len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]:
+            return True
+    return False
+
+def scroll_to(label, upwards=False):
+    size = list(map(int, re.findall(r'\d+', adb('shell', 'wm', 'size').splitlines()[-1])))
+    width, height = size[-2:]
+    def matches(root):
+        if visible_label(root, label):
+            return True
+        start, end = (0.3, 0.8) if upwards else (0.8, 0.3)
+        adb('shell', 'input', 'swipe', str(width//2), str(int(height*start)), str(width//2), str(int(height*end)), '300')
+        return False
+    return wait_for_window('Could not scroll to: ' + label, matches)
+
+def elapsed(root):
+    return any(n.get('package') == PACKAGE and
+               re.fullmatch(r'Playback position (\d+):(\d{2})', n.get('content-desc', '')) and
+               n.get('content-desc') != 'Playback position 0:00' for n in root.iter('node'))
+
 def close(root): click(root, 'Close')
 def wait_text(label, seconds=60):
     return wait_for_window(
@@ -124,12 +149,26 @@ close(root)
 wait_text('Home')
 adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '-a', 'android.intent.action.VIEW', '-d', 'https://www.facebook.com/reel/123')
 close(wait_sheet('Facebook'))
+wait_text('Home')  # Wait for dismissal to commit before sending a newer share.
 # The repository's generated media fixture, not third-party copyrighted media.
 fixture='https://raw.githubusercontent.com/AlHuDaR/Harmonia-Player/ecf20e0767e3264ac58c0b49a10c0ec8159198f4/tests/fixtures/video.mp4'
 adb('shell','am','start','-W','-n',COMPONENT,'-a','android.intent.action.SEND','-t','text/plain','--es','android.intent.extra.TEXT',fixture)
-root=wait_sheet('Direct media',media=True)
-click(root,'Download Video')
-close(wait_text('Close'))
+# Discovery must hand off to playback without a Play-button tap.
+wait_for_window('Shared direct video did not auto-play', elapsed)
+print('Shared direct video auto-play passed without pressing Play')
+# Manual playback quality remains available, without fabricated isolated audio.
+click(scroll_to('Quality / audio'), 'Quality / audio')
+root = scroll_to('video · original')
+assert not any((n.get('text') or n.get('content-desc') or '').startswith('audio · ')
+               for n in root.iter('node')), 'Video-only fixture invented isolated audio playback'
+click(scroll_to('Cancel'), 'Cancel')
+# Download remains an explicit user action, now available in the player.
+click(scroll_to('Download', upwards=True), 'Download')
+root = scroll_to('video · original')
+assert not any((n.get('text') or n.get('content-desc') or '').startswith('audio · ')
+               for n in root.iter('node')), 'Video-only fixture invented a separate audio download'
+click(root, 'video · original')
+click(scroll_to('Close player', upwards=True), 'Close player')
 adb('shell','input','keyevent','3') # native worker must finish without JS in foreground
 # Reopen the existing Activity; persisted native records drive Downloads.
 adb('shell','am','start','-W','-n',COMPONENT,'-a','android.intent.action.MAIN')
