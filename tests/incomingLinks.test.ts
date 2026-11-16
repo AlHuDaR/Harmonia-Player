@@ -5,7 +5,7 @@ vi.mock("react-native", () => ({
   NativeModules: {},
   Platform: { OS: "android" },
 }));
-import { incomingVideo, intentInbox } from "../utils/incomingLinks";
+import { dismissIncomingLink, incomingVideo, intentInbox } from "../utils/incomingLinks";
 describe("external YouTube links", () => {
   it.each([
     "https://youtu.be/abcdefghijk?si=123",
@@ -47,4 +47,13 @@ it("keeps oversized or external Android intents out of the navigation parser", (
   expect(redirectSystemPath({ path: "HARMONIA://library", initial: false })).toBe("/");
   expect(redirectSystemPath({ path: "https://example.com/file.mp4", initial: false })).toBe("/");
   expect(redirectSystemPath({ path: "/library", initial: false })).toBe("/library");
+});
+
+it("a delayed close from an older share cannot dismiss the newest share", () => {
+  const older = { key: "old-token:0" }, latest = { key: "new-token:0" };
+  // The old card's callback arrives after a fresh SEND was prepended.
+  const pending = [latest, older];
+  expect(dismissIncomingLink(pending, older.key)).toEqual([latest]);
+  expect(dismissIncomingLink([latest], older.key)).toEqual([latest]);
+  expect(dismissIncomingLink(pending, latest.key)).toEqual([older]);
 });

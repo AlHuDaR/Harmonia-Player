@@ -3,7 +3,7 @@ import { classifyLink } from "@/utils/linkProviders";
 import { router } from "expo-router";
 import { Text } from "@/components/LocalizedText";
 import OpenMedia from "@/components/OpenMedia";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import SearchInput from "@/components/SearchInput";
 import { searchTerm } from "@/utils/textDirection";
@@ -28,6 +28,7 @@ const collections = [
   "Saved tracks",
 ] as const;
 export default function LibraryScreen() {
+  const submittedAt = useRef<number | undefined>(undefined);
   const styles = useMediaStyles();
   const { tracks, favorites, playlists, savedLinks } = usePlayerStore(
     useShallow((state) => ({
@@ -110,11 +111,13 @@ export default function LibraryScreen() {
               <Button
                 raw
                 title={link.url}
-                onPress={() => setSelectedLink(link.url)}
+                onPress={() => { submittedAt.current = performance.now(); setSelectedLink(link.url); }}
               />
               {selectedLink === link.url && (
                 <SharedLinkCard
-                  key={link.url}
+                  autoPlay
+                  submittedAt={submittedAt.current}
+                  key={`${link.url}:${submittedAt.current}`}
                   link={classifyLink(link.url)}
                   onClose={() => setSelectedLink(null)}
                 />

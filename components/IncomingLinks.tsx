@@ -12,7 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocale } from "@/utils/i18n";
 import { usePlayerStore } from "@/store/playerStore";
 import { message } from "@/types/media";
-import { intentInbox } from "@/utils/incomingLinks";
+import { cancelAutoPlay } from "@/utils/autoPlay";
+import { dismissIncomingLink, intentInbox } from "@/utils/incomingLinks";
 import { sharedLinks, type SharedLink } from "@/utils/linkProviders";
 import { Button, useMediaStyles } from "./MediaUI";
 import { Text } from "./LocalizedText";
@@ -22,7 +23,7 @@ const accept = intentInbox();
 export default function IncomingLinks() {
   const styles = useMediaStyles();
   const { rtl } = useLocale();
-  const [links, setLinks] = useState<{ link: SharedLink; key: string }[]>([]);
+  const [links, setLinks] = useState<{ link: SharedLink; key: string; autoPlay: boolean; submittedAt: number }[]>([]);
   const [files, setFiles] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
@@ -36,12 +37,15 @@ export default function IncomingLinks() {
       if (text !== undefined)
         module.acknowledge?.((value as { token: string }).token);
       if (text === undefined || text.startsWith("harmonia:")) return;
+      cancelAutoPlay();
       const shared = (value as { files?: unknown }).files;
       if (Array.isArray(shared) && shared.length) {
+        setLinks((current) => current.map((entry) => ({ ...entry, autoPlay: false })));
         setFiles((current) => [...current, ...shared.filter((uri): uri is string => typeof uri === "string" && uri.startsWith("content://")).slice(0, 10)]);
         setError("");
         return;
       }
+      const submittedAt = performance.now();
       const found = sharedLinks(text);
       if (!found.length) {
         setError("No safe web link was found in the shared text.");
@@ -50,8 +54,8 @@ export default function IncomingLinks() {
       setError("");
       const token = (value as { token: string }).token;
       setLinks((current) => [
-        ...current,
-        ...found.map((link, i) => ({ link, key: `${token}:${i}` })),
+        ...found.map((link, i) => ({ link, key: `${token}:${i}`, submittedAt, autoPlay: i === 0 })),
+        ...current.map((entry) => ({ ...entry, autoPlay: false })),
       ]);
     }
     const listener = new NativeEventEmitter(module).addListener(
@@ -91,12 +95,13 @@ export default function IncomingLinks() {
       visible
       animationType="slide"
       onRequestClose={() => {
+        cancelAutoPlay();
         if (error) {
           setError("");
           return;
         }
         if (!importing && files.length) dismissFile();
-        else if (!importing) setLinks((items) => items.slice(1));
+        else if (!importing && current) setLinks((items) => dismissIncomingLink(items, current.key));
       }}
     >
       <SafeAreaView style={[styles.page, { padding: 16, direction: rtl ? "rtl" : "ltr" }]}>
@@ -127,9 +132,11 @@ export default function IncomingLinks() {
           )}
           {current && !files.length && (
             <SharedLinkCard
+              submittedAt={current.submittedAt}
+              autoPlay={current.autoPlay}
               key={current.key}
               link={current.link}
-              onClose={() => setLinks((items) => items.slice(1))}
+              onClose={() => setLinks((items) => dismissIncomingLink(items, current.key))}
             />
           )}
         </ScrollView>

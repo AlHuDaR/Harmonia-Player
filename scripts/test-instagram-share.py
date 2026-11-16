@@ -20,6 +20,7 @@ def adb(*args):
     return subprocess.check_output(['adb', *args], text=True, stderr=subprocess.STDOUT, timeout=30)
 
 def tree():
+    adb('shell', 'rm', '-f', '/sdcard/harmonia-window.xml')
     adb('shell', 'uiautomator', 'dump', '/sdcard/harmonia-window.xml')
     return ET.fromstring(adb('shell', 'cat', '/sdcard/harmonia-window.xml'))
 
@@ -47,35 +48,59 @@ def click(root, label):
                 return
     raise AssertionError('Missing button: ' + label)
 
-def ready(root):
-    if not has(root, 'Instagram') or not has(root, 'Save Link'):
-        return False
-    for label in ['Play Video', 'Download Video', 'Audio Only', 'Download Audio']:
-        enabled = 'true' if label in ['Play Video', 'Download Video'] else 'false'
-        if not any(label in (n.get('text'), n.get('content-desc')) and n.get('enabled') == enabled for n in root.iter('node')):
-            return False
-    return True
-
 def elapsed(root):
     for n in root.iter('node'):
+        if n.get('package') != PACKAGE:
+            continue
         clock = re.fullmatch(r'Playback position (\d+):(\d{2})', n.get('content-desc', ''))
         if clock and int(clock[1])*60+int(clock[2]) > 0:
             return True
     return False
 
+def scroll_to(predicate, description, upwards=False):
+    size = list(map(int, re.findall(r'\d+', adb('shell', 'wm', 'size').splitlines()[-1])))
+    width, height = size[-2:]
+    def matches(root):
+        if predicate(root):
+            return True
+        start, end = (0.3, 0.8) if upwards else (0.8, 0.3)
+        adb('shell', 'input', 'swipe', str(width//2), str(int(height*start)), str(width//2), str(int(height*end)), '300')
+        return False
+    return wait(matches, description)
+
+def visible(root, label):
+    for n in root.iter('node'):
+        if label in (n.get('text'), n.get('content-desc')):
+            bounds = list(map(int, re.findall(r'\d+', n.get('bounds', ''))))
+            if len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]:
+                return True
+    return False
+
+def video_formats(root):
+    return {label for n in root.iter('node') for label in (n.get('text', ''), n.get('content-desc', ''))
+            if label.startswith('video · ') and visible(root, label)}
+
 def share():
     adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '-a', 'android.intent.action.SEND', '-t', 'text/plain', '--es', 'android.intent.extra.TEXT', canonical)
-    return wait(ready, 'real public Instagram video/download capabilities')
+    return wait(elapsed, 'automatic public Instagram playback without pressing Play')
 
 adb('shell', 'cmd', 'connectivity', 'airplane-mode', 'disable')
 adb('shell', 'am', 'force-stop', PACKAGE)
 root = share()
-click(root, 'Play Video')
-wait(elapsed, 'live Instagram playback', 45)
+print('Live Instagram auto-play passed without pressing Play')
 click(tree(), 'Close player')
 root = share()
-click(root, 'Download Video')
-click(wait(lambda r: has(r, 'Close'), 'share close button'), 'Close')
+click(scroll_to(lambda r: visible(r, 'Quality / audio'), 'manual quality button'), 'Quality / audio')
+root = scroll_to(video_formats, 'real Instagram playback quality choices')
+assert not any(label.startswith('audio · ') for n in root.iter('node')
+               for label in (n.get('text', ''), n.get('content-desc', ''))), 'Instagram invented isolated audio playback'
+click(scroll_to(lambda r: visible(r, 'Cancel'), 'quality picker Cancel button'), 'Cancel')
+click(scroll_to(lambda r: visible(r, 'Download'), 'player Download button', upwards=True), 'Download')
+root = scroll_to(video_formats, 'real Instagram downloadable video formats')
+assert not any(label.startswith('audio · ') for n in root.iter('node')
+               for label in (n.get('text', ''), n.get('content-desc', ''))), 'Instagram invented an isolated audio download'
+click(root, sorted(video_formats(root))[0])
+click(scroll_to(lambda r: visible(r, 'Close player'), 'Close player', upwards=True), 'Close player')
 click(wait(lambda r: has(r, 'Library'), 'Library tab'), 'Library')
 click(wait(lambda r: has(r, 'Downloads'), 'Downloads navigation'), 'Downloads')
 # The base smoke fixture may already be present. Select the new Instagram row,
