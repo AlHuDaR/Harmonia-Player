@@ -23,7 +23,7 @@ Android accepts text links through Share/Open with and granted audio/video files
 | --- | --- | --- | --- | --- |
 | YouTube | On-device NewPipe search, metadata and returned video/audio formats | Returned audio formats | Audio in original M4A/WebM; compatible MP4/AAC video mux | Watch/Shorts/live links; live HLS playback only; no account sync |
 | Instagram | Public post/Reel embed video when matching metadata and MP4 verification succeed | No extraction | Discovered progressive video only | No Stories, private content, photos/carousels or universal-link guarantee |
-| Facebook | Conditional public video/Reel metadata adapter | No extraction | Only verified returned progressive video | Supported IDs/redirects only; browser/save fallback; live success unverified |
+| Facebook | Public video/Reel JSON and Open Graph metadata | No extraction | Only verified returned progressive video | Matching video ID, bounded public watch fallback; [live evidence](docs/FACEBOOK_REEL_FIX.md); Android playback needs verification |
 | Snapchat | Conditional public Spotlight metadata adapter | No extraction | Only verified returned progressive video | Spotlight URLs only; browser/save fallback; live success unverified |
 | Vimeo / Reddit | Bounded public config/JSON adapters | Only actually exposed audio formats | Eligible files only; HLS playback only | No general live-success guarantee; Reddit silent GIF fallback is labelled |
 | TikTok / X and other web pages | No extraction adapter | No | No | Recognized links can be saved/opened in browser |
@@ -56,7 +56,7 @@ Android TV has launcher/banner and D-pad focus support. Use a universal APK for 
 | --- | --- | --- | --- |
 | YouTube | Native Android search/play/audio/download | `tests/youtube.test.ts`, native bridge/format tests; recorded Android baseline | Fresh extraction/source availability; no restricted/DRM downloads; live is playback-only |
 | Instagram | Conditional public embed MP4 | Native `InstagramEmbedTest`; historical single-Reel decoding evidence | Current live Android run unverified; no isolated audio/private media |
-| Facebook | Conditional public video/Reel adapter | Native `PublicSocialEmbedTest` fixtures | Live playback/download unverified; no isolated audio |
+| Facebook | Public video/Reel JSON and Open Graph adapter | Native fixtures; two live discovery samples with external transport; regression MP4 downloads decoded | Android playback still needs verification; no isolated audio |
 | Snapchat | Conditional Spotlight adapter | Native `PublicSocialEmbedTest` fixtures | Live playback/download unverified; not general Snapchat sharing extraction |
 | Background audio / PiP | Native Android player/media session | Config/player implementation; accepted owner baseline | Bluetooth, interruptions and OEM restrictions need exact-candidate checks |
 | Offline downloads | Android persistent worker + private files | `tests/nativeDownloads.test.ts`, native transfer tests; recorded emulator restart/offline baseline | Restart rather than byte-resume; quotas/storage/force-stop constraints |

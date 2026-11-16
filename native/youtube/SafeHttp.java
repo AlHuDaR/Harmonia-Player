@@ -45,6 +45,9 @@ final class SafeHttp {
     static Response open(String value, String range) throws IOException { return openWith(DISCOVERY,value,range,null); }
     static Response open(String value, String range, String userAgent) throws IOException { return openWith(CLIENT,value,range,userAgent); }
     static Response openWith(OkHttpClient client,String value,String range,String userAgent) throws IOException {
+        return openWith(client,value,range,userAgent,false);
+    }
+    static Response openWith(OkHttpClient client,String value,String range,String userAgent,boolean page) throws IOException {
         HttpUrl u=url(value);
         Set<String> visited=new HashSet<>();
         long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(45);
@@ -53,6 +56,8 @@ final class SafeHttp {
             long remaining=deadline-System.nanoTime();
             if(remaining<=0)throw new java.net.SocketTimeoutException("Media redirect resolution timed out.");
             Request.Builder request=new Request.Builder().url(u).header("User-Agent",userAgent==null?"Harmonia/2.0 public-media":userAgent).header("Accept-Encoding","identity");
+            if(page)request.header("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("Accept-Language","en-us,en;q=0.5");
             if(range!=null) request.header("Range",range);
             Call call=client.newCall(request.build());
             if(client.callTimeoutMillis()>0)call.timeout().timeout(Math.min(remaining,TimeUnit.MILLISECONDS.toNanos(client.callTimeoutMillis())),TimeUnit.NANOSECONDS);
@@ -71,7 +76,13 @@ final class SafeHttp {
     }
     static String text(String value, int max) throws IOException { return document(value,max).body; }
     static Document document(String value,int max) throws IOException {
-        try(Response r=open(value,null)) {
+        return document(open(value,null),max);
+    }
+    static Document page(String value,int max) throws IOException {
+        return document(openWith(DISCOVERY,value,null,null,true),max);
+    }
+    private static Document document(Response response,int max) throws IOException {
+        try(Response r=response) {
             if(!r.isSuccessful()) throw new HttpFailure(r.code());
             if(r.body()==null) throw new IOException("Empty source response.");
             try(InputStream in=r.body().byteStream(); ByteArrayOutputStream out=new ByteArrayOutputStream()) {

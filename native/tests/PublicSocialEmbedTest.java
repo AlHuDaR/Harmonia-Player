@@ -29,4 +29,7 @@ public class PublicSocialEmbedTest {
             try {PublicSocialEmbed.parse(html);fail("accepted invalid metadata");}catch(java.io.IOException expected){}
         }
     }
+    @Test public void decodesArabicAndEmojiMetadataEntities() throws Exception {
+        assertEquals("مرحبا 😀",PublicSocialEmbed.metadata("<meta property='og:title' content='&#x645;&#x631;&#x62d;&#x628;&#x627; &#128512;'>").getString("title"));
+    }
 }

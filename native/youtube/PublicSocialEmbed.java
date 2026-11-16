@@ -7,7 +7,7 @@ import java.util.regex.*;
 import okhttp3.HttpUrl;
 import org.json.*;
 
-/** Only explicit public Open Graph video metadata; no scripts, cookies or private APIs. */
+/** Public video metadata only; no script execution, cookies or private APIs. */
 final class PublicSocialEmbed {
     static boolean supported(HttpUrl u) {
         String h=u.host(), p=u.encodedPath();
@@ -19,11 +19,21 @@ final class PublicSocialEmbed {
              ((p.equals("/watch/") || p.equals("/watch")) && u.queryParameter("v")!=null && u.queryParameter("v").matches("[0-9]+")));
     }
     private static String decode(String s) {
-        return s.replace("&amp;","&").replace("&#38;","&").replace("&quot;","\"")
+        Matcher numeric=Pattern.compile("&#(?:x([0-9a-fA-F]{1,6})|([0-9]{1,7}));").matcher(s);
+        StringBuffer decoded=new StringBuffer();
+        while(numeric.find()) {
+            int code=Integer.parseInt(numeric.group(1)!=null?numeric.group(1):numeric.group(2),numeric.group(1)!=null?16:10);
+            String replacement=Character.isValidCodePoint(code) && !(code>=0xd800 && code<=0xdfff)?new String(Character.toChars(code)):numeric.group();
+            numeric.appendReplacement(decoded,Matcher.quoteReplacement(replacement));
+        }
+        numeric.appendTail(decoded);
+        return decoded.toString().replace("&amp;","&").replace("&#38;","&").replace("&quot;","\"")
             .replace("&#39;","'").replace("&lt;","<").replace("&gt;",">");
     }
     private static final String[] RAW_TAGS={"script","style","template","textarea","title","noscript"};
-    private static String metadataMarkup(String html) {
+    private static String metadataMarkup(String html) { return activeMarkup(html,false); }
+    static String publicScriptMarkup(String html) { return activeMarkup(html,true); }
+    private static String activeMarkup(String html,boolean keepScripts) {
         StringBuilder visible=new StringBuilder();
         for(int i=0;i<html.length();) {
             if(html.charAt(i)!='<') {visible.append(html.charAt(i++));continue;}
@@ -38,7 +48,9 @@ final class PublicSocialEmbed {
             }
             if(raw!=null) {
                 Matcher close=Pattern.compile("(?i)</"+raw+"\\s*>").matcher(html);
-                if(!close.find(i+raw.length()+1))break;i=close.end();
+                if(!close.find(i+raw.length()+1))break;
+                if(keepScripts && raw.equals("script"))visible.append(html,i,close.end());
+                i=close.end();
                 if(raw.equals("template"))while(close.find())i=close.end();
                 continue;
             }
@@ -47,6 +59,11 @@ final class PublicSocialEmbed {
         return visible.toString();
     }
     static JSONObject parse(String html) throws Exception {
+        JSONObject metadata=metadata(html);
+        if(!metadata.has("uri"))throw new IOException("The page did not provide public video metadata that Harmonia can read. The video may still play in a browser. Open in Browser to check.");
+        return metadata;
+    }
+    static JSONObject metadata(String html) throws Exception {
         if(html.length()>2*1024*1024)throw new IOException("Public metadata response is too large.");
         // Parse attributes independently: providers may put content before property.
         Matcher tags=Pattern.compile("(?is)<meta\\b[^>]{0,8192}>").matcher(metadataMarkup(html));
@@ -62,21 +79,12 @@ final class PublicSocialEmbed {
                 try {SafeHttp.url(value);media=value;}catch(IOException unsafe) { /* Never fetch unsafe candidates. */ }
             }
         }
-        if(media==null)throw new IOException("The page did not provide public video metadata that Harmonia can read. The video may still play in a browser. Open in Browser to check.");
         return new JSONObject().put("uri",media).put("title",title.substring(0,Math.min(160,title.length())));
     }
     static JSONObject discover(String page) throws Exception {
         HttpUrl original=SafeHttp.url(page);
-        if((original.host().equals("fb.watch") || original.host().matches("(?:www\\.|m\\.|web\\.)?facebook\\.com")) &&
-            (original.host().equals("fb.watch") || original.encodedPath().matches("/share/(?:r|v)/[A-Za-z0-9_-]+/?"))) {
-            try(okhttp3.Response response=SafeHttp.open(page,null)) {
-                if(!response.isSuccessful())throw new SafeHttp.HttpFailure(response.code());
-                HttpUrl resolved=response.request().url();
-                if(!resolved.host().matches("(?:www\\.|m\\.|web\\.)?facebook\\.com") || !supported(resolved))
-                    throw new IOException("Facebook share did not resolve to a supported public video. Open in Browser.");
-                page=resolved.toString();
-            }
-        }
+        if(original.host().equals("fb.watch") || original.host().matches("(?:www\\.|m\\.|web\\.)?facebook\\.com"))
+            return FacebookPublicVideo.discover(page);
         if(!supported(SafeHttp.url(page)))throw new IOException("Unsupported social link. Use a Facebook video/Reel or Snapchat Spotlight link; open other content in Browser.");
         JSONObject metadata=parse(SafeHttp.text(page,2*1024*1024));
         JSONObject result=MediaDiscovery.probe(metadata.getString("uri"));

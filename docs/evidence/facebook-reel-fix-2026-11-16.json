@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-16",
+  "reported_regression": {
+    "input": "https://www.facebook.com/share/r/19trbCXy4d/",
+    "result": "Passed",
+    "pageRequests": 2,
+    "mediaProbes": 2,
+    "formats": [
+      {
+        "id": "facebook-hd",
+        "kind": "video",
+        "extension": "mp4",
+        "downloadable": true
+      },
+      {
+        "id": "facebook-sd",
+        "kind": "video",
+        "extension": "mp4",
+        "downloadable": true
+      }
+    ],
+    "scope": "Real FacebookPublicVideo discovery and MediaDiscovery response validation using external curl transport; Android runtime not tested"
+  },
+  "additional_sample": {
+    "result": "Passed",
+    "input": "https://www.facebook.com/reel/1195289147628387/",
+    "formats": [
+      {
+        "extension": "mp4",
+        "downloadable": true,
+        "kind": "video",
+        "id": "facebook-hd"
+      },
+      {
+        "extension": "mp4",
+        "downloadable": true,
+        "kind": "video",
+        "id": "facebook-sd"
+      }
+    ],
+    "pageRequests": 2,
+    "scope": "Real FacebookPublicVideo discovery and MediaDiscovery response validation using external curl transport; Android runtime not tested",
+    "mediaProbes": 2
+  },
+  "reported_video_downloads": [
+    {
+      "id": "facebook-hd",
+      "http": 200,
+      "streams": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "codec_type": "video",
+            "width": 720,
+            "height": 1280
+          },
+          {
+            "codec_name": "aac",
+            "codec_type": "audio"
+          }
+        ]
+      },
+      "software_decode": "Passed",
+      "bytes": 8942832
+    },
+    {
+      "id": "facebook-sd",
+      "http": 200,
+      "streams": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "codec_type": "video",
+            "width": 360,
+            "height": 640
+          },
+          {
+            "codec_name": "aac",
+            "codec_type": "audio"
+          }
+        ]
+      },
+      "software_decode": "Passed",
+      "bytes": 2245596
+    }
+  ]
+}
