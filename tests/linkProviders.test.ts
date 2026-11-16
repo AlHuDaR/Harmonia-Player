@@ -149,3 +149,10 @@ it("routes pasted provider pages through shared-link actions and keeps direct an
   expect(pastedProviderLink("https://youtu.be/abcdefghijk")).toBeUndefined();
   expect(pastedProviderLink("https://cdn.example.com/asset.mp4?sig=123")).toBeUndefined();
 });
+
+it("preserves the reported Facebook share identity for native redirects and retries", () => {
+  const url = "https://www.facebook.com/share/r/19trbCXy4d/";
+  expect(classifyLink(url)).toMatchObject({ url, provider: "Facebook", kind: "web" });
+  expect(sharedLinks(`Watch ${url}`)).toHaveLength(1);
+  expect(sharedLinks(`Watch ${url}`)[0].url).toBe(url);
+});

@@ -1,0 +1,20 @@
+[
+  {"platform":"YouTube","type":"watch","url":"https://www.youtube.com/watch?v=BaW_jenozKc"},
+  {"platform":"YouTube","type":"short URL","url":"https://youtu.be/BaW_jenozKc"},
+  {"platform":"YouTube","type":"Shorts","url":"https://www.youtube.com/shorts/jNQXAC9IVRw"},
+  {"platform":"Facebook","type":"reported share regression","url":"https://www.facebook.com/share/r/19trbCXy4d/"},
+  {"platform":"Instagram","type":"Reel","url":"https://www.instagram.com/reel/DerYMOFsvXQ/"},
+  {"platform":"TikTok","type":"public video candidate","url":"https://www.tiktok.com/@scout2015/video/6718335390845095173"},
+  {"platform":"Snapchat","type":"Spotlight discovery page (no verified video supplied)","url":"https://www.snapchat.com/spotlight"},
+  {"platform":"X / Twitter","type":"public post candidate","url":"https://twitter.com/Interior/status/463440424141459456"},
+  {"platform":"Reddit","type":"post candidate","url":"https://www.reddit.com/r/videos/comments/6rrwyj/"},
+  {"platform":"Reddit","type":"short URL","url":"https://redd.it/6rrwyj"},
+  {"platform":"Vimeo","type":"public video candidate","url":"https://vimeo.com/76979871"},
+  {"platform":"Direct","type":"MP4","url":"https://www.w3schools.com/html/mov_bbb.mp4","file":true},
+  {"platform":"Direct","type":"MP3","url":"https://www.w3schools.com/html/horse.mp3","file":true},
+  {"platform":"Direct","type":"HLS","url":"https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"},
+  {"platform":"Direct","type":"DASH","url":"https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd"},
+  {"platform":"Generic","type":"embedded media page","url":"https://www.w3schools.com/html/html5_video.asp"},
+  {"platform":"Direct","type":"unavailable","url":"https://www.w3schools.com/html/harmonia-missing-media.mp4"},
+  {"platform":"Invalid","type":"malformed","url":"https://[broken"}
+]

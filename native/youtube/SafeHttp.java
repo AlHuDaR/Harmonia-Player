@@ -44,13 +44,20 @@ final class SafeHttp {
     private static final OkHttpClient DISCOVERY=CLIENT.newBuilder().callTimeout(45,TimeUnit.SECONDS).build();
     static Response open(String value, String range) throws IOException { return openWith(DISCOVERY,value,range,null); }
     static Response open(String value, String range, String userAgent) throws IOException { return openWith(CLIENT,value,range,userAgent); }
-    private static Response openWith(OkHttpClient client,String value,String range,String userAgent) throws IOException {
+    static Response openWith(OkHttpClient client,String value,String range,String userAgent) throws IOException {
         HttpUrl u=url(value);
+        Set<String> visited=new HashSet<>();
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(45);
         for(int hop=0;hop<6;hop++) {
+            if(!visited.add(u.toString()))throw new IOException("Media redirect loop detected.");
+            long remaining=deadline-System.nanoTime();
+            if(remaining<=0)throw new java.net.SocketTimeoutException("Media redirect resolution timed out.");
             Request.Builder request=new Request.Builder().url(u).header("User-Agent",userAgent==null?"Harmonia/2.0 public-media":userAgent).header("Accept-Encoding","identity");
             if(range!=null) request.header("Range",range);
-            Response r=client.newCall(request.build()).execute();
-            if(r.code()<300 || r.code()>399) return r;
+            Call call=client.newCall(request.build());
+            if(client.callTimeoutMillis()>0)call.timeout().timeout(Math.min(remaining,TimeUnit.MILLISECONDS.toNanos(client.callTimeoutMillis())),TimeUnit.NANOSECONDS);
+            Response r=call.execute();
+            if(r.code()!=301 && r.code()!=302 && r.code()!=303 && r.code()!=307 && r.code()!=308) return r;
             String location=r.header("Location"); r.close();
             HttpUrl next=location==null?null:u.resolve(location);
             if(next==null) throw new IOException("Invalid media redirect.");
@@ -58,14 +65,19 @@ final class SafeHttp {
         }
         throw new IOException("Too many media redirects.");
     }
-    static String text(String value, int max) throws IOException {
+    static final class Document {
+        final String url,body;
+        Document(String url,String body) {this.url=url;this.body=body;}
+    }
+    static String text(String value, int max) throws IOException { return document(value,max).body; }
+    static Document document(String value,int max) throws IOException {
         try(Response r=open(value,null)) {
             if(!r.isSuccessful()) throw new HttpFailure(r.code());
             if(r.body()==null) throw new IOException("Empty source response.");
             try(InputStream in=r.body().byteStream(); ByteArrayOutputStream out=new ByteArrayOutputStream()) {
                 byte[] b=new byte[8192];int n;
                 while((n=in.read(b))!=-1) { if(out.size()+n>max) throw new IOException("Source response is too large.");out.write(b,0,n); }
-                return out.toString("UTF-8");
+                return new Document(r.request().url().toString(),out.toString("UTF-8"));
             }
         }
     }
