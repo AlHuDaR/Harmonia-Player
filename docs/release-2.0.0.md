@@ -1,4 +1,16 @@
-# Android 2.0.0 release candidate
+# Android 2.0.0 direct APK release readiness
+
+## Direct APK release checklist
+
+Distribute one Harmonia Android app via APK. Select the exact release commit after reviewing its Android CI results. Earlier builds and device tests are evidence for their recorded revisions. Use the release candidate for final sign-off.
+
+- [ ] Confirm the candidate retains `com.alhudar.harmonia` and has a version code higher than the installed builds it should update.
+- [ ] Build the production APKs with the owner's permanent signing key. Record the commit, version code, APK SHA-256 and signer certificate SHA-256 for each APK.
+- [ ] Compare the installed and production signer certificates before attempting an in-place update. Verify data retention and the phone and Mi Box checks below on the exact signed APKs. If the signers are incompatible, document the migration before distribution.
+- [ ] Review current dependency findings and record their disposition. Review intended provider use and distribution rights, and prepare matching source, build instructions and third-party notices.
+- [ ] Record final acceptance before creating the release tag and publishing the signed APKs.
+
+See [issue #58](https://github.com/AlHuDaR/Harmonia-Player/issues/58) for release status.
 
 Prepared from baseline main `5925cc8dad0e22e0b298978f4aee71badf446564`.
 Baseline: successful [Android build #130](https://github.com/AlHuDaR/Harmonia-Player/actions/runs/43293830757), at that exact commit, and the owner's confirmed S24 Ultra and Mi Box tests. Those physical results are accepted as the baseline, not claimed as reruns of this candidate. Historical documents with pending hardware gates describe older evidence.
@@ -28,7 +40,7 @@ Regression tests exercise Arabic, repeated parameters, plus signs, malformed esc
 
 Candidate configuration: **2.0.0 / versionCode 15**, package **com.alhudar.harmonia**. Package/lock/Expo version agree. No storage keys, media paths, native playback/download/Library/RTL/Cast code or permissions changed.
 
-15 is the next candidate above 14: inspected repository history, all remote branch/tag tips, available releases and build #130; none showed a higher code. **The owner must confirm 15 is unused in every Play Console track/upload before uploading**; unpublished Console codes cannot be established from GitHub. If consumed, choose the next unused higher code and rebuild. Never reuse a consumed code.
+Version code 15 was selected as the next candidate above 14 at the time of the baseline review. Verify the final version code against the APKs already distributed and the versions installed on the devices used for upgrade acceptance.
 
 ## Signing and update compatibility
 
@@ -45,7 +57,7 @@ Inspected build #130 ARM64 APK:
 On the trusted signing/device machine:
 
 1. Pull the installed base APK using the path from `adb shell pm path com.alhudar.harmonia`. Run `apksigner verify --print-certs installed.apk` and the same command on the intended production-signed APK. Certificate fingerprints are public; do not share keystores/passwords.
-2. Verify candidate package/code with `aapt dump badging candidate.apk`. Compare signer fingerprints/any validated signing lineage. For Play, compare the **Play app-signing** certificate, not just the AAB **upload** certificate. An upload-key reset does not change installed APK identity.
+2. Verify candidate package/code with `aapt dump badging candidate.apk`. Compare signer fingerprints/any validated signing lineage.
 3. Only with compatible signers, use `adb install -r candidate.apk` (no uninstall/clear-data). Confirm Library, favorites/playlists, saved links, Arabic/theme preferences, completed downloads and imported files survive a restart and play offline.
 
 Keep the permanent key outside the checkout with encrypted backups. Supply passwords via protected environment/secrets or hidden prompts as in [the existing signing guide](release-1.5.md); disable shell tracing and never put passwords on command lines. `*.jks`, `*.keystore` and `.env*` are ignored. No key is created, uploaded or committed by this change.
@@ -64,11 +76,10 @@ These prove the baseline, not the changed dependency/version candidate. The focu
 
 ## Public-distribution policy gates
 
-Technical playback/download success, publicly accessible media, a disclaimer, and GPL compliance do **not** establish provider permission or store eligibility.
+Technical playback/download success, publicly accessible media, a disclaimer, and GPL compliance do **not** establish provider permission.
 
 - **YouTube — unresolved public-release blocker:** [YouTube Terms](https://www.youtube.com/static?template=terms) restrict downloading, automated access and other uses except where authorized by the service, written permission or applicable law. NewPipe/no API key does not establish an exemption. Current extraction, isolated audio, downloads, persistent offline copies and casting those copies need an explicit documented authorization/legal review for the intended distribution and regions. Keep functionality unchanged for this small PR; do not publicly publish until the owner resolves this gate, or separately approves a compliant provider-feature restriction.
 - If YouTube API Services are used, [Developer Policies](https://developers.google.com/youtube/terms/developer-policies), including III.E, restrict downloading/caching audiovisual content, separating audio/video and background playback without required approval. Current NewPipe integration is not represented as an approved API client; switching to an API key alone would not authorize these behaviors. Do not imply YouTube Premium offline rights extend to this app.
-- [Google Play Intellectual Property policy](https://support.google.com/googleplay/android-developer/answer/9888072): document rights to the app, branding and distributed media; downloading copyrighted works without authorization is a policy risk. Validate store description/screenshots (no universal downloader or provider-approval claims), privacy policy/Data Safety, target audience/content rating, foreground-service declarations and current target-API/native 16 KB requirements against the final signed artifact and Console. No Play approval is claimed.
 - Instagram/Meta, Vimeo and Reddit adapters also require provider-terms, automated-access, rate-limit, content-rights and download/offline permission review. Public embed/config/JSON availability is not consent. Facebook/Snapchat have conditional public-metadata discovery, without verified live success or provider authorization; TikTok/X remain Save Link/Open in Browser. See the [capability matrix](MULTIPLATFORM_PROVIDER_REVIEW.md). Do not bypass authentication, DRM or access controls.
 - Direct/local files: distribute/test with owned, licensed or otherwise permitted fixtures. Offline availability is appropriate only where rights allow it. Cast must respect those same rights; LAN serving is not a rights exemption. Publish matching GPL source/build instructions and third-party notices with binaries.
 
@@ -79,4 +90,4 @@ Accepted owner baseline remains valid for unchanged behavior; run this small acc
 - **S24 Ultra:** update in place; confirm Library/downloads/preferences survive. Cold/warm SEND and VIEW (YouTube and direct permitted media), malformed share then Back, Arabic RTL/insets. Play/seek, background/lock-screen controls and PiP. Download a permitted file, restart in airplane mode and play it.
 - **Mi Box:** use universal APK if installing on TV; check launcher/D-pad focus and Arabic. From the S24, test streaming Cast and a completed local download to Mi Box, pause/seek, screen-off, disconnect/reconnect and one audio output. Retain the confirmed baseline media/receiver setup.
 
-Record APK SHA-256, commit, signer, device/Android version and outcomes. Any regression, incompatible signing, consumed versionCode, failed candidate CI or unresolved provider-policy authorization blocks public release. Merge, release tag and all public publication remain manual owner actions.
+Record APK SHA-256, commit, signer, device/Android version and outcomes. Any regression, incompatible signing, an insufficient version code, failed candidate CI or unresolved provider-policy authorization blocks public release. Merge, release tag and all public publication remain manual owner actions.
