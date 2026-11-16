@@ -62,4 +62,19 @@ public class RedirectRegressionTest {
             } catch(IOException expected) {if(!html)throw expected;}
         }
     }
+    @Test public void pageNegotiationUsesPublicHtmlHeadersWithoutChangingMediaRequests() throws Exception {
+        OkHttpClient client=new OkHttpClient.Builder().addInterceptor(chain->{
+            Request request=chain.request();
+            assertEquals("Harmonia/2.0 public-media",request.header("User-Agent"));
+            assertNull(request.header("Authorization"));assertNull(request.header("Cookie"));
+            if(request.url().encodedPath().equals("/page")) {
+                assertTrue(request.header("Accept").contains("text/html"));
+                assertEquals("en-us,en;q=0.5",request.header("Accept-Language"));
+            } else {assertNull(request.header("Accept"));assertNull(request.header("Accept-Language"));}
+            return new Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                .body(ResponseBody.create(MediaType.parse("text/plain"),"")).build();
+        }).build();
+        try(Response ignored=SafeHttp.openWith(client,"https://example.com/page",null,null,true)) {}
+        try(Response ignored=SafeHttp.openWith(client,"https://example.com/file",null,null)) {}
+    }
 }
