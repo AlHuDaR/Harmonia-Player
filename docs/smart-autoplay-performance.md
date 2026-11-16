@@ -87,7 +87,16 @@ into first-frame measurements.
 - TypeScript passed.
 - All 21 existing Chromium browser tests passed, including direct video/audio,
   pause/seek, storage, Arabic/English layouts and unavailable-Cast behavior.
-- Android release build and native tests: pending build attempt result.
+- ARM64 release APK generated successfully; Android release lint passed.
+- All 72 native JVM tests passed across 14 suites, with no failures or skips.
+- APK: `android/app/build/outputs/apk/release/app-release.apk`, 44,872,248 bytes.
+  SHA-256: `14edc75ea85cb8028498f65b474fc1fe959be1b6773f528d87ff905183e21718`.
+  Uses the repository's existing development signing configuration.
+- Native validation command after prebuild: `./gradlew :app:assembleRelease
+  :app:testReleaseUnitTest -PreactNativeArchitectures=arm64-v8a --max-workers=2
+  --no-daemon`. This managed host also required writable Gradle/Android/Expo
+  settings directories and `EXPO_NO_TELEMETRY=1`; no project configuration or
+  dependency changes were needed to accommodate that environment.
 - Device playback/startup, live providers, background audio, PiP, physical Cast,
   Android TV and native cache behavior remain unverified on this host. Existing
   policies and transport implementations are retained; browser/unit success
