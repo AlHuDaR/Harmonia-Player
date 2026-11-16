@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { Text } from "./LocalizedText";
 import { Input, Button, useMediaStyles } from "./MediaUI";
+import { submissionTiming } from "@/utils/playbackTiming";
+import { autoPlayIntent, canAutoPlayLocally, cancelAutoPlay } from "@/utils/autoPlay";
 import { youtubeTrack } from "@/utils/youtube";
 import { directTrack, message } from "@/types/media";
 import { usePlayerStore } from "@/store/playerStore";
 import { importMedia } from "@/utils/downloads";
-import { pastedProviderLink, type SharedLink } from "@/utils/linkProviders";
+import { classifyLink, pastedProviderLink, type SharedLink } from "@/utils/linkProviders";
 import SharedLinkCard from "./SharedLinkCard";
 export default function OpenMedia() {
   const styles = useMediaStyles();
@@ -15,30 +17,43 @@ export default function OpenMedia() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const [providerLink, setProviderLink] = useState<SharedLink | null>(null);
+  const submittedAt = useRef<number | undefined>(undefined);
   const pending = useRef<AbortController | null>(null);
   function cancelOpen() {
+    cancelAutoPlay();
     pending.current?.abort();
     pending.current = null;
   }
   useEffect(() => cancelOpen, []);
   async function open() {
     if (pending.current) return;
+    submittedAt.current = performance.now();
+    const intent = autoPlayIntent();
+    const timing = submissionTiming(() => performance.now(), submittedAt.current);
     const request = new AbortController();
     pending.current = request;
     setProviderLink(null);
     setBusy(true);
     setError("");
     try {
-      const link = pastedProviderLink(url);
+      const classified = classifyLink(url.trim());
+      // Known direct files keep their existing fast path; do not add a probe request.
+      const link = Platform.OS === "android" && classified.kind !== "direct"
+        ? classified : pastedProviderLink(url);
       if (link) {
         setProviderLink(link);
         return;
       }
       const track = await youtubeTrack(url, request.signal);
       if (request.signal.aborted) return;
-      usePlayerStore.getState().setCurrentTrack(track || directTrack(url));
-      setUrl("");
-      setShow(false);
+      const playable = track || directTrack(url);
+      timing.mark("discovery");
+      timing.attach(playable);
+      await intent.start(() => canAutoPlayLocally(request.signal), () => {
+        usePlayerStore.getState().setCurrentTrack(playable);
+        setUrl("");
+        setShow(false);
+      });
     } catch (e) {
       if (!request.signal.aborted) setError(message(e));
     } finally {
@@ -84,7 +99,7 @@ export default function OpenMedia() {
             disabled={busy}
           />
           {providerLink && (
-            <SharedLinkCard key={providerLink.url} link={providerLink} onClose={() => setProviderLink(null)} />
+            <SharedLinkCard autoPlay submittedAt={submittedAt.current} key={`${providerLink.url}:${submittedAt.current}`} link={providerLink} onClose={() => setProviderLink(null)} />
           )}
         </>
       )}

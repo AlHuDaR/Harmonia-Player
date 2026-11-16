@@ -150,8 +150,43 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
             return result;
         });
     }
-    private static StreamInfo info(String id) throws Exception {
-        return StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=" + validateId(id));
+    // A brief in-memory handoff between details, formats and initial playback.
+    // Resolution consumes the entry; a user retry fetches fresh signed URLs.
+    private static final class RecentInfo {
+        final FutureTask<StreamInfo> task;
+        final long until;
+        RecentInfo(String id) {
+            task = new FutureTask<>(() -> StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=" + id));
+            until = android.os.SystemClock.elapsedRealtime() + 15000L;
+        }
+    }
+    private final Map<String, RecentInfo> recentInfo = new LinkedHashMap<>();
+    private StreamInfo info(String id) throws Exception {
+        validateId(id);
+        RecentInfo entry;
+        synchronized (recentInfo) {
+            long now = android.os.SystemClock.elapsedRealtime();
+            recentInfo.values().removeIf(value -> value.until <= now);
+            entry = recentInfo.get(id);
+            if (entry == null) {
+                if (recentInfo.size() >= 4) recentInfo.remove(recentInfo.keySet().iterator().next());
+                entry = new RecentInfo(id);
+                recentInfo.put(id, entry);
+            }
+        }
+        // Coalesce the same ID without holding a global lock during network I/O.
+        entry.task.run();
+        try { return entry.task.get(); }
+        catch (ExecutionException error) {
+            synchronized (recentInfo) { recentInfo.remove(id, entry); }
+            if (error.getCause() instanceof Exception) throw (Exception) error.getCause();
+            throw new IllegalStateException("Stream discovery failed", error.getCause());
+        }
+    }
+    private StreamInfo playbackInfo(String id) throws Exception {
+        StreamInfo value = info(id);
+        synchronized (recentInfo) { recentInfo.remove(id); }
+        return value;
     }
     @ReactMethod public void details(String id, Promise promise) {
         submit(promise, () -> {
@@ -270,7 +305,7 @@ public final class YouTubeModule extends ReactContextBaseJavaModule {
     }
     @ReactMethod public void resolve(String id, String selected, String kind, boolean download, Promise promise) {
         submit(promise, () -> {
-            StreamInfo info = info(id);
+            StreamInfo info = playbackInfo(id);
             List<Choice> options = choices(info);
             Choice choice = null;
             for (Choice c : options) if (c.id.equals(selected) && (!download || c.downloadable)) { choice = c; break; }

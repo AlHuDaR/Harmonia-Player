@@ -17,7 +17,9 @@ public final class IntentModule extends ReactContextBaseJavaModule {
     // Called by the existing MainActivity hooks BEFORE React can replace the launch Intent.
     @SuppressWarnings("deprecation") // Legacy overloads are required below Android 13.
     public static synchronized void captureIncoming(Intent intent) {
-        if(intent==null)return;
+        // Android may recreate a task with its old share/view Intent. That is not
+        // a fresh user submission and must never re-arm automatic playback.
+        if(intent==null || (intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)!=0)return;
         String text=null;
         java.util.List<String> files=new java.util.ArrayList<>();
         try {

@@ -1,3 +1,4 @@
+import { inheritPlaybackTiming } from "@/utils/playbackTiming";
 import { classifyLink } from "@/utils/linkProviders";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -216,6 +217,7 @@ export const usePlayerStore = create<PlayerStore>()(
             ...track,
             localUri: track.localUri || downloaded?.localUri,
           };
+          inheritPlaybackTiming(track, playable);
           return {
             currentTrack: playable,
             playbackList: [],

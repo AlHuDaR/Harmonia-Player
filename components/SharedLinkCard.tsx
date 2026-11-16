@@ -7,6 +7,7 @@ import { message } from "@/types/media";
 import { classifyLink, type SharedLink } from "@/utils/linkProviders";
 import {
   discoverMedia,
+  autoPlayChoice,
   choicesFor,
   policy,
   type Discovery,
@@ -14,6 +15,8 @@ import {
   type MediaAction,
 } from "@/utils/mediaDiscovery";
 import { downloadTrack } from "@/utils/downloads";
+import { submissionTiming } from "@/utils/playbackTiming";
+import { autoPlayIntent, canAutoPlayLocally } from "@/utils/autoPlay";
 import { usePlayerStore } from "@/store/playerStore";
 const actions: [MediaAction, string][] = [
   ["play-video", "Play Video"],
@@ -24,8 +27,12 @@ const actions: [MediaAction, string][] = [
 export default function SharedLinkCard({
   link,
   onClose,
+  autoPlay = false,
+  submittedAt,
 }: {
   link: SharedLink;
+  autoPlay?: boolean;
+  submittedAt?: number;
   onClose: () => void;
 }) {
   const styles = useMediaStyles();
@@ -38,10 +45,20 @@ export default function SharedLinkCard({
   const [saved, setSaved] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const alive = useRef(true);
+  const stop = useRef(() => {});
   const p = policy(link);
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
     alive.current = true;
     const controller = new AbortController();
+    const intent = autoPlay && attempt === 0 ? autoPlayIntent() : null;
+    stop.current = () => { intent?.cancel(); controller.abort(); };
+    const timing = submissionTiming(() => performance.now(), attempt === 0 ? submittedAt : undefined);
+    const initialTrack = usePlayerStore.getState().currentTrack;
+    const unsubscribe = usePlayerStore.subscribe((state) => {
+      if (state.currentTrack !== initialTrack) intent?.cancel();
+    });
     setMedia(null);
     setChoices([]);
     setError("");
@@ -51,7 +68,15 @@ export default function SharedLinkCard({
       setBusy(true);
       discoverMedia(link, controller.signal)
         .then((value) => {
-          if (!controller.signal.aborted) setMedia(value);
+          if (controller.signal.aborted) return;
+          timing.mark("discovery");
+          value.choices.forEach((choice) => timing.attach(choice.track));
+          setMedia(value);
+          const choice = autoPlayChoice(value);
+          if (choice && intent) void intent.start(() => canAutoPlayLocally(controller.signal), () => {
+            usePlayerStore.getState().setCurrentTrack(choice.track);
+            close.current();
+          }).catch(() => {});
         })
         .catch((e) => {
           if (!controller.signal.aborted) setError(message(e));
@@ -61,11 +86,14 @@ export default function SharedLinkCard({
         });
     }
     return () => {
+      intent?.cancel();
+      unsubscribe();
       alive.current = false;
       controller.abort();
     };
-  }, [link.url, attempt]);
+  }, [link.url, attempt, autoPlay, submittedAt]);
   async function select(choice: MediaChoice, selectedAction: MediaAction) {
+    stop.current();
     setBusy(true);
     setError("");
     try {
@@ -119,6 +147,7 @@ export default function SharedLinkCard({
               title={label}
               disabled={busy || !options.length}
               onPress={() => {
+                stop.current();
                 setAction(key);
                 if (options.length === 1) select(options[0], key);
                 else setChoices(options);
@@ -157,7 +186,7 @@ export default function SharedLinkCard({
             });
           }}
         />
-        <Button title="Close" onPress={onClose} />
+        <Button title="Close" onPress={() => { stop.current(); onClose(); }} />
       </View>
       {choices.map((choice) => (
         <Button

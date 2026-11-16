@@ -31,6 +31,8 @@ import {
 import { message, type Track } from "@/types/media";
 import { useCastPlayback } from "@/hooks/useCastPlayback";
 import { Button, ChoiceChip } from "./MediaUI";
+import { markPlaybackTiming } from "@/utils/playbackTiming";
+import { cancelAutoPlay, playbackInstance } from "@/utils/autoPlay";
 import { playbackLoop, playbackSpeeds, type LoopRange } from "@/utils/playbackControls";
 
 const clock = (seconds: number) =>
@@ -39,7 +41,7 @@ const clock = (seconds: number) =>
     .padStart(2, "0")}`;
 export default function Player() {
   const track = usePlayerStore((s) => s.currentTrack);
-  return track ? <ActivePlayer key={track.id} track={track} /> : null;
+  return track ? <ActivePlayer key={playbackInstance(track)} track={track} /> : null;
 }
 function ActivePlayer({ track }: { track: Track }) {
   const { t } = useLocale();
@@ -231,6 +233,7 @@ function MediaEngine({
     ? cast.loading || cast.remote.buffering
     : loading;
   const togglePlayback = () => {
+    cancelAutoPlay();
     if (remoteActive) void cast.command(cast.remote.playing ? "pause" : "play");
     else if (player.playing) player.pause();
     else
@@ -285,6 +288,7 @@ function MediaEngine({
     let restored = false;
     const restore = () => {
       if (restored || player.status !== "readyToPlay") return;
+      markPlaybackTiming(track, "ready");
       restored = true;
       const position = usePlayerStore.getState().position;
       if (position > 0)
@@ -303,9 +307,12 @@ function MediaEngine({
         setError("");
       }
     });
-    const playback = player.addListener("playingChange", (e) =>
-      setPlaying(e.isPlaying),
-    );
+    let wasPlaying = player.playing;
+    const playback = player.addListener("playingChange", (e) => {
+      if (wasPlaying && !e.isPlaying) cancelAutoPlay();
+      wasPlaying = e.isPlaying;
+      setPlaying(e.isPlaying);
+    });
     const time = player.addListener("timeUpdate", (e) => {
       const range = loopRef.current;
       if (range && player.playing && e.currentTime >= range.end) {
@@ -541,6 +548,7 @@ function MediaEngine({
           }}
         >
           <VideoView
+            onFirstFrameRender={() => markPlaybackTiming(track, "first-frame")}
             ref={view}
             player={player}
             style={{

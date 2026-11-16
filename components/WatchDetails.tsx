@@ -80,7 +80,7 @@ export default function WatchDetails({
         <ActionButton
           title="Download"
           onPress={() =>
-            track.youtubeId
+            (track.youtubeId || track.sourcePage)
               ? setAction("download")
               : downloadTrack(track).catch((e) => setError(message(e)))
           }
@@ -88,7 +88,7 @@ export default function WatchDetails({
         />
       </View>
       <View style={{ ...styles.row, flexWrap: "wrap" }}>
-        {!!track.youtubeId && (
+        {(!!track.youtubeId || !!track.sourcePage) && (
           <Button title="Quality / audio" onPress={() => setAction("play")} />
         )}
         <Button

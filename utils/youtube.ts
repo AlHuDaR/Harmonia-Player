@@ -1,4 +1,4 @@
-import { discoverRemote } from "./providerBridge";
+import { discoverRemote, takeDiscoveredMedia } from "./providerBridge";
 import { NativeModules, Platform } from "react-native";
 import type { Track } from "@/types/media";
 import {
@@ -178,7 +178,10 @@ export async function youtubeFormats(
   track: Track,
   signal?: AbortSignal,
 ): Promise<StreamFormat[]> {
-  if (!track.youtubeId) return [];
+  if (!track.youtubeId) {
+    if (!track.sourcePage) return [];
+    return (await discoverRemote(track.sourcePage, signal)).formats.map(({ id, label, kind, downloadable }) => ({ id, label, kind, downloadable }));
+  }
   return abortable(() => extractor().formats(track.youtubeId!), signal);
 }
 export async function resolveSource(
@@ -188,7 +191,10 @@ export async function resolveSource(
 ): Promise<MediaSource> {
   if (track.localUri) return { uri: track.localUri };
   if (track.sourcePage && !track.youtubeId) {
-    const media = await discoverRemote(track.sourcePage, signal);
+    if (signal?.aborted) throw new Error("Request cancelled.");
+    const media = (!download && takeDiscoveredMedia(track.sourcePage)) || await discoverRemote(track.sourcePage, signal);
+    // A refresh during resolution is also consumed, so every explicit retry is fresh.
+    if (!download) takeDiscoveredMedia(track.sourcePage);
     const format = media.formats.find(
       (f) =>
         f.id === track.formatId &&
@@ -267,7 +273,7 @@ export function formatTrack(track: Track, format: StreamFormat): Track {
   return {
     ...track,
     // Different formats coexist in Downloads and local playlists.
-    id: `youtube:${track.youtubeId}:${format.id}`,
+    id: track.youtubeId ? `youtube:${track.youtubeId}:${format.id}` : `${track.provider}:${track.sourcePage}:${format.id}`,
     kind: format.kind,
     formatId: format.id,
     formatLabel: format.label,
@@ -280,7 +286,7 @@ export async function videoDetails(
   track: Track,
   signal?: AbortSignal,
 ): Promise<Track> {
-  return track.youtubeId && !track.localUri
+  return track.youtubeId && !track.localUri && !track.related
     ? abortable(() => extractor().details(track.youtubeId!), signal)
     : track;
 }

@@ -69,6 +69,20 @@ export function choicesFor(
     ) || []
   );
 }
+/** Native Auto is bounded adaptive MP4; otherwise prefer a modest MP4 or HLS. */
+export function autoPlayChoice(media: Discovery): MediaChoice | undefined {
+  const video = choicesFor(media, "play-video");
+  const score = (c: MediaChoice) => {
+    if (c.id === "auto") return 0;
+    const quality = Number(c.label.match(/(\d{3,4})p/i)?.[1] || c.id.match(/(\d{3,4})p/i)?.[1] || 0);
+    if (/mp.?4|mpeg.?4/i.test(c.label + c.id) && quality && quality <= 720) return 1 + (720 - quality) / 1000;
+    if (/hls|adaptive/i.test(c.id + c.label)) return 2;
+    if (/mp.?4|mpeg.?4/i.test(c.label + c.id) && !quality) return 3;
+    return 4 + (quality > 720 ? quality / 1000 : 0);
+  };
+  return [...video].sort((a, b) => score(a) - score(b))[0]
+    || choicesFor(media, "play-audio")[0];
+}
 export function externalChoice(
   page: string,
   provider: string,
