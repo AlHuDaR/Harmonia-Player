@@ -74,18 +74,14 @@ final class MediaDiscovery {
             JSONObject cdns=hls.optJSONObject("cdns");String key=hls.optString("default_cdn");
             JSONObject cdn=cdns==null?null:cdns.optJSONObject(key);
             if(cdn!=null && !cdn.optString("url").isEmpty()) {
-                String master=cdn.getString("url"), body=clearPlaylist(master);
-                // Public clear HLS only. Encrypted variants are rejected, never decrypted.
-                String first=null;
-                for(String line:body.split("\\r?\\n")) if(!line.isEmpty() && !line.startsWith("#")) { first=line.trim();break; }
-                if(first!=null) clearPlaylist(SafeHttp.url(master).resolve(first).toString());
-                else clearBody(body);
+                SafeHttp.Document playlist=loadPlaylist(cdn.getString("url"));
+                String master=playlist.url, body=playlist.body;
                 formats.put(format("hls-auto",master,"video","m3u8",false));
                 Matcher audio=Pattern.compile("#EXT-X-MEDIA:TYPE=AUDIO[^\\r\\n]*URI=\"([^\"]+)\"").matcher(body);
                 Set<String> seen=new HashSet<>();
                 while(audio.find() && seen.size()<4) {
                     String u=SafeHttp.url(master).resolve(audio.group(1)).toString();
-                    if(seen.add(u)) {clearPlaylist(u);formats.put(format("hls-audio-"+seen.size(),u,"audio","m3u8",false));}
+                    if(seen.add(u)) {formats.put(format("hls-audio-"+seen.size(),u,"audio","m3u8",false));}
                 }
             }
         }
@@ -97,21 +93,34 @@ final class MediaDiscovery {
         if(!body.trim().startsWith("#EXTM3U")) throw new IOException("Source did not return an HLS playlist.");
         if(body.contains("#EXT-X-KEY:") || body.contains("#EXT-X-SESSION-KEY:")) throw new IOException("Encrypted/DRM playlists are not supported.");
     }
-    static String clearPlaylist(String url) throws IOException {
-        String body=SafeHttp.text(url,512*1024);clearBody(body);
+    static String clearPlaylist(String url) throws IOException { return loadPlaylist(url).body; }
+    interface PlaylistReader { SafeHttp.Document read(String url,int limit) throws IOException; }
+    static SafeHttp.Document loadPlaylist(String url) throws IOException { return loadPlaylist(url,SafeHttp::document); }
+    static SafeHttp.Document loadPlaylist(String url,PlaylistReader reader) throws IOException {
+        SafeHttp.Document playlist=reader.read(url,512*1024);
+        String body=playlist.body;
+        Set<String> children=playlistChildren(body);
+        for(String child:children) {
+            HttpUrl next=playlistChild(playlist.url,child);
+            String variant=reader.read(next.toString(),512*1024).body;clearBody(variant);
+            if(variant.contains("#EXT-X-STREAM-INF:"))throw new IOException("Nested adaptive playlists are not supported.");
+        }
+        return playlist;
+    }
+    static HttpUrl playlistChild(String base,String child) throws IOException {
+        HttpUrl next=SafeHttp.url(base).resolve(child);
+        if(next==null)throw new IOException("Invalid playlist variant.");
+        return SafeHttp.url(next.toString());
+    }
+    static Set<String> playlistChildren(String body) throws IOException {
+        clearBody(body);
         Set<String> children=new LinkedHashSet<>();
         if(body.contains("#EXT-X-STREAM-INF:")) for(String line:body.split("\\r?\\n"))
             if(!line.isEmpty()&&!line.startsWith("#"))children.add(line.trim());
         Matcher audio=Pattern.compile("#EXT-X-MEDIA:TYPE=AUDIO[^\\r\\n]*URI=\"([^\"]+)\"").matcher(body);
         while(audio.find())children.add(audio.group(1));
         if(children.size()>12)throw new IOException("Too many playlist variants to verify safely.");
-        for(String child:children) {
-            HttpUrl next=SafeHttp.url(url).resolve(child);
-            if(next==null)throw new IOException("Invalid playlist variant.");
-            String variant=SafeHttp.text(next.toString(),512*1024);clearBody(variant);
-            if(variant.contains("#EXT-X-STREAM-INF:"))throw new IOException("Nested adaptive playlists are not supported.");
-        }
-        return body;
+        return children;
     }
     static JSONObject reddit(JSONArray listing,String page) throws Exception {
         JSONObject data=listing.getJSONObject(0).getJSONObject("data").getJSONArray("children").getJSONObject(0).getJSONObject("data");
@@ -136,18 +145,22 @@ final class MediaDiscovery {
         return new JSONObject().put("title",data.optString("title","Reddit video")).put("page",page).put("formats",formats);
     }
     static JSONObject probe(String url) throws Exception {
+        return probe(url,SafeHttp.open(url,"bytes=0-65535"));
+    }
+    static JSONObject probe(String url,Response response) throws Exception {
         JSONArray formats=new JSONArray();
-        try(Response r=SafeHttp.open(url,"bytes=0-65535")) {
+        try(Response r=response) {
             if(r.code()!=200 && r.code()!=206) throw new SafeHttp.HttpFailure(r.code());
             String type=r.header("Content-Type","").toLowerCase(Locale.ROOT);
+            String resolved=r.request().url().toString();
             String path=r.request().url().encodedPath().toLowerCase(Locale.ROOT);
             if(r.body()==null) throw new IOException("Empty media response.");
             byte[] bytes=new byte[65536];int count=0,n;
             try(InputStream in=r.body().byteStream()) {while(count<bytes.length && (n=in.read(bytes,count,bytes.length-count))!=-1)count+=n;}
             String text=new String(bytes,0,Math.min(count,64),"UTF-8").trim();
             if(type.contains("mpegurl") || text.startsWith("#EXTM3U")) {
-                clearPlaylist(url);
-                formats.put(format("hls",url,"video","m3u8",false));
+                SafeHttp.Document playlist=loadPlaylist(resolved);
+                formats.put(format("hls",playlist.url,"video","m3u8",false));
             } else {
                 if(!(type.startsWith("audio/") || type.startsWith("video/") || type.startsWith("application/octet-stream")) || count<4 || text.startsWith("<") || text.startsWith("{"))
                     throw new IOException("The URL returned a page or unrecognized data, not an accessible media file.");
@@ -180,7 +193,7 @@ final class MediaDiscovery {
                     case "video/x-matroska": ext="mkv"; break;
                     default: ext=type.startsWith("audio/")?"m4a":"mp4";
                 }
-                formats.put(format("original",url,type.startsWith("audio/")?"audio":"video",ext,true));
+                formats.put(format("original",resolved,type.startsWith("audio/")?"audio":"video",ext,true));
             }
         }
         return new JSONObject().put("title","Direct media").put("page",url).put("formats",formats);

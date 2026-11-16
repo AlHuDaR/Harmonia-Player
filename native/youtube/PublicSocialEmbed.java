@@ -62,7 +62,7 @@ final class PublicSocialEmbed {
                 try {SafeHttp.url(value);media=value;}catch(IOException unsafe) { /* Never fetch unsafe candidates. */ }
             }
         }
-        if(media==null)throw new IOException("No public video stream is exposed by this page. It may require login, be restricted or provide browser-only playback. Open in Browser to check.");
+        if(media==null)throw new IOException("The page did not provide public video metadata that Harmonia can read. The video may still play in a browser. Open in Browser to check.");
         return new JSONObject().put("uri",media).put("title",title.substring(0,Math.min(160,title.length())));
     }
     static JSONObject discover(String page) throws Exception {

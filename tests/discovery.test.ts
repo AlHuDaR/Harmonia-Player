@@ -203,3 +203,20 @@ it("uses native content probing for HTTPS media links without file extensions", 
   expect(native.discover).toHaveBeenCalledWith(url);
   expect(choicesFor(result, "download-video")[0].track).toMatchObject({ sourcePage: url, provider: "Direct media" });
 });
+
+it("probes extensionless media endpoints without inferring capabilities from their URLs", async () => {
+  const link = classifyLink("https://cdn.example.com/media?id=123&signature=keep");
+  expect(link.kind).toBe("web");
+  native.discover.mockResolvedValue(JSON.stringify({title:"Direct media",formats:[{
+    id:"original",label:"Original",kind:"audio",uri:link.url,extension:"mp3",downloadable:true,
+  }]}));
+  const result=await discoverMedia(link);
+  expect(native.discover).toHaveBeenCalledWith(link.url);
+  expect(choicesFor(result,"download-audio")).toHaveLength(1);
+  expect(choicesFor(result,"play-video")).toEqual([]);
+  expect(result.choices[0].track.sourcePage).toBe(link.url);
+});
+it("keeps an ordinary HTML page unavailable when the media probe rejects its response", async () => {
+  native.discover.mockRejectedValue(new Error("The URL returned a page or unrecognized data, not an accessible media file."));
+  await expect(discoverMedia(classifyLink("https://example.com/page"))).rejects.toThrow("not an accessible media file");
+});
